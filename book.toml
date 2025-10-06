@@ -7,6 +7,6 @@ src = "src"
 title = "robonix 手册"
 
 [output.html]
-default-theme = "ayu"
+default-theme = "light"
 git-repository-url = "https://github.com/syswonder/robonix"
 git-repository-icon = "fa-github"
