@@ -1,0 +1,12 @@
+[book]
+authors = []
+language = "zh"
+multilingual = false
+description = "robonix 手册"
+src = "src"
+title = "robonix 手册"
+
+[output.html]
+default-theme = "ayu"
+git-repository-url = "https://github.com/syswonder/robonix"
+git-repository-icon = "fa-github"
