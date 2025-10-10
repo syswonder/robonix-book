@@ -6,7 +6,6 @@
 
 # 第一章：快速开始
 
-- [关于 robonix](./chapter1-getting-started/about.md)
 - [安装与配置](./chapter1-getting-started/installation.md)
 - [快速入门](./chapter1-getting-started/quickstart.md)
 - [运行示例程序](./chapter1-getting-started/demos.md)
@@ -33,7 +32,6 @@
 - [认知层设计](./chapter3-developer-guide/cognition.md)
 - [控制层设计](./chapter3-developer-guide/control.md)
 - [Capability 与 Skill 框架](./chapter3-developer-guide/cap-skill-framework.md)
-- [数据流设计](./chapter3-developer-guide/dataflow.md)
 
 ---
 

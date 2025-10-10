@@ -1,0 +1,285 @@
+html {
+    font-family: "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", "Roboto", "Helvetica Neue", "Noto Sans CJK SC", sans-serif !important;
+    font-feature-settings: "kern" 1, "liga" 1;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+:root {
+    --mono-font: "JetBrains Mono", "Fira Code", "Source Code Pro", Consolas, "Ubuntu Mono", Menlo, "DejaVu Sans Mono", monospace !important;
+    --content-max-width: 70vw;
+    --sidebar-width: 280px;
+    --text-color: #000000;
+    --link-color: #1e40af;
+    --border-color: #ecf0f1;
+    --bg-color: #ffffff;
+    --sidebar-bg: #fafbfc;
+}
+
+code, pre, .hljs {
+    font-family: var(--mono-font) !important;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", "Roboto", "Helvetica Neue", "Noto Sans CJK SC", sans-serif !important;
+    font-weight: 600;
+    color: var(--text-color);
+    margin: 2rem 0 1rem 0 !important;
+    letter-spacing: -0.01em;
+    line-height: 1.4 !important;
+}
+
+h1 {
+    margin: 2.5rem 0 1.5rem 0 !important;
+}
+
+h2 {
+    margin: 2rem 0 1rem 0 !important;
+}
+
+h3, h4, h5, h6 {
+    margin: 1.5rem 0 0.8rem 0 !important;
+}
+
+.sidebar {
+    font-family: "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", "Roboto", "Helvetica Neue", "Noto Sans CJK SC", sans-serif !important;
+    background: var(--sidebar-bg) !important;
+    border-right: 1px solid var(--border-color) !important;
+    width: var(--sidebar-width) !important;
+}
+
+.menu-bar {
+    font-family: "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", "Roboto", "Helvetica Neue", "Noto Sans CJK SC", sans-serif !important;
+    background: var(--bg-color) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+}
+
+.content {
+    background: var(--bg-color) !important;
+    color: var(--text-color) !important;
+    padding: 2rem !important;
+    line-height: 1.8 !important;
+}
+
+.content p {
+    margin: 1.2rem 0 !important;
+    line-height: 1.8 !important;
+}
+
+.content li {
+    margin: 0.3rem 0 !important;
+    line-height: 1.7 !important;
+}
+
+.content ul, .content ol {
+    margin: 1rem 0 !important;
+    padding-left: 1.5rem !important;
+}
+
+.content a {
+    color: var(--link-color) !important;
+    text-decoration: none !important;
+}
+
+.content a:hover {
+    text-decoration: underline !important;
+}
+
+.warning {
+    background: linear-gradient(135deg, #fff7ed 0%, #fef3e7 100%);
+    border-left: 4px solid #f97316;
+    padding: 1.25rem 2.5rem;
+    margin: 2rem 0;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(249, 115, 22, 0.1);
+    position: relative;
+}
+
+.warning::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(249, 115, 22, 0.3), transparent);
+}
+
+.warning h3 {
+    color: #ea580c !important;
+    margin: 0 0 0.5rem 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.warning h3 a.definition {
+    color: #ea580c !important;
+}
+
+.warning p {
+    margin: 0;
+    line-height: 1.5;
+    color: var(--text-color);
+}
+
+blockquote {
+    background: linear-gradient(135deg, #f8f9fa 0%, #f1f3f4 100%);
+    border-left: 4px solid #95a5a6;
+    padding: 1.25rem 1.5rem;
+    margin: 2rem 0;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(149, 165, 166, 0.1);
+    font-style: normal;
+    line-height: 1.7;
+    position: relative;
+}
+
+blockquote::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(149, 165, 166, 0.3), transparent);
+}
+
+blockquote p {
+    margin: 0;
+    color: #333333;
+}
+
+blockquote blockquote {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border-left: 3px solid #bdc3c7;
+    margin: 1rem 0;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(189, 195, 199, 0.1);
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 2rem 0;
+}
+
+table th, table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+table th {
+    font-weight: 600;
+    background: #f8f9fa;
+}
+
+pre {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 4px;
+    overflow-x: auto;
+    margin: 2rem 0;
+    line-height: 1.6;
+}
+
+code {
+    background: #f8f9fa;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+
+.mermaid-flowchart {
+    width: 100%;
+    margin: 0 auto;
+}
+
+.chapter li {
+    margin: 0.1rem 0;
+}
+
+.chapter li a {
+    padding: 0.3rem 0.8rem;
+    color: var(--text-color);
+    border-radius: 3px;
+    margin: 0.1rem 0.3rem;
+}
+
+.chapter li a:hover {
+    color: var(--link-color);
+}
+
+.chapter li a.active {
+    background: #e8f4fd;
+    color: var(--link-color);
+    font-weight: 500;
+}
+
+.menu-bar .menu-bar-item {
+    padding: 0.5rem 1rem;
+    color: var(--text-color);
+    border-radius: 4px;
+}
+
+.menu-bar .menu-bar-item:hover {
+    background: #ecf0f1;
+}
+
+button, .button {
+    background: var(--link-color);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+button:hover, .button:hover {
+    background: #2980b9;
+}
+
+.search-input {
+    border: 1px solid var(--border-color);
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    background: var(--bg-color);
+}
+
+.search-input:focus {
+    border-color: var(--link-color);
+    outline: none;
+}
+
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #bdc3c7;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #95a5a6;
+}
+
+/* 美化分割线样式 */
+hr {
+    border: none !important;
+    height: 1px !important;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        #d0d0d0 20%, 
+        #a0a0a0 50%, 
+        #d0d0d0 80%, 
+        transparent 100%) !important;
+    margin: 2.5rem 0 !important;
+    opacity: 0.8 !important;
+}
