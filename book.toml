@@ -1,7 +1,6 @@
 [book]
 authors = []
 language = "zh"
-multilingual = false
 description = "robonix 手册"
 src = "src"
 title = "robonix 手册"
@@ -9,13 +8,4 @@ title = "robonix 手册"
 [output.html]
 default-theme = "light"
 git-repository-url = "https://github.com/syswonder/robonix"
-git-repository-icon = "fa-github"
-additional-js = ["mermaid.min.js", "mermaid-init.js"]
-additional-css = ["theme/custom.css"]
-
-[preprocessor.toc]
-command = "mdbook-toc"
-renderer = ["html"]
-
-[preprocessor.mermaid]
-command = "mdbook-mermaid"
+additional-js = ["js/mermaid.min.js", "js/mermaid-init.js"]
