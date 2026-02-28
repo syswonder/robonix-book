@@ -13,6 +13,8 @@
 
 # 第三章：开发文档
 
-- [硬件原语接入指南](chapter3-developer-guide/hardware-primitives-guide.md)
+- [Robonix Runtime](chapter3-developer-guide/runtime.md)
+- [Robonix HAL 原语设计与接入指南](chapter3-developer-guide/hardware-primitives-guide.md)
+- [原语开发指南（Legacy）](chapter3-developer-guide/hardware-primitives-guide-legacy.md)
 - [服务开发指南](chapter3-developer-guide/service-development-guide.md)
 - [技能开发指南](chapter3-developer-guide/skill-development-guide.md)

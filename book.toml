@@ -8,4 +8,4 @@ title = "robonix 手册"
 [output.html]
 default-theme = "light"
 git-repository-url = "https://github.com/syswonder/robonix"
-additional-js = ["js/mermaid.min.js", "js/mermaid-init.js"]
+mathjax-support = true

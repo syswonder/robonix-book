@@ -1,133 +1,279 @@
-# 硬件原语接入指南
+# Robonix HAL 原语设计与接入指南
 
-2026.1.31
+作者：wheatfox <wheatfox17@icloud.com>
 
-作者：`wheatfox <wheatfox17@icloud.com>`
+> **TODO**：本文档的设计目前暂未在代码仓库中实现
 
-## 准备工作
+## 核心架构与隔离模型
 
-本文档将以动作原语 `prm::base.move` （底盘速度控制）为例，介绍如何将硬件能力接入 robonix。
+Robonix HAL 采用逻辑命名槽位与物理域双重隔离架构，旨在彻底解决 ROS2 环境下 Topic 全局可见导致的安全风险。
 
-首先确保你已安装命令行工具 `rbnx`，并且 `~/.robonix` 目录存在。
+### 物理域隔离
+所有硬件 Provider 进程必须运行在受限的私有域中 ( `Domain ID != 0` )。该域与 System Domain 物理隔离。跨域通信由 Robonix Runtime 作为唯一网关进行数据中转。
 
-## 创建 robonix 包
+### 命名槽位与随机注入
+Provider 源代码中禁止硬编码物理 Topic 路径。Stub 层根据 RIDL 定义自动生成强类型配置结构。Runtime 在启动时动态生成随机 UUID 前缀的路径，并以键值对形式注入，其中 Key 严格对应 RIDL 中的参数名。
 
-首先，在 `~/.robonix/packages` 目录下创建一个新的目录，并将底盘硬件的 SDK 或者相关驱动代码复制到该目录下，例如 `src` 内，之后创建一个新的目录 `rbnx`，目前的目录结构如下：
 
-```bash
-my_demo_prim_package/
-   src/ # 你的代码和其他资源
-   rbnx/ # 空文件夹
-```
 
-此处的整个目录称为一个 robonix 包（Package），用于组织接入 robonix 的代码和数据资源，并通过相关文件和脚本让 robonix 能够识别和使用该包。之后在包的根目录创建一个名为 `rbnx_manifest.yaml` 的文件，并填写以下内容：
+## 设计思路
 
-```yaml
-package:
-  name: my_demo_prim_package
-  version: 0.0.1
-  description: you can write some description here
-  maintainer: your_name
-  maintainer_email: your_email@example.com
-  license: MulanPSL-2.0
-  build_script: rbnx/build.sh
-```
+### 物理隔离与 Topic 随机化提升安全性
+传统的 ROS2 驱动中，任何接入网络的节点都可以通过扫描发现所有 Topic 路径。在 Robonix 架构下：
+* **域隔离**：Provider 被物理锁定在私有 Domain，无法直接触达系统核心服务。
+* **名称随机化**：即便攻击者进入了私有域，面对随机生成的 UUID 路径，也无法通过名称推测其业务含义。
 
-此时的目录结构如下：
+### 核心逻辑解耦与开发提效
+驱动开发者无需再为 Topic 路径、重映射或复杂的通信参数配置耗费精力：
+* **零配置感知**：所有的物理连接由 Runtime 自动建立。
+* **业务聚焦**：开发者只需继承 Stub 并实现定义的业务虚函数。硬件的更换与迁移只需修改 Manifest 映射，无需变动驱动核心代码。
 
-```bash
-my_demo_prim_package/
-   src/ # 你的代码和其他资源
-   rbnx/
-   rbnx_manifest.yaml # 包的元信息文件
-```
+## 原语定义规范 (RIDL)
 
-接下来在 `rbnx` 目录下创建一个名为 `build.sh` 的脚本，里面应当包含对包内源码的编译脚本命令（例如运行 ROS2 的 `colcon build` 命令等），该脚本用于让包管理器（`rbnx` 程序）能够编译包。你也可以修改 `build_script` 字段，来指定其他脚本文件作为编译脚本，若不写该字段，包管理器默认尝试 `rbnx/build.sh` 文件作为编译脚本。
-
-接下来运行 `rbnx package list` 命令，你应当能看到你刚刚创建的包已经出现在列表中。然后运行 `rbnx package build my_demo_prim_package` 命令编译你的包。
-
-## 声明硬件原语
-
-接下来我们将该包能够提供的能力在 `rbnx_manifest.yaml` 文件中进行声明。对于 `prm::base.move` 硬件原语，其定义如下：
-
-| 标准原语 | 含义 | 输入参数以及 ROS2 类型 | 输出参数以及 ROS2 类型 |
-| -------- | ---- | ---------------------- | ---------------------- |
-| `prm::base.move` | Move mobile base with velocity command | 1. `cmd_vel: geometry_msgs/msg/Twist` | 1. `odom: nav_msgs/msg/Odometry` | 
-
-首先，在 `rbnx\` 目录内创建两个脚本 `start_prm_base_move.sh` 和 `stop_prm_base_move.sh`，分别用于 robonix 启动和停止 `prm::base.move` 硬件原语，例如对于 ROS2 源码来说，`start_prm_base_move.sh` 脚本可以如下：
-
-```bash
-#!/bin/bash
-source /opt/ros/humble/setup.bash
-source ~/my_demo_prim_package/install/setup.bash
-ros2 run my_demo_prim_package prm_base_move # example
-```
-
-此时目前目录结构如下：
-```bash
-my_demo_prim_package/
-   src/
-   rbnx/
-      build.sh
-      start_prm_base_move.sh
-      stop_prm_base_move.sh
-   rbnx_manifest.yaml
-```
-
-接下来，我们可以在 `rbnx_manifest.yaml` 文件中我们的包支持提供 `prm::base.move` 原语，假设包内的程序启动后，会持续接受路径为 `/ranger/cmd_vel` 的 Topic，并发布路径为 `/ranger/odom` 的 Topic，且对应的 Topic 类型与标准原语定义一致，则可以在文件内部添加以下内容：
+RIDL 文件描述原语的数据契约。配置空间（Config Space）定义了参数的访问权限。
 
 ```yaml
-primitives:
-  - name: prm::base.move
-    input_schema: '{"cmd_vel":"/ranger/cmd_vel"}'
-    output_schema: '{"odom":"/ranger/odom"}'
-    metadata: '{"robot":"ranger"}'
-    version: 0.0.1
-    start_script: rbnx/start_prm_base_move.sh
-    stop_script: rbnx/stop_prm_base_move.sh
+# interfaces/base/move.ridl
+name: prm::base.move
+version: 1.0
+type: stream
+
+inputs:
+  - name: cmd_vel
+    message: geometry_msgs/msg/Twist
+
+outputs:
+  - name: odom
+    message: nav_msgs/msg/Odometry
+
+config:
+  model: { type: string, access: "ro" }
+  firmware: { type: string, access: "ro" }
+  max_linear_mps: { type: number, unit: "m/s", access: "rw" }
+  max_angular_rps: { type: number, unit: "rad/s", access: "rw" }
 ```
 
-其中 `input_schema` 和 `output_schema` 字段用于声明原语的输入和输出参数，在这里我们完成最重要的一步，就是将标准原语的输入和输出参数与包内程序的输入和输出参数进行映射，例如 `cmd_vel` 参数对应 `/ranger/cmd_vel` Topic，`odom` 参数对应 `/ranger/odom` Topic。
+## 自动化代码生成 (Stub)
 
-对于 `metadata` 字段，用于声明原语的额外数据，例如机器人型号、底盘型号等，这些数据供 robonix 管理，服务、技能可以根据 metadata 筛选需要的原语实现。对于 `version` 字段，用于区分包内部同一个原语的不同实现，例如同一个底盘实现了两套控制算法，但是推荐采用 metadata 来作为区分标识，version 仅用于版本选择（例如保留了旧版本的原语实现）。
+Stub 层封装了参数服务器接口，自动处理 `ro` 参数的初始化和 `rw` 参数的动态更新请求。
 
-## 注册硬件原语
+### C++ Stub 规范
 
-接下来我们将该硬件原语注册到 robonix 中，在 robonix 中，除了通过原始 API（ROS2 service）直接调用 robonix-core 的注册接口外，更推荐的方法是通过命令行工具 `rbnx` 进行注册和管理。
+```cpp
+namespace robonix::prm::base {
 
-首先创建一个文件 `boot_recipe.yaml`（位置不限），并填写以下内容：
+class MoveProviderStub : public rclcpp::Node {
+public:
+    explicit MoveProviderStub(const std::string& node_name, 
+                              const rclcpp::NodeOptions& options,
+                              const std::map<std::string, std::string>& named_topics) 
+        : Node(node_name, options) {
+        
+        sub_cmd_vel_ = this->create_subscription<geometry_msgs::msg::Twist>(
+            named_topics.at("cmd_vel"), 10, 
+            [this](const geometry_msgs::msg::Twist::SharedPtr msg) { on_cmd_vel(msg); });
+        pub_odom_ = this->create_publisher<nav_msgs::msg::Odometry>(named_topics.at("odom"), 10);
+
+        // 声明参数（由 Runtime 注入初始值）
+        this->declare_parameter("config.model", "");
+        this->declare_parameter("config.firmware", "");
+        this->declare_parameter("config.max_linear_mps", 0.0);
+        this->declare_parameter("config.max_angular_rps", 0.0);
+        
+        param_callback_handle_ = this->add_on_set_parameters_callback(
+            std::bind(&MoveProviderStub::handle_parameter_update, this, std::placeholders::_1));
+    }
+
+    // 状态更新接口：由厂商同步硬件实际状态至系统域
+    void sync_config(const std::string& key, double val) {
+        this->set_parameter(rclcpp::Parameter("config." + key, val));
+    }
+
+    virtual void on_cmd_vel(const geometry_msgs::msg::Twist::SharedPtr msg) = 0;
+    
+    // 配置变更钩子：厂商需实现此函数以执行实际硬件写入
+    virtual bool on_config_update(const std::string& key, const rclcpp::Parameter& val) = 0;
+
+    void publish_odom(const nav_msgs::msg::Odometry& msg) { pub_odom_->publish(msg); }
+
+private:
+    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr sub_cmd_vel_;
+    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pub_odom_;
+    OnSetParametersCallbackHandle::SharedPtr param_callback_handle_;
+
+    rcl_interfaces::msg::SetParametersResult handle_parameter_update(const std::vector<rclcpp::Parameter>& params) {
+        rcl_interfaces::msg::SetParametersResult result;
+        result.successful = true;
+        for (const auto& p : params) {
+            if (!on_config_update(p.get_name(), p)) {
+                result.successful = false;
+                result.reason = "Hardware rejected parameter: " + p.get_name();
+            }
+        }
+        return result;
+    }
+};
+
+}
+```
+
+### Python Stub 规范
+
+```python
+# move_provider_stub.py
+from rclpy.node import Node
+from geometry_msgs.msg import Twist
+from nav_msgs.msg import Odometry
+from rcl_interfaces.msg import SetParametersResult
+
+class MoveProviderStub(Node):
+    def __init__(self, node_name, named_topics, **kwargs):
+        super().__init__(node_name, **kwargs)
+        
+        self._sub_cmd_vel = self.create_subscription(Twist, named_topics['cmd_vel'], self.on_cmd_vel, 10)
+        self._pub_odom = self.create_publisher(Odometry, named_topics['odom'], 10)
+
+        # 注册参数监听
+        self.add_on_set_parameters_callback(self._internal_param_callback)
+
+    def _internal_param_callback(self, params):
+        for p in params:
+            if not self.on_config_update(p.name, p.value):
+                return SetParametersResult(successful=False, reason=f"HW reject {p.name}")
+        return SetParametersResult(successful=True)
+
+    def on_config_update(self, key, value):
+        """由厂商实现硬件写入逻辑"""
+        return True
+
+    def sync_config(self, key, value):
+        """由厂商调用同步状态"""
+        from rclpy.parameter import Parameter
+        self.set_parameters([Parameter(f"config.{key}", value=value)])
+
+    def on_cmd_vel(self, msg):
+        raise NotImplementedError
+
+    def publish_odom(self, msg):
+        self._pub_odom.publish(msg)
+```
+
+## 厂商接入实现 (Implementation)
+
+厂商只需继承 Stub 并实现业务语义转换及硬件配置同步逻辑。
+
+
+### C++ 实现
+
+```cpp
+// ranger_provider.cpp
+#include "move_provider_stub.hpp"
+#include "ranger_sdk.hpp"
+
+class RangerProvider : public robonix::prm::base::MoveProviderStub {
+public:
+    RangerProvider(const rclcpp::NodeOptions& options, 
+                   const std::map<std::string, std::string>& named_topics)
+        : MoveProviderStub("ranger_base_node", options, named_topics) {
+        
+        sdk_ = std::make_unique<RangerSDK::Driver>();
+        
+        // 获取初始配置（Default Values from Manifest）
+        max_v_ = this->get_parameter("config.max_linear_mps").as_double();
+        
+        timer_ = this->create_wall_timer(
+            std::chrono::milliseconds(50), [this](){
+                auto data = sdk_->Read();
+                geometry_msgs::msg::Odometry m;
+                m.twist.twist.linear.x = data.speed;
+                this->publish_odom(m);
+            });
+    }
+
+    bool on_config_update(const std::string& key, const rclcpp::Parameter& val) override {
+        if (key == "config.max_linear_mps") {
+            max_v_ = val.as_double();
+            return sdk_->UpdateLimit(max_v_);
+        }
+        return true;
+    }
+
+    void on_cmd_vel(const geometry_msgs::msg::Twist::SharedPtr msg) override {
+        sdk_->Write(msg->linear.x, msg->angular.z);
+    }
+
+private:
+    std::unique_ptr<RangerSDK::Driver> sdk_;
+    double max_v_;
+    rclcpp::TimerBase::SharedPtr timer_;
+};
+```
+
+### Python 实现
+
+```python
+# ranger_provider.py
+from move_provider_stub import MoveProviderStub
+from nav_msgs.msg import Odometry
+import ranger_sdk 
+
+class RangerProvider(MoveProviderStub):
+    def __init__(self, named_topics, **kwargs):
+        super().__init__("ranger_base_node", named_topics, **kwargs)
+        self.driver = ranger_sdk.RangerDriver()
+        self.driver.connect()
+        
+        # 读取 Ro 配置：这些值由 Runtime 在启动时通过参数注入
+        self.model_name = self.get_parameter('config.model').value
+        self.firmware_v = self.get_parameter('config.firmware').value
+
+        # 设置定时上报
+        self.create_timer(0.05, self._publish_status)
+
+    def on_config_update(self, key, value):
+        """处理来自系统域的 rw 参数修改请求"""
+        if key == "config.max_linear_mps":
+            return self.driver.set_speed_limit(value)
+        return True
+
+    def on_cmd_vel(self, msg):
+        """执行运动控制逻辑"""
+        self.driver.drive(msg.linear.x, msg.angular.z)
+
+    def _publish_status(self):
+        """读取硬件反馈并发布"""
+        state = self.driver.get_latest_state()
+        msg = Odometry()
+        msg.pose.pose.position.x = state.pos_x
+        # 也可以在此处反向同步硬件侧产生的参数变化
+        # self.sync_config("max_linear_mps", state.current_limit)
+        self.publish_odom(msg)
+```
+
+## 部署清单 (Manifest)
+
+`manifest.yaml` 负责声明 `ro` 参数并提供 `rw` 参数的默认启动值。
 
 ```yaml
-name: my_recipe
-description: Demo recipe for my robot with base move primitive
-packages:
-  - name: my_demo_prim_package
-    primitives:
-      - prm::base.move
+# manifest.yaml
+instances:
+  - id: ranger.base.v1
+    primitive: prm::base.move
+    provider:
+      runtime: ros2
+      start: "./rbnx/start_prm_base_move.sh"
+      stop: "./rbnx/stop_prm_base_move.sh"
+      security_policy: "isolated_random" 
+    
+    config:
+      # ro: 静态属性
+      model: "Ranger-Mini-Pro"
+      firmware: "2.0.1-stable"
+      # rw: 默认初值 (Default Values)
+      max_linear_mps: 1.2
+      max_angular_rps: 2.0
 ```
 
-一个 recipe 文件代表“我希望从哪些已安装的包里面、选择每个包里的一部分能力（原语、服务、技能），形成一套运行配置加载并注册到 robonix 系统中”，首先确保 robonix-core 正在运行（`/robonix-core` ROS2 node 存在），然后在 recipe 所在目录中运行：
+## 交付与合规要求
 
-```bash
-rbnx deploy register boot_recipe.yaml
-rbnx deploy status # 查看注册状态
-rbnx deploy build # 对于 recipe 中声明到的 package，执行一次编译
-rbnx deploy start # 启动相关 package 的对应能力（原语、服务、技能），并维护其生命周期（进程组）
-rbnx deploy status # 查看运行状态（正常所有能力项均应处于运行状态）
-```
-
-此时打开 robonix 的 Web UI 界面（Robonix Console），你应当能看到 `prm::base.move` 硬件原语已经注册到 robonix 中，并且处于运行状态，点击对应的原语卡片后点击 View Log，即可看到你的相关程序（例如硬件 SDK）的日志输出（由 `rbnx` 程序自动捕获，完整 log 保存于对应运行 `rbnx` 的主机的 `~/.robonix/packages/logs` 目录下）。
-
-## 查询硬件原语
-
-在原语注册之后，系统内的服务、技能以及系统本身的子系统（如语义地图子系统）就能够请求对应的原语并最终进行数据交互。首先给通过命令行 `ros2` 程序进行查询的方式（参考 [QueryPrimitive.srv](https://github.com/syswonder/robonix/blob/main/rust/robonix-sdk/srv/primitive/QueryPrimitive.srv) 文件）：
-
-```bash
-# string name                    # Standard primitive name
-# string filter                  # JSON: filter by metadata (e.g., {"resolution":">=720p"}, {"index":0}). Empty string means no filter
-# ---
-# robonix_sdk/PrimitiveInstance[] instances
-
-source $PATH_TO_ROBONIX_SDK/install/setup.bash # 替换为你的 robonix-sdk 文件夹路径
-ros2 service call /rbnx/prm/query robonix_sdk/srv/QueryPrimitive "{name: 'prm::base.move', filter: '{'robot':'ranger'}'}"
-```
+Provider 源代码中严禁出现任何物理路径字符串。所有通信绑定必须通过 `named_topics` 完成。标记为 `access: ro` 的配置项由 Runtime 强制锁定。`rw` 项的变更必须通过 Stub 提供的 `on_config_update` 钩子与硬件状态保持同步。
