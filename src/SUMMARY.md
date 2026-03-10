@@ -21,3 +21,7 @@
 - [服务开发指南](chapter3-developer-guide/service-development-guide.md)
 - [技能开发指南](chapter3-developer-guide/skill-development-guide.md)
 - [robonix-sdk 使用说明](chapter3-developer-guide/robonix-sdk.md)
+
+# RFC 规范
+
+- [RFC001: Robonix Interface Definition Language (RIDL)](rfc/RFC001-RIDL.md)
