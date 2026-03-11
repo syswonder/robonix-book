@@ -20,7 +20,9 @@
 
 ```bash
 git clone https://github.com/syswonder/robonix
-cd robonix/rust
+cd robonix
+git submodule update --init --recursive
+cd rust
 sudo apt install -y ros-humble-example-interfaces ros-humble-test-msgs ros-humble-rmw-zenoh-cpp python3-grpcio python3-protobuf
 ```
 
