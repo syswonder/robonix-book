@@ -43,12 +43,14 @@ jobs:
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v5
-      - name: Build with mdBook
-        run: mdbook build
+      - name: Build with mdBook (with RIDL syntax highlighting)
+        run: |
+          cd docs
+          ./scripts/build-highlight.sh
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./book
+          path: docs/book
 
   # Deployment job
   deploy:

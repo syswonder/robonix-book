@@ -359,7 +359,7 @@ nodes:
 
 #### 4.5 Skill Execute Server 示例（execute command）
 
-实现 RIDL 接口 `robonix/system/skill/execute` 的 server：`input.request_json`、`result.response_json` 为 String；可选通过 `output.progress_json` 上报进度。生成代码提供 `create_execute_server(runtime_client, node_id)`，你实现 `execute(request)` 并赋给 `server.execute` 后 `server.start()`。
+实现 RIDL 接口 `robonix/system/skill/execute` 的 server：`input.request_json`、`result.response_json` 为 String；可选通过 `output.progress_json` 上报进度。生成代码提供 `create_execute_server(runtime_client, node_id)`，你实现 `execute(request, goal_handle)` 并赋给 `server.execute` 后 `server.start()`。需上报进度时调用 `goal_handle.publish_feedback(feedback_msg)`。
 
 目录中新增文件：
 
@@ -387,7 +387,7 @@ def main():
 
     server = create_execute_server(runtime_client, node_id)
 
-    def execute(request):
+    def execute(request, goal_handle=None):
         # request 为 action 的 Goal 类型，含 request_json（String）
         req_str = request.request_json.data if request.request_json else "{}"
         try:
@@ -398,7 +398,14 @@ def main():
             result.response_json.data = json.dumps({"ok": False, "error": "invalid json"})
             return result
 
-        # 业务逻辑：根据 params 执行技能，可选上报 progress
+        # 业务逻辑：根据 params 执行技能
+        # 可选上报 progress：goal_handle.publish_feedback(feedback_msg)
+        if goal_handle:
+            feedback = server._action_type.Feedback()
+            feedback.progress_json = String()
+            feedback.progress_json.data = json.dumps({"percent": 50, "status": "running"})
+            goal_handle.publish_feedback(feedback)
+
         result = server._action_type.Result()
         result.response_json = String()
         result.response_json.data = json.dumps({"ok": True, "result": "done"})
@@ -421,7 +428,7 @@ nodes:
     entry: my_package.execute_server:main
 ```
 
-业务逻辑补全位置：在 `execute(request)` 内解析 `request.request_json`，执行动作，可选通过 server 的进度接口上报 `progress_json`，最后返回 `response_json`（String）。
+业务逻辑补全位置：在 `execute(request, goal_handle)` 内解析 `request.request_json`，执行动作。需上报进度时调用 `goal_handle.publish_feedback(feedback_msg)`，其中 `feedback_msg` 为 `server._action_type.Feedback()`，设置 `progress_json` 字段后传入。最后返回 `response_json`（String）。
 
 ---
 

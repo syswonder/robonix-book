@@ -18,5 +18,5 @@
 
 # RFC 规范
 
-- [RFC001: RIDL](rfc/RFC001-RIDL.md)
-- [RFC002: Package Management](rfc/RFC002-Package-Management.md)
+- [RFC001: Robonix 接口定义语言（RIDL）](rfc/RFC001-RIDL.md)
+- [RFC002: Robonix 包管理（Package）](rfc/RFC002-Package-Management.md)

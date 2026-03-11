@@ -113,28 +113,16 @@ cd rust
 
 规则：`robonix/a/b/c` -> `robonix.a.b.c`（斜杠变点号）。
 
-### 3.3 接口类型 -> 生成文件名与主要函数
+### 3.3 接口类型 -> 生成代码速查
 
-| 原语 | RIDL 示例 | 生成文件名 | 主要函数 |
-|------|-----------|------------|----------|
-| query | `query ping { request ...; response ... }` | `{name}_query.py` | `create_{name}_client`, `create_{name}_server` |
-| stream | `stream name { output ... }` 或含 `input` | `{name}_stream.py` | `create_{name}_publisher`, `create_{name}_subscriber` |
-| command | `command motion_cmd { input ...; result ... }` | `{name}_command.py` | `create_{name}_client`, `create_{name}_server` |
-| event | `event result_feedback { payload ... }` | `{name}_event.py` | 按 event 定义生成 |
+| 原语 | 生成文件名 | Python 主要函数 |
+|------|------------|-----------------|
+| query | `{name}_query.py` | `create_{name}_client`, `create_{name}_server` |
+| stream | `{name}_stream.py` | `create_{name}_publisher`, `create_{name}_subscriber` |
+| command | `{name}_command.py` | `create_{name}_client`, `create_{name}_server` |
+| event | `{name}_event.py` | `{Name}Publisher` 类 + `emit()` |
 
-### 3.4 生成函数的含义与使用
-
-- query
-  - `create_{name}_client(runtime_client, requester_id, target)`：调用方。内部通过 gRPC 向 robonix-server 解析 channel，再发 ROS service 请求。返回对象有 `call(request, timeout_sec=10.0)`。
-  - `create_{name}_server(runtime_client, node_id)`：被调用方。向 robonix-server 注册为该 query 的提供者，返回 ROS service server；调用 `start(handler)` 绑定 `handler(request) -> response` 并开始服务。
-- command
-  - `create_{name}_client(...)` / `create_{name}_server(...)`：类似 query，但语义为 action（可带 progress、result）。Server 端实现 `execute` 逻辑。
-- stream
-  - `create_{name}_publisher(...)` / `create_{name}_subscriber(...)`：发布/订阅 ROS topic，channel 由 runtime 分配。
-
-ROS 类型名：query/command 的 srv/action 类型由 namespace + 接口名生成，例如 `robonix/system/debug` + `ping` -> `robonix_interfaces_ros2.srv.SystemDebugPing`。
-
-规律：RIDL 中 `robonix/a/b/name` -> Python 模块 `robonix.a.b.{name}_query`（或 `_command`、`_stream`），函数为 `create_{name}_client` / `create_{name}_server`（或 publisher/subscriber）。
+示例：`query ping` → `robonix.system.debug.ping_query` 模块，`create_ping_client(...)` / `create_ping_server(...)`。详细规范（RIDL 示例、Python/Rust 生成项、调用约定）见 [RFC001 附录 A：代码生成规范](../rfc/RFC001-RIDL.md#codegen)。
 
 ---
 
