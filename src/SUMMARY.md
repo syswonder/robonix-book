@@ -14,6 +14,7 @@
 # 第三章：开发文档
 
 - [开发文档概览](chapter3-developer-guide/index.md)
+- [ridlc 开发手册](chapter3-developer-guide/ridlc.md)
 - [Package 开发指南](chapter3-developer-guide/package-development.md)
 
 # RFC 规范
