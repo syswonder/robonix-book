@@ -6,7 +6,7 @@
 
 ## 1. 目标与范围
 
-RIDL 定义接口契约：接口身份（命名空间 + 名称）、通信语义（stream/command/query/event）、载荷类型、接口版本。RIDL 仅描述「有什么接口、长什么样」；不定义 package 构建、channel 名或部署拓扑，channel 由运行时分配（§6）。
+RIDL 定义接口契约：接口身份（命名空间 + 名称）、通信语义（stream/command/query/event）、载荷类型、接口版本。RIDL 仅描述"有什么接口、长什么样"；不定义 package 构建、channel 名或部署拓扑，channel 由运行时分配（§6）。
 
 **不在本 RFC 内**：Package 目录与 manifest（RFC002）、channel 分配实现细节、ridlc 代码生成与通信实现（见开发手册）。
 
@@ -45,7 +45,7 @@ RIDL 四类原语均为**传输无关**的语义抽象，具体实现由 codegen
 
 ### 3.4 event
 
-离散、一次触发、fire-and-forget、多订阅方。与 stream 区别：不强调持续流，强调「发生了某事」的即时通知。
+离散、一次触发、fire-and-forget、多订阅方。与 stream 区别：不强调持续流，强调"发生了某事"的即时通知。
 
 ---
 
