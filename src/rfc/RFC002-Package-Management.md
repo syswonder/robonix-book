@@ -1,4 +1,6 @@
-# RFC 002: Robonix Package Management：Robonix 包管理
+# RFC 002: Robonix Package Management
+
+Robonix 包管理规范
 
 | 版本 | 日期 | 作者 |
 |------|------|------|
