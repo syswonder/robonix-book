@@ -145,7 +145,7 @@ cd rust
 ### 4.1 步骤总览
 
 1. 确定要实现的接口：在 RIDL 里找到对应 query/command/stream（如 `robonix/system/debug/ping`、`robonix/prm/base/pose_cov`），得到生成模块与函数名（如 query 的 `create_ping_server`/`create_ping_client`，stream 的 `create_pose_cov_publisher`/`create_pose_cov_subscriber`）。
-2. 创建目录：在任意位置新建 package 根目录，包含 `robonix_manifest.yaml` 以及与包名同名的 Python 子包（如 `python_ping_client/python_ping_client/`）。`package.xml`、`setup.py`、`setup.cfg` 由 `rbnx build` 自动生成。`rbnx -p` 可传该目录的路径或 package 名（按约定查找，见下文）。
+2. 创建目录：在任意位置新建 package 根目录，包含 `robonix_manifest.yaml` 以及与包名同名的 Python 子包（如 `python_ping_client/python_ping_client/`）。`setup.py`、`setup.cfg` 由 `rbnx build` 自动生成；`package.xml` 可选（有则使用，可添加自定义 ROS2 依赖；无则自动生成）。`rbnx -p` 可传该目录的路径或 package 名（按约定查找，见下文）。
 3. 写 manifest：`package`（id、name、version、vendor、description、license）+ `nodes`（每项一个 node：`id` 建议 `com.syswonder.xxx`，`entry` 为 `模块:函数`，如 `python_ping_client.call_ping:main`）。
 4. 写业务代码：在 entry 指向的模块里连接 meta API（gRPC），用生成代码的 `create_*_server` 或 `create_*_client`，在 handler/execute 或 call 处实现逻辑。
 5. 用 rbnx 构建与运行：`rbnx build -p <path>` 或 `rbnx build -g <name>` → `rbnx start -p <package> -n <node_id>`（需先启动 robonix-server）；start 会阻塞直到该 package 进程退出，无需 stop。
@@ -177,7 +177,8 @@ cd rust
 无单独 deployment：直接用 rbnx 对 package 做 build/start/stop。
 
 ```bash
-rbnx build -p <path>       # 构建本地路径（如 examples/skill_demo）
+rbnx build -p <path>       # 构建本地路径（如 examples/skill_demo），默认增量
+rbnx build -p <path> --clean   # 清空 rbnx-build 后全量重建
 rbnx build -g <name>       # 构建系统已安装包（rbnx install 安装的）
 rbnx start -p <package> -n <node_id>   # 启动并阻塞直到进程退出（Ctrl+C 结束）
 ```

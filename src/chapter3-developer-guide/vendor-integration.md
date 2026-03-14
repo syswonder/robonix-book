@@ -54,6 +54,7 @@
 ```
 prm_camera_vendor/
 ├── robonix_manifest.yaml
+├── package.xml             # 可选：自定义 ROS2 依赖（如 sensor_msgs）
 └── prm_camera_vendor/
     ├── __init__.py
     └── camera_node.py      # entry: prm_camera_vendor.camera_node:main
@@ -132,6 +133,7 @@ def main():
 ```
 prm_arm_vendor/
 ├── robonix_manifest.yaml
+├── package.xml             # 可选：自定义 ROS2 依赖（如 std_msgs、trajectory_msgs）
 └── prm_arm_vendor/
     ├── __init__.py
     ├── arm_node.py         # 机械臂 command/stream
@@ -213,6 +215,7 @@ def main():
 ```
 map_semantic_service/
 ├── robonix_manifest.yaml
+├── package.xml             # 可选：自定义 ROS2 依赖
 └── map_semantic_service/
     ├── __init__.py
     └── semantic_server.py

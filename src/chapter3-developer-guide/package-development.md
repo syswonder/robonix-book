@@ -70,14 +70,15 @@
 query 的 srv 类型：`robonix/system/debug` + `ping` -> `robonix_interfaces_ros2.srv.SystemDebugPing`。  
 规则：`{NamespacePascal}{InterfacePascal}`。
 
-### 2.5 ROS msg 包来源（重要）
+### 2.5 ROS msg 包来源与 package.xml
 
-**不使用系统 ROS msg 包**：`rbnx build` 不依赖系统的 `std_msgs`、`geometry_msgs` 等。所有 ROS msg/srv/action 包均来自本仓库 `robonix-interfaces/lib` 下自维护的 IDL。
+**默认来源**：`rbnx build` 使用本仓库 `robonix-interfaces/lib` 下自维护的 IDL（`rcl_interfaces`、`common_interfaces` 等），不依赖系统 ROS msg 包。
 
 - **来源**：`robonix-interfaces/lib/rcl_interfaces`、`robonix-interfaces/lib/common_interfaces`（如 `builtin_interfaces`、`std_msgs`、`geometry_msgs`、`action_msgs`、`nav_msgs`、`sensor_msgs`、`trajectory_msgs` 等）
 - **构建流程**：ridlc 将上述包复制到 workspace 的 `vendor/`，colcon 在 vendor 中构建，产物进入 install 空间
 - **使用方式**：与系统包完全一致，例如 `from std_msgs.msg import String`、`from geometry_msgs.msg import PoseWithCovarianceStamped`，字段定义以本仓库为准
-- **好处**：字段版本可控、跨 ROS 发行版一致、不依赖系统安装的 msg 包
+
+**自定义 package.xml**：若需使用其他 ROS2 系统包（如 `sensor_msgs`、`geometry_msgs` 等 apt 安装的包），可在 package 根目录添加 `package.xml`，在其中声明 `<depend>`。rbnx build 会使用该文件，不会覆盖。示例见 `rust/examples/prm_camera_vendor/package.xml`、`rust/examples/skill_demo/package.xml`。
 
 ---
 
@@ -106,7 +107,8 @@ my_package/                    # package 根目录（任意名，建议与 packa
 要点：
 
 - `robonix_manifest.yaml` 必须在 package 根目录。
-- `package.xml`、`setup.py`、`setup.cfg`、`resource/` 由 `rbnx build` 根据 manifest 自动生成，无需手写。
+- `setup.py`、`setup.cfg`、`resource/` 由 `rbnx build` 根据 manifest 自动生成，无需手写。
+- `package.xml`：若源码中已有，则直接使用（可添加自定义 ROS2 依赖如 `std_msgs`、`sensor_msgs` 等系统包）；若无则自动生成。
 - entry 格式为 `模块:函数`，例如 `my_package.main:main` 表示执行 `from my_package.main import main` 并调用 `main()`。
 - 若 package 名是 `python_ping_client`，则目录通常为 `python_ping_client/`，其下 Python 包也为 `python_ping_client/`，入口如 `python_ping_client.call_ping:main`。
 
@@ -439,7 +441,7 @@ nodes:
 
 ### 步骤五：用 rbnx 构建与运行
 
-`rbnx build` 会根据 manifest 自动生成 `package.xml`、`setup.py`、`setup.cfg`、`resource/`，无需手写。生成的 `package.xml` 依赖 `robonix-interfaces/lib` 下的 msg 包（见 §2.5），不使用系统 ROS msg。在 `rust` 目录下（或 `-p` 指定为 package 路径）：
+`rbnx build` 会根据 manifest 自动生成 `setup.py`、`setup.cfg`、`resource/`。`package.xml`：若源码中已有则使用（可添加自定义 ROS2 依赖，如 `std_msgs`、`sensor_msgs`、`geometry_msgs` 等系统包）；若无则自动生成，依赖 `robonix-interfaces/lib` 下的 msg 包（见 §2.5）。在 `rust` 目录下（或 `-p` 指定为 package 路径）：
 
 ```bash
 rbnx build -p my_package
@@ -447,7 +449,7 @@ rbnx start -p my_package   # 阻塞直到进程退出
 ```
 
 - build：校验 manifest、执行 colcon 等，产物在 package 下的 `rbnx-build` 等目录。
-- build：`rbnx build -p <path>` 或 `rbnx build -g <name>`。`-p` 为本地路径（如 examples/skill_demo）；`-g` 为系统已安装包名（`rbnx install` 安装的包）。
+- build：`rbnx build -p <path>` 或 `rbnx build -g <name>`。`-p` 为本地路径（如 examples/skill_demo）；`-g` 为系统已安装包名（`rbnx install` 安装的包）。默认增量构建；加 `--clean` 可清空 `rbnx-build` 后全量重建。
 - start：`rbnx start -p <package> -n <node_id>` 每次只启动一个 node，按该 node 的 entry 启动进程并阻塞直到退出；需先启动 robonix-server，meta 地址可通过环境变量 `ROBONIX_META_GRPC_ENDPOINT` 或 rbnx `--endpoint` 传入。
 
 `-p` 可为 package 根目录的绝对或相对路径；也可为 package 名字，此时 rbnx 在 examples/、cwd、rust/examples/ 下查找含 `robonix_manifest.yaml` 的目录，或系统安装的包（~/.robonix/packages）。
@@ -515,7 +517,7 @@ rclpy.spin(server)
 
 ## 8. 参考
 
-- 完整示例：本仓库 `rust/examples/python_ping_client/`（query client）、`rust/examples/prm_camera_vendor/`（相机厂商）、`rust/examples/prm_arm_vendor/`（机械臂厂商）、`rust/examples/map_semantic_service/`（地图服务），仅作参考；package 可放在任意路径。
+- 完整示例：本仓库 `rust/examples/` 下 `python_ping_client`（query client）、`query_demo`、`stream_demo`、`skill_demo`、`prm_camera_vendor`（相机厂商）、`prm_arm_vendor`（机械臂厂商）、`map_semantic_service`（地图服务），均含 `package.xml` 可参考；package 可放在任意路径。
 - **抽象硬件原语**：相机、底盘、传感器、机械臂、夹爪、力/力矩等接口形态，见 [抽象硬件原语](primitives/index.md)。
 - **硬件/服务厂商接入**：相机、机械臂、地图等厂商如何接入 RIDL 接口、按需实现接口子集，见 [硬件/服务厂商接入指南](vendor-integration.md)。
 - Manifest 规范：[RFC002](../rfc/RFC002-Package-Management.md)。
