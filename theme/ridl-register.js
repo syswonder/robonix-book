@@ -1,5 +1,5 @@
 ;hljs.registerLanguage("ridl",function(hljs){
-  var k={keyword:"namespace import query command stream request response input output result version event payload",literal:"true false"};
+  var k={keyword:"namespace import query command stream request response input output result version payload",literal:"true false"};
   var typePath=/\b[a-z][a-z0-9_]*\/[a-z0-9_]+\/[a-z][a-z0-9_]*(\[\])?/i;
   var nsPath=/\b[a-z][a-z0-9_]*(\/[a-z0-9_]+)+/;
   var builtin=/\b(float32|float64|int8|int16|int32|int64|uint8|uint16|uint32|uint64|bool|string|byte)\b/;
@@ -22,9 +22,9 @@
         {className:"keyword",begin:/\bimport\b/},
         {className:"type",begin:typePath}
       ]},
-      {begin:/\b(query|command|stream|event)\s+/,returnBegin:!0,contains:[
-        {className:"keyword",begin:/\b(query|command|stream|event)\b/},
-        {className:"title",begin:/\b(?!query|command|stream|event\b)[a-z_][a-z0-9_]*\b/}
+      {begin:/\b(query|command|stream)\s+/,returnBegin:!0,contains:[
+        {className:"keyword",begin:/\b(query|command|stream)\b/},
+        {className:"title",begin:/\b(?!query|command|stream\b)[a-z_][a-z0-9_]*\b/}
       ]},
       {begin:/\b(request|response|input|output|result|payload)\s+/,returnBegin:!0,contains:[
         {className:"keyword",begin:/\b(request|response|input|output|result|payload)\b/},

@@ -16,6 +16,13 @@
 - [开发文档概览](chapter3-developer-guide/index.md)
 - [ridlc 开发手册](chapter3-developer-guide/ridlc.md)
 - [Package 开发指南](chapter3-developer-guide/package-development.md)
+- [抽象硬件原语](chapter3-developer-guide/primitives/index.md)
+  - [相机 (Camera)](chapter3-developer-guide/primitives/camera.md)
+  - [底盘 (Base)](chapter3-developer-guide/primitives/base.md)
+  - [通用传感器 (Sensor)](chapter3-developer-guide/primitives/sensor.md)
+  - [机械臂 (Arm)](chapter3-developer-guide/primitives/arm.md)
+  - [夹爪 (Gripper)](chapter3-developer-guide/primitives/gripper.md)
+  - [力/力矩 (Force-Torque)](chapter3-developer-guide/primitives/force-torque.md)
 - [硬件/服务厂商接入指南](chapter3-developer-guide/vendor-integration.md)
 
 # RFC 规范

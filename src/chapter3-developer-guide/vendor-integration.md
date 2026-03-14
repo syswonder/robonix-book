@@ -2,6 +2,8 @@
 
 本文档说明相机、机械臂等硬件厂商以及地图等系统服务如何接入 Robonix RIDL 接口。设计参考 Android HAL：厂商实现接口子集，按需注册，无需实现全部。
 
+各硬件类型的接口形态详见 [抽象硬件原语](primitives/index.md)。
+
 ---
 
 ## 1. 接入流程概览
@@ -18,7 +20,7 @@
 
 **回调/接法**：command 用 `server.execute = callback` 挂载；query 用 `server.start(handler)` 传入；stream 直接 `publish(msg)`。
 
-**`_setup_path`**：仅当直接 `python -m` 运行（未通过 rbnx start）时需要，用于把生成代码所在目录加入 PYTHONPATH；rbnx start 会 source colcon install，无需此段。
+**运行方式**：必须通过 `rbnx start` 启动，不支持直接 `python -m` 运行。
 
 ---
 
@@ -28,7 +30,8 @@
 
 | 场景 | 需实现的接口 | 不必实现 |
 |------|--------------|----------|
-| 仅 RGB 相机 | prm::camera.rgb | depth, rgbd, ir, intrinsics |
+| 仅 RGB 相机 | rgb, intrinsics | depth, rgbd, ir |
+| 纯深度相机 | depth（+ 可选 intrinsics） | rgb, rgbd, ir |
 | RGB-D 相机 | rgb, depth, rgbd, intrinsics | ir（若硬件不支持） |
 | 机械臂（无夹爪） | move_ee, move_joint, state_joint, joint_trajectory | gripper 全部 |
 | 机械臂 + 夹爪 | 上述 + gripper.close, gripper.open 等 | 按硬件能力 |
@@ -51,11 +54,6 @@
 ```
 prm_camera_vendor/
 ├── robonix_manifest.yaml
-├── package.xml
-├── setup.py
-├── setup.cfg
-├── resource/
-│   └── prm_camera_vendor
 └── prm_camera_vendor/
     ├── __init__.py
     └── camera_node.py      # entry: prm_camera_vendor.camera_node:main
@@ -134,11 +132,6 @@ def main():
 ```
 prm_arm_vendor/
 ├── robonix_manifest.yaml
-├── package.xml
-├── setup.py
-├── setup.cfg
-├── resource/
-│   └── prm_arm_vendor
 └── prm_arm_vendor/
     ├── __init__.py
     ├── arm_node.py         # 机械臂 command/stream
@@ -171,8 +164,6 @@ nodes:
 **必备流程**：`rclpy.init()` → `grpc.insecure_channel(endpoint)` → `RobonixRuntimeStub(channel)` 得到 `runtime_client`，用于向 meta 注册 channel。
 
 **回调挂载**：command server 通过 `server.execute = your_callback` 挂载；`start()` 后收到 action 请求时会调用该回调。
-
-**`_setup_path`**：仅当直接 `python -m` 运行（未通过 rbnx start）时需要，用于把生成代码所在目录加入 PYTHONPATH；rbnx start 会 source colcon install，无需此段。
 
 ```python
 # prm_arm_vendor/arm_node.py
@@ -222,11 +213,6 @@ def main():
 ```
 map_semantic_service/
 ├── robonix_manifest.yaml
-├── package.xml
-├── setup.py
-├── setup.cfg
-├── resource/
-│   └── map_semantic_service
 └── map_semantic_service/
     ├── __init__.py
     └── semantic_server.py
