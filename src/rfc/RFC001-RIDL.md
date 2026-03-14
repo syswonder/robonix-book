@@ -134,7 +134,7 @@ event result_feedback {
 }
 ```
 
-**语法要点**：每文件一个 `namespace`；`import` 多条；字段以 `;` 结尾；`version` 必填。
+**语法要点**：每文件一个 `namespace`；每文件一个接口，接口名与文件名一致（如 `depth.ridl` 定义 `stream depth`）；`import` 多条；字段以 `;` 结尾；`version` 必填。
 
 ---
 

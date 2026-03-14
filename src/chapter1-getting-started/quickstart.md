@@ -73,7 +73,7 @@ cargo build --manifest-path robonix-server/Cargo.toml --bin robonix-server --bin
   - command：带结果的控制命令，对应 ROS 2 action（如运动指令、skill 执行）。
   - query：请求-响应，对应 ROS 2 service（如 ping、语义地图查询）。
 - 节点（node）：向 robonix-server 注册的逻辑实体。每个节点可基于 RIDL 生成的 stub 提供若干 interface：
-  - 被调用方：实现某 interface 的 server，通常为常驻进程（如 robonix-server 内的 ping 服务、语义地图 query server、机械臂 HAL、skill 节点）。
+  - 被调用方：实现某 interface 的 server，通常为常驻进程（如 robonix-server 内的 ping 服务、语义地图 query server、机械臂 PRM、skill 节点）。
   - 调用方：使用某 interface 的 client，不要求常驻（可一次性调用后退出）。
 - interface：由 RIDL 定义；生成代码提供 `create_*_client` / `create_*_server`（或 stream 的 publisher/subscriber、command 的 client/server），业务逻辑在 stub 中补全。
 
@@ -109,7 +109,7 @@ cd rust
 | RIDL 命名空间 | Python 模块路径 |
 |---------------|-----------------|
 | `robonix/system/debug` | `robonix.system.debug` |
-| `robonix/hal/base` | `robonix.hal.base` |
+| `robonix/prm/base` | `robonix.prm.base` |
 | `robonix/system/map` | `robonix.system.map` |
 | `robonix/system/skill` | `robonix.system.skill` |
 
@@ -130,11 +130,11 @@ cd rust
 
 ## 4. 创建 package 并开发业务逻辑
 
-本节给出步骤总览与一个最小示例；完整目录结构、manifest 逐字段说明、三种典型 package（机械臂 HAL、语义地图 query server、skill server）的代码骨架与对照表，见 [Package 开发指南](../chapter3-developer-guide/package-development.md)。
+本节给出步骤总览与一个最小示例；完整目录结构、manifest 逐字段说明、三种典型 package（机械臂 PRM、语义地图 query server、skill server）的代码骨架与对照表，见 [Package 开发指南](../chapter3-developer-guide/package-development.md)。相机/机械臂/地图等厂商接入流程见 [硬件/服务厂商接入指南](../chapter3-developer-guide/vendor-integration.md)。
 
 ### 4.1 步骤总览
 
-1. 确定要实现的接口：在 RIDL 里找到对应 query/command/stream（如 `robonix/system/debug/ping`、`robonix/hal/localization/pose`），得到生成模块与函数名（如 query 的 `create_ping_server`/`create_ping_client`，stream 的 `create_pose_publisher`/`create_pose_subscriber`）。
+1. 确定要实现的接口：在 RIDL 里找到对应 query/command/stream（如 `robonix/system/debug/ping`、`robonix/prm/base/pose_cov`），得到生成模块与函数名（如 query 的 `create_ping_server`/`create_ping_client`，stream 的 `create_pose_cov_publisher`/`create_pose_cov_subscriber`）。
 2. 创建目录：在任意位置新建 package 根目录，包含 `robonix_manifest.yaml`、`package.xml`、`setup.py`、`setup.cfg`、`resource/<包名>`，以及与包名同名的 Python 子包（如 `python_ping_client/python_ping_client/`）。`rbnx -p` 可传该目录的路径或 package 名（按约定查找，见下文）。
 3. 写 manifest：`package`（id、name、version、vendor、description、license）+ `nodes`（每项一个 node：`id` 建议 `com.syswonder.xxx`，`entry` 为 `模块:函数`，如 `python_ping_client.call_ping:main`）。
 4. 写业务代码：在 entry 指向的模块里连接 meta API（gRPC），用生成代码的 `create_*_server` 或 `create_*_client`，在 handler/execute 或 call 处实现逻辑。
@@ -151,12 +151,12 @@ cd rust
 
 | 类型 | RIDL 接口 | 你要做的 |
 |------|-----------|----------|
-| 机械臂 HAL（command server） | `robonix/hal/arm/joint_trajectory` | 新建 package，entry 里 `create_joint_trajectory_server(runtime_client, node_id)`，在 execute 中收 trajectory、控机械臂、返回 CommandResult。 |
+| 机械臂 PRM（command server） | `robonix/prm/arm/joint_trajectory` | 新建 package，entry 里 `create_joint_trajectory_server(runtime_client, node_id)`，在 execute 中收 trajectory、控机械臂、返回 CommandResult。 |
 | 语义地图（query server） | `robonix/system/map/semantic_query` | 新建 package，entry 里 `create_semantic_query_server(runtime_client, node_id)`，start(handler) 里根据 request.filter 查地图，填 response.objects（Object[]）。 |
 | Skill 节点（command server） | `robonix/system/skill/execute` | 新建 package，entry 里 `create_execute_server(runtime_client, node_id)`，在 execute 里解析 request_json、执行动作、返回 response_json。 |
-| 位姿/传感器流（stream） | `robonix/hal/localization/pose` 等 | 发布方：`create_pose_publisher(runtime_client, node_id)`，循环中 `publish(msg)`。订阅方：`create_pose_subscriber(..., target)`，在回调中处理消息。 |
+| 位姿/传感器流（stream） | `robonix/prm/base/pose_cov` 等 | 发布方：`create_pose_cov_publisher(runtime_client, node_id)`，循环中 `publish(msg)`。订阅方：`create_pose_cov_subscriber(..., target)`，在回调中处理消息。 |
 
-共性：生成代码负责注册/解析 channel 和 ROS 绑定；你只在 server 的 handler/execute、client 的 call、或 stream 的 publish/回调处写业务。node id 必须与 manifest 中 `nodes[].id` 一致，且建议全局唯一（如 `com.syswonder.hal_arm`）。
+共性：生成代码负责注册/解析 channel 和 ROS 绑定；你只在 server 的 handler/execute、client 的 call、或 stream 的 publish/回调处写业务。node id 必须与 manifest 中 `nodes[].id` 一致，且建议全局唯一（如 `com.syswonder.prm_arm`）。
 
 更详细的目录树、manifest 逐字段、完整代码示例与 colcon 配置，见 [Package 开发指南](../chapter3-developer-guide/package-development.md)。
 

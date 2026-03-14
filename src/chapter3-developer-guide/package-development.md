@@ -18,7 +18,7 @@
 ### 1.2 你需要先准备好
 
 - 已能成功执行 `make build` 并启动 `./start_server`（robonix-server 提供 meta API 与 ping 服务）。
-- 知道要实现的接口对应哪条 RIDL（例如 `robonix/system/debug/ping`、`robonix/hal/arm/joint_trajectory`）。若不清楚，见下文“从 RIDL 到生成代码的映射”。
+- 知道要实现的接口对应哪条 RIDL（例如 `robonix/system/debug/ping`、`robonix/prm/arm/joint_trajectory`）。若不清楚，见下文“从 RIDL 到生成代码的映射”。
 
 ---
 
@@ -29,7 +29,8 @@
 | RIDL namespace       | Python 导入路径        |
 |----------------------|------------------------|
 | `robonix/system/debug` | `robonix.system.debug` |
-| `robonix/hal/base`     | `robonix.hal.base`     |
+| `robonix/prm/base`     | `robonix.prm.base`     |
+| `robonix/prm/arm`      | `robonix.prm.arm`      |
 | `robonix/system/map`   | `robonix.system.map`   |
 | `robonix/system/skill` | `robonix.system.skill` |
 
@@ -50,9 +51,9 @@
 |----------------------------------|-------------|----------------|----------------|
 | `robonix/system/debug/ping`      | `from robonix.system.debug.ping_query import create_ping_server` | `create_ping_server(runtime_client, node_id)` | `create_ping_client(runtime_client, requester_id, target)` |
 | `robonix/system/map/semantic_query` | `from robonix.system.map.semantic_query_query import create_semantic_query_server` | `create_semantic_query_server(runtime_client, node_id)` | `create_semantic_query_client(...)` |
-| `robonix/hal/base/motion_cmd`    | `from robonix.hal.base.motion_cmd_command import create_motion_cmd_server` | `create_motion_cmd_server(runtime_client, node_id)` | `create_motion_cmd_client(...)` |
+| `robonix/prm/base/move`         | `from robonix.prm.base.move_command import create_move_server` | `create_move_server(runtime_client, node_id)` | `create_move_client(...)` |
 | `robonix/system/skill/execute`   | `from robonix.system.skill.execute_command import create_execute_server` | `create_execute_server(runtime_client, node_id)` | `create_execute_client(...)` |
-| `robonix/hal/localization/pose`  | `from robonix.hal.localization.pose_stream import create_pose_publisher` | `create_pose_publisher(runtime_client, node_id)` | `create_pose_subscriber(runtime_client, requester_id, target)` |
+| `robonix/prm/base/pose_cov`     | `from robonix.prm.base.pose_cov_stream import create_pose_cov_publisher` | `create_pose_cov_publisher(runtime_client, node_id)` | `create_pose_cov_subscriber(runtime_client, requester_id, target)` |
 
 ### 2.4 ROS 类型名
 
@@ -66,9 +67,9 @@ query 的 srv 类型：`robonix/system/debug` + `ping` -> `robonix_interfaces_ro
 ### 步骤一：确定要实现的接口
 
 - 若做 query 的 server：在 RIDL 里找到对应 query（如 `robonix/system/map/semantic_query`），记下 namespace 与接口名，得到 Python 模块 `robonix.system.map.semantic_query_query` 和 `create_semantic_query_server`。
-- 若做 command 的 server：同理找到 command（如 `robonix/hal/arm/joint_trajectory`），得到 `create_joint_trajectory_server`。
-- 若做 stream 的 provider（发布方）：在 RIDL 里找到对应 stream（如 `robonix/hal/localization/pose`），得到模块 `robonix.hal.localization.pose_stream` 和 `create_pose_publisher(runtime_client, node_id)`；在循环中 `publish(msg)` 发布数据。
-- 若做 stream 的 consumer（订阅方）：同上得到 `create_pose_subscriber(...)`，需指定提供该 stream 的 target node id（与对方 manifest 里 `nodes[].id` 一致）；在回调中处理收到的消息。
+- 若做 command 的 server：同理找到 command（如 `robonix/prm/arm/joint_trajectory`），得到 `create_joint_trajectory_server`。
+- 若做 stream 的 provider（发布方）：在 RIDL 里找到对应 stream（如 `robonix/prm/base/pose_cov`），得到模块 `robonix.prm.base.pose_cov_stream` 和 `create_pose_cov_publisher(runtime_client, node_id)`；在循环中 `publish(msg)` 发布数据。
+- 若做 stream 的 consumer（订阅方）：同上得到 `create_pose_cov_subscriber(...)`，需指定提供该 stream 的 target node id（与对方 manifest 里 `nodes[].id` 一致）；在回调中处理收到的消息。
 - 若做 client（调用已有 query/command server）：用 `create_*_client(runtime_client, requester_id, target)`，其中 `target` 为提供该接口的 node id（与对方 manifest 里 `nodes[].id` 一致）。
 
 ### 步骤二：创建目录结构
@@ -299,7 +300,7 @@ nodes:
 
 #### 4.4 Command Server 示例（机械臂 joint_trajectory）
 
-实现 RIDL 接口 `robonix/hal/arm/joint_trajectory` 的 server：接收 `input.trajectory`（JointTrajectory），执行轨迹后返回 `result.status`（CommandResult）。生成代码提供 `create_joint_trajectory_server(runtime_client, node_id)`，返回对象的 `execute(request)` 由你实现，并赋给 `server.execute` 后调用 `server.start()`。
+实现 RIDL 接口 `robonix/prm/arm/joint_trajectory` 的 server：接收 `input.trajectory`（JointTrajectory），执行轨迹后返回 `result.status`（CommandResult）。生成代码提供 `create_joint_trajectory_server(runtime_client, node_id)`，返回对象的 `execute(request, goal_handle)` 由你实现，并赋给 `server.execute` 后调用 `server.start()`。
 
 目录中新增文件：
 
@@ -313,13 +314,12 @@ import os
 import rclpy
 import grpc
 from robonix_runtime_pb2_grpc import RobonixRuntimeStub
-from robonix.hal.arm.joint_trajectory_command import create_joint_trajectory_server
-from trajectory_msgs.msg import JointTrajectory
+from robonix.prm.arm.joint_trajectory_command import create_joint_trajectory_server
 from robonix_msgs.msg import CommandResult
 
 def main():
     endpoint = os.environ.get("ROBONIX_META_GRPC_ENDPOINT", "127.0.0.1:50051")
-    node_id = "com.syswonder.hal.arm"   # 与 manifest nodes[].id 一致
+    node_id = "com.syswonder.prm.arm"   # 与 manifest nodes[].id 一致
 
     rclpy.init()
     channel = grpc.insecure_channel(endpoint)
@@ -327,13 +327,14 @@ def main():
 
     server = create_joint_trajectory_server(runtime_client, node_id)
 
-    def execute(request):
+    def execute(request, goal_handle=None):
         # request 为 action 的 Goal 类型，含 trajectory 字段（JointTrajectory）
         trajectory = request.trajectory
         # 业务逻辑：将 trajectory 下发给真实机械臂驱动，等待执行完成
-        # 示例：仅返回成功
-        result = CommandResult()
-        result.status = 0   # 或使用 robonix_msgs 中定义的常量
+        result = server._action_type.Result()
+        result.status = CommandResult()
+        result.status.success = True
+        result.status.message = "ok"
         return result
 
     server.execute = execute
@@ -348,12 +349,12 @@ manifest 示例：
 
 ```yaml
 nodes:
-  - id: com.syswonder.hal.arm
+  - id: com.syswonder.prm.arm
     type: python
     entry: my_package.joint_trajectory_server:main
 ```
 
-业务逻辑补全位置：在 `execute(request)` 内解析 `request`（JointTrajectory），驱动机械臂，构造并返回 `CommandResult`。
+业务逻辑补全位置：在 `execute(request, goal_handle)` 内解析 `request.trajectory`（JointTrajectory），驱动机械臂，构造并返回 action Result（含 `status` 字段为 CommandResult）。
 
 ---
 
@@ -465,10 +466,10 @@ rbnx start -p my_package   # 阻塞直到进程退出
 
 | 类型 | RIDL 接口 | 生成函数（server/发布方） | 业务补全位置 | 运行方式 |
 |------|-----------|---------------------------|--------------|----------|
-| 机械臂 HAL（command） | `robonix/hal/arm/joint_trajectory` | `create_joint_trajectory_server` | execute：收 trajectory，控机械臂，返回 CommandResult | 常驻，rbnx start |
+| 机械臂 PRM（command） | `robonix/prm/arm/joint_trajectory` | `create_joint_trajectory_server` | execute：收 trajectory，控机械臂，返回 CommandResult | 常驻，rbnx start |
 | 语义地图（query） | `robonix/system/map/semantic_query` | `create_semantic_query_server` | start(handler)：request.filter -> 查地图 -> response.objects（Object[]） | 常驻，rbnx start |
 | Skill 节点（command） | `robonix/system/skill/execute` | `create_execute_server` | execute：request_json -> 执行动作 -> response_json | 常驻，rbnx start |
-| 位姿/传感器流（stream） | `robonix/hal/localization/pose` 等 | `create_pose_publisher` | 循环中 `publish(msg)`；订阅方用 `create_pose_subscriber`，在回调中处理 msg | 常驻（发布方）或按需（订阅方），rbnx start |
+| 位姿/传感器流（stream） | `robonix/prm/base/pose_cov` 等 | `create_pose_cov_publisher` | 循环中 `publish(msg)`；订阅方用 `create_pose_cov_subscriber`，在回调中处理 msg | 常驻（发布方）或按需（订阅方），rbnx start |
 
 ---
 
@@ -522,6 +523,7 @@ rclpy.spin(server)
 
 ## 8. 参考
 
-- 完整示例：本仓库 `rust/examples/python_ping_client/`（query client、manifest、package.xml、setup.py、entry），仅作参考；package 可放在任意路径。
+- 完整示例：本仓库 `rust/examples/python_ping_client/`（query client）、`rust/examples/prm_camera_vendor/`（相机厂商）、`rust/examples/prm_arm_vendor/`（机械臂厂商）、`rust/examples/map_semantic_service/`（地图服务），仅作参考；package 可放在任意路径。
+- **硬件/服务厂商接入**：相机、机械臂、地图等厂商如何接入 RIDL 接口、按需实现接口子集，见 [硬件/服务厂商接入指南](vendor-integration.md)。
 - Manifest 规范：[RFC002](../rfc/RFC002-Package-Management.md)。
 - RIDL 与 channel：[RFC001](../rfc/RFC001-RIDL.md)。
