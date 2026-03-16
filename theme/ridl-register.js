@@ -8,7 +8,7 @@
     aliases:["ridl"],
     keywords:k,
     contains:[
-      hljs.HASH_COMMENT_MODE,
+      hljs.C_LINE_COMMENT_MODE,
       hljs.QUOTE_STRING_MODE,
       {className:"number",begin:/\b\d+(\.\d+)?\b/},
       {className:"meta",begin:/@\w+/,contains:[{begin:/\(/,end:/\)/,contains:[hljs.QUOTE_STRING_MODE,{className:"number",begin:/\d+(\.\d+)?/}]}]},

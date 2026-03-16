@@ -4,6 +4,10 @@
 }
 
 /* RIDL syntax: keywords bold, title/attr/symbol/type distinct colors */
+pre code.language-ridl .hljs-comment {
+    color: #6a737d;
+    font-style: italic;
+}
 pre code.language-ridl .hljs-keyword {
     font-weight: bold;
 }
@@ -17,8 +21,9 @@ pre code.language-ridl .hljs-attr {
 pre code.language-ridl .hljs-symbol {
     color: #6b4e9e;
 }
-pre code.language-ridl .hljs-type {
-    color: #b21e00;
+pre code.language-ridl .hljs-type,
+pre code.language-ridl .hljs-variable {
+    color: #0d7377;
 }
 pre code.language-ridl .hljs-built_in {
     color: #b21e00;

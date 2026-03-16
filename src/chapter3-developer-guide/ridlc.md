@@ -4,6 +4,10 @@
 
 RIDL 语法速览（关键词、文件规则、命名等）见 RFC001 §3。
 
+**类型引用简写**：`import pkg/msg/Name` 后，字段类型可使用短名 `Name`，也可使用全名 `pkg/msg/Name`；若多个 import 的末段相同则需用全名避免歧义。详见 RFC001 §5.1。
+
+**LLM/Agent 友好注释**：`@desc("...")` 用于接口或字段，描述用途、含义与格式。会写入 DESCRIPTOR.annotations，供 AI 理解接口、正确构造请求。详见 RFC001 §5.2。
+
 **业务逻辑补全**：生成代码只提供 channel 注册、ROS 绑定和工厂函数；用户需在指定位置补全回调或业务逻辑。§5 详细说明每种原语下**在哪里补全**、**补全什么**、**如何调用**，是编写 server/client/stream 代码的核心参考。
 
 ---
@@ -12,6 +16,7 @@ RIDL 语法速览（关键词、文件规则、命名等）见 RFC001 §3。
 
 - **一文件一接口**：每个 `.ridl` 文件只定义一个接口。
 - **接口名 = 文件名**：接口名必须与文件名（不含扩展名）一致，如 `depth.ridl` 定义 `stream depth`，`move.ridl` 定义 `command move`。类似 Java：一个文件一个 public 类，类名与文件名一致。
+- **接口语法**：`command/stream/query 接口名 [注解...] { 字段... }`；字段为 `方向 字段名 类型 [注解...];`。注解可多个，如 `@desc`、`@frame`。完整语法见 [RFC001 §3.1](../rfc/RFC001-RIDL.md)。
 
 ---
 
@@ -53,7 +58,7 @@ RIDL 语法速览（关键词、文件规则、命名等）见 RFC001 §3。
 
 ## 4. 注解
 
-RIDL 支持的注解（如 `@frame`、`@requires_interface`、`@interruptible`）见 RFC001 §5.2。ridlc 解析后传入 codegen，具体语义由生成代码与运行时实现。
+RIDL 支持的注解（如 `@desc`、`@frame`、`@requires_interface`、`@interruptible`）见 RFC001 §5.2。ridlc 解析后传入 codegen，具体语义由生成代码与运行时实现。
 
 ---
 

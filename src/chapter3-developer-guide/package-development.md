@@ -379,9 +379,9 @@ namespace skill_demo/skill
 import skill_demo_msgs/msg/GreetRequest
 import skill_demo_msgs/msg/GreetResult
 
-command greet {
-    input request skill_demo_msgs/msg/GreetRequest
-    result response skill_demo_msgs/msg/GreetResult
+command greet @desc("A simple skill to greet a person.") {
+    input request GreetRequest @desc("Name to greet");
+    result response GreetResult @desc("Greeting message and success");
     version 1.0;
 }
 ```
