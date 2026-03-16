@@ -18,7 +18,7 @@
 
 **必备流程**：`rclpy.init()` → `grpc.insecure_channel(endpoint)` → `RobonixRuntimeStub(channel)` 得到 `runtime_client`，用于向 meta 注册 channel。所有 server/publisher 都依赖此 client。
 
-**回调/接法**：command 用 `server.execute = callback` 挂载；query 用 `server.start(handler)` 传入；stream 直接 `publish(msg)`。
+**业务逻辑补全**：command 用 `server.execute = callback` 挂载，callback 内处理 Goal、可选 `goal_handle.publish_feedback()`、返回 Result；query 用 `server.start(handler)` 传入，handler 内根据 request 填 response；stream 在定时器/循环中 `publish(msg)`，订阅方用 `subscriber.start(callback)`。详见 [ridlc 开发手册 §5](ridlc.md#5-用户逻辑补全python)。
 
 **运行方式**：必须通过 `rbnx start` 启动，不支持直接 `python -m` 运行。
 

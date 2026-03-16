@@ -153,7 +153,7 @@ nodes:
 
 ### 步骤四：编写业务代码
 
-业务代码放在 package 根目录下的 Python 包内（与 `package.name` 同名的子目录），每个 node 的 entry 对应一个“模块:函数”。下面按 4.1 通用入口约定，再分 4.2–4.5 给出四种典型实现及完整目录与代码。
+业务代码放在 package 根目录下的 Python 包内（与 `package.name` 同名的子目录），每个 node 的 entry 对应一个“模块:函数”。**业务逻辑补全位置**：query 用 `server.start(handler)` 传入 handler；command 用 `server.execute = fn` 赋值；stream 发布方在定时器/循环中 `publish(msg)`，订阅方用 `subscriber.start(callback)`。详见 [ridlc 开发手册 §5](ridlc.md#5-用户逻辑补全python)。下面按 4.1 通用入口约定，再分 4.2–4.5 给出四种典型实现及完整目录与代码。
 
 #### 4.1 入口函数约定与目录关系
 
@@ -419,7 +419,35 @@ if __name__ == "__main__":
     main()
 ```
 
-Client 代码（`skill_demo/skill_client.py`）：使用 `create_greet_client`，构造 typed Goal（`request.request = GreetRequest(); request.request.name = "world"`），处理 typed Result（`wrapped.result.response.message`、`wrapped.result.response.success`）。
+Client 代码（`skill_demo/skill_client.py`）：
+
+```python
+# skill_demo/skill_client.py
+from skill_demo.skill.greet_command import create_greet_client
+from skill_demo_msgs.msg import GreetRequest
+
+client = create_greet_client(runtime_client, requester_id=..., target=...)
+
+# 1. 构造 Goal（input）
+request = client._action_type.Goal()
+request.request = GreetRequest()
+request.request.name = "world"
+
+# 2. 可选：接收 feedback（output），callback 内用 fb_msg.feedback.feedback.progress 访问
+def on_feedback(fb_msg):
+    print("feedback:", fb_msg.feedback.feedback.progress)
+goal_future = client._client.send_goal_async(request, feedback_callback=on_feedback)
+rclpy.spin_until_future_complete(client, goal_future, timeout_sec=10.0)
+goal_handle = goal_future.result()
+
+# 3. 获取 Result
+if goal_handle and goal_handle.accepted:
+    result_future = goal_handle.get_result_async()
+    rclpy.spin_until_future_complete(client, result_future, timeout_sec=10.0)
+    wrapped = result_future.result()
+    if wrapped:
+        print(wrapped.result.response.message, wrapped.result.response.success)
+```
 
 manifest 示例：
 
@@ -507,11 +535,13 @@ rclpy.spin(server)
 
 ## 7. 补全业务逻辑的位置小结
 
-| 原语 | 补全位置 | 说明 |
-|------|----------|------|
-| query | `create_*_server` 返回的 `start(handler)` | handler(request, response) 内填 response |
-| stream | publisher 循环里 `publish(msg)`；subscriber 回调里处理 msg | 按需发布/处理 |
-| command | `create_*_server` 返回的 execute | 实现 action 的 execute，返回 result |
+| 原语 | Server/Provider | Client/Consumer |
+|------|-----------------|-----------------|
+| **query** | `server.start(handler)`，handler 内填 response | 构造 Request → `client.call(request)` → 处理 `Response \| None` |
+| **stream** | 定时器/循环中 `publish(msg)`；subscriber 用 `start(callback)` | `subscriber.start(callback)`，callback(msg) 内处理 |
+| **command** | `server.execute = fn`，fn 内处理 Goal、可选 `goal_handle.publish_feedback(fb)`、返回 Result | 构造 Goal → `client.send(request)` 或 `send_goal_async(..., feedback_callback=on_fb)` → `goal_handle.get_result_async()` → `spin_until_future_complete` → `wrapped.result`；feedback 内用 `fb_msg.feedback.feedback.<字段名>` 访问 output |
+
+详见 [ridlc 开发手册 §5](ridlc.md#5-用户逻辑补全python)。
 
 ---
 

@@ -140,7 +140,9 @@ cd rust
 
 ## 4. 创建 package 并开发业务逻辑
 
-本节给出步骤总览与一个最小示例；完整目录结构、manifest 逐字段说明、三种典型 package（机械臂 PRM、语义地图 query server、skill server）的代码骨架与对照表，见 [Package 开发指南](../chapter3-developer-guide/package-development.md)。相机/机械臂/地图等厂商接入流程见 [硬件/服务厂商接入指南](../chapter3-developer-guide/vendor-integration.md)。
+本节给出步骤总览与一个最小示例；完整目录结构、manifest 逐字段说明、三种典型 package（机械臂 PRM、语义地图 query server、skill server）的代码骨架与对照表，见 [Package 开发指南](../chapter3-developer-guide/package-development.md)。
+
+**业务逻辑补全要点**：生成代码负责 channel 注册与 ROS 绑定；你只需在指定位置写业务。Query server 用 `server.start(handler)` 传入 handler；Command server 用 `server.execute = fn` 赋值 execute；Stream 发布方在定时器或循环中 `publish(msg)`，订阅方用 `subscriber.start(callback)` 传入回调。详见 [ridlc 开发手册 §5](../chapter3-developer-guide/ridlc.md#5-用户逻辑补全python)。相机/机械臂/地图等厂商接入流程见 [硬件/服务厂商接入指南](../chapter3-developer-guide/vendor-integration.md)。
 
 ### 4.1 步骤总览
 
@@ -159,14 +161,14 @@ cd rust
 
 ### 4.3 三类典型 package 速查
 
-| 类型 | RIDL 接口 | 你要做的 |
-|------|-----------|----------|
-| 机械臂 PRM（command server） | `robonix/prm/arm/joint_trajectory` | 新建 package，entry 里 `create_joint_trajectory_server(runtime_client, node_id)`，在 execute 中收 trajectory、控机械臂、返回 CommandResult。 |
-| 语义地图（query server） | `robonix/system/map/semantic_query` | 新建 package，entry 里 `create_semantic_query_server(runtime_client, node_id)`，start(handler) 里根据 request.filter 查地图，填 response.objects（Object[]）。 |
-| Skill 节点（command server） | `skill_demo/skill/greet`（package-local） | 新建 package，`ridl/` 下定义 greet.ridl，entry 里 `create_greet_server(runtime_client, node_id)`，在 execute 里使用 typed request/result。 |
-| 位姿/传感器流（stream） | `robonix/prm/base/pose_cov` 等 | 发布方：`create_pose_cov_publisher(runtime_client, node_id)`，循环中 `publish(msg)`。订阅方：`create_pose_cov_subscriber(..., target)`，在回调中处理消息。 |
+| 类型 | RIDL 接口 | 业务逻辑补全位置 |
+|------|-----------|------------------|
+| 机械臂 PRM（command server） | `robonix/prm/arm/joint_trajectory` | `server.execute = fn`，fn 内收 trajectory、控机械臂、返回 Result |
+| 语义地图（query server） | `robonix/system/map/semantic_query` | `server.start(handler)`，handler 内根据 request.filter 查地图、填 response.objects |
+| Skill 节点（command server） | `skill_demo/skill/greet`（package-local） | `server.execute = fn`，fn 内处理 typed request、可选 `goal_handle.publish_feedback()`、返回 result |
+| 位姿/传感器流（stream） | `robonix/prm/base/pose_cov` 等 | 发布方：定时器/循环中 `publish(msg)`；订阅方：`subscriber.start(callback)`，callback 内处理 msg |
 
-共性：生成代码负责注册/解析 channel 和 ROS 绑定；你只在 server 的 handler/execute、client 的 call、或 stream 的 publish/回调处写业务。node id 必须与 manifest 中 `nodes[].id` 一致，且建议全局唯一（如 `com.syswonder.prm_arm`）。
+共性：生成代码负责注册/解析 channel 和 ROS 绑定；你只在上述补全位置写业务。node id 必须与 manifest 中 `nodes[].id` 一致，且建议全局唯一（如 `com.syswonder.prm_arm`）。完整补全说明见 [ridlc §5](../chapter3-developer-guide/ridlc.md#5-用户逻辑补全python)。
 
 更详细的目录树、manifest 逐字段、完整代码示例与 colcon 配置，见 [Package 开发指南](../chapter3-developer-guide/package-development.md)。
 
