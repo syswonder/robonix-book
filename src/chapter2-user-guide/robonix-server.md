@@ -1,45 +1,34 @@
-# robonix-server（当前进程名：robonix-core）
+# robonix-server
 
 <!-- toc -->
 
-本文档说明系统核心进程（当前二进制名为 `robonix-core`）的运行方式，包括启动、环境变量与基本确认。其内部接口与模块设计请参阅 [第三章 - Robonix Framework](../chapter3-developer-guide/robonix-framework.md)。
-
 ## 作用
 
-- 保存原语、服务、技能的注册信息（由 `rbnx deploy register` 写入）。
-- 提供任务提交接口，负责规划与执行调度。
-- 可选提供 Web 管理界面（Robonix Console）。
-
-运行前需已安装二进制（`make install-core`），并已 source ROS2 与 robonix-sdk 环境。
+- 提供 gRPC meta API（默认 `0.0.0.0:50051`）：节点注册、Query channel 分配与解析
+- 运行 ping query 服务（`robonix/system/debug/ping`）
+- 使用 rclrs + rmw_zenoh 作为 ROS 2 传输层
 
 ## 启动
 
-无命令行参数，行为由环境变量控制。在已 source ROS2 与 robonix-sdk 的终端执行：
-
 ```bash
-robonix-core
+cd rust
+./start_server
 ```
 
-或于 `robonix/rust` 下执行 `./core.sh`（后台、带 Web UI）。
+`start_server` 会执行 `setup_zenoh_rclrs_env`（source ROS、设置 RMW、colcon build、source overlay），然后启动 `robonix-server`。
 
 ## 环境变量
 
 | 变量 | 说明 |
 |------|------|
-| `ROBONIX_WEB_ASSETS_DIR` | Web 界面静态资源目录（如 `$(pwd)/robonix-core/web`）；与 `ROBONIX_WEB_PORT` 同时设置时启用 Web 界面 |
-| `ROBONIX_WEB_PORT` | Web 服务端口（如 `8000`）；与上面同时设置时在浏览器访问 `http://localhost:8000` 打开 Robonix Console |
-| `RUST_LOG` | 日志级别，如 `robonix_core=info`、`robonix_core=debug` 或 `debug` |
-
-未设置 Web 变量时仅提供 ROS2 服务，不启动 HTTP。
+| `RMW_IMPLEMENTATION` | 默认 `rmw_zenoh_cpp` |
+| `ROBONIX_META_GRPC_ADDR` | 监听地址，默认 `0.0.0.0:50051` |
+| `ROBONIX_META_GRPC_ENDPOINT` | 客户端连接地址，默认同 `ROBONIX_META_GRPC_ADDR` |
+| `RUST_LOG` | 日志级别，如 `info`、`debug` |
 
 ## 确认运行
 
-- `ros2 service list | grep rbnx` 可见 `/rbnx/prm/query`、`/rbnx/task/submit` 等。
-- 已设 Web 端口时，浏览器访问 `http://localhost:<ROBONIX_WEB_PORT>` 进入 Robonix Console。
+- 日志中出现 `meta-runtime: registered node 'robonix-server'`、`ping query runtime ready`
+- `./callquery robonix-server robonix/system/debug/ping '"test"'` 返回 `pong:"test"`
 
-## 与 rbnx 的关系
-
-- 注册/注销由 `rbnx deploy register` / `rbnx deploy unregister` 完成，rbnx 经 daemon 调用本进程 ROS2 服务。
-- 能力进程的启动/停止由 `rbnx deploy start` / `rbnx deploy stop` 控制；本进程仅维护能力元数据。
-
-环境准备见 [快速开始](../chapter1-getting-started/quickstart.md)。
+**说明**：callquery 仅支持 request/response 均为 `std_msgs/msg/String` 的 query。`semantic_query`、`map_manager`、`model_manager`、`skill_library` 等使用 `robonix_msg` 类型（如 Object[]），需用 Python 客户端（如 query_demo）调用。

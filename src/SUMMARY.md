@@ -8,16 +8,24 @@
 
 # 第二章：用户手册
 
-
 - [用户手册概览](chapter2-user-guide/index.md)
   - [robonix-server](chapter2-user-guide/robonix-server.md)
-  - [rbnx 命令行工具](chapter2-user-guide/rbnx-cli.md)
 
 # 第三章：开发文档
 
 - [开发文档概览](chapter3-developer-guide/index.md)
-- [Robonix Framework（模块设计）](chapter3-developer-guide/robonix-framework.md)
-- [原语开发指南](chapter3-developer-guide/hardware-primitives-guide.md)
-- [服务开发指南](chapter3-developer-guide/service-development-guide.md)
-- [技能开发指南](chapter3-developer-guide/skill-development-guide.md)
-- [robonix-sdk 使用说明](chapter3-developer-guide/robonix-sdk.md)
+- [ridlc 开发手册](chapter3-developer-guide/ridlc.md)
+- [Package 开发指南](chapter3-developer-guide/package-development.md)
+- [抽象硬件原语](chapter3-developer-guide/primitives/index.md)
+  - [相机 (Camera)](chapter3-developer-guide/primitives/camera.md)
+  - [底盘 (Base)](chapter3-developer-guide/primitives/base.md)
+  - [通用传感器 (Sensor)](chapter3-developer-guide/primitives/sensor.md)
+  - [机械臂 (Arm)](chapter3-developer-guide/primitives/arm.md)
+  - [夹爪 (Gripper)](chapter3-developer-guide/primitives/gripper.md)
+  - [力/力矩 (Force-Torque)](chapter3-developer-guide/primitives/force-torque.md)
+- [硬件/服务厂商接入指南](chapter3-developer-guide/vendor-integration.md)
+
+# RFC 规范
+
+- [RFC001: Robonix 接口定义语言（RIDL）](rfc/RFC001-RIDL.md)
+- [RFC002: Robonix 包管理（Package）](rfc/RFC002-Package-Management.md)
