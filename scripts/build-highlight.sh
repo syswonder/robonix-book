@@ -5,12 +5,13 @@
 set -e
 cd "$(dirname "$0")/.."
 
-# First build to get default highlight.js
-mdbook build 2>/dev/null || true
+# First build to get default highlight.js (mdBook >=0.4.0 puts it under book/)
+mdbook build
 
-HLJS=$(ls book/highlight-*.js 2>/dev/null | head -1)
+# Try both hashed and non-hashed names, be tolerant across mdBook versions
+HLJS=$(ls book/highlight*.js 2>/dev/null | head -1)
 if [ -z "$HLJS" ]; then
-  echo "Error: mdbook build did not produce highlight.js. Run 'mdbook build' first."
+  echo "Error: mdbook build did not produce any highlight*.js under book/."
   exit 1
 fi
 
@@ -19,5 +20,6 @@ mkdir -p theme
 cat "$HLJS" theme/ridl-register.js > theme/highlight.js
 
 echo "Created theme/highlight.js with RIDL support"
+
 # Rebuild to use custom highlight
 mdbook build
