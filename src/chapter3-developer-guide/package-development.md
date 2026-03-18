@@ -160,7 +160,7 @@ nodes:
 - entry 格式：`包名.模块名:函数名`，例如 `python_ping_client.call_ping:main` 表示从 `python_ping_client` 包下的 `call_ping` 模块导入 `main` 并执行。
 - 入口函数（如 `main()`）必须完成：
   1. 连接 robonix meta API（gRPC），得到 `runtime_client`（`RobonixRuntimeStub`）。
-  2. 若为 server：用生成代码的 `create_*_server(runtime_client, node_id)` 创建服务，`node_id` 与 manifest 里该 component 的 `id` 一致；绑定 handler 或 execute 后调用 `server.start(...)`，最后 `rclpy.spin(server)` 常驻。
+  2. 若为 server：用生成代码的 `create_*_server(runtime_client, node_id)` 创建服务，`node_id` 与 manifest 里该 component 的 `id` 一致；绑定 handler 或 execute 后调用 `server.start(...)`，最后 `rclpy.spin(server)` 常驻。**多个 server/publisher 时**，每个 `create_*` 返回独立 Node，需用 `MultiThreadedExecutor` 将全部节点加入后统一 spin，详见 [厂商接入指南](vendor-integration.md)。
   3. 若为 client：用 `create_*_client(runtime_client, requester_id, target)` 创建客户端，构造请求并 `client.call(req, timeout_sec=...)`，打印或处理响应后退出。
 
 目录结构关系示例（以包名 `my_package` 为例）：

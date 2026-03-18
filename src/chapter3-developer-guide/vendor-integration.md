@@ -94,14 +94,19 @@ nodes:
 
 **stream 无挂载**：直接 `publisher.publish(msg)`，在 timer 或循环里调用即可。
 
+**多节点 spin**：每个 `create_*_publisher` 返回独立的 rclpy Node，需用 `MultiThreadedExecutor` 将全部 publisher 加入 executor 后统一 spin，否则只 spin 一个节点会导致其他 publisher 无法正常工作。
+
 ```python
 # prm_camera_vendor/camera_node.py
+import rclpy
+from rclpy.executors import MultiThreadedExecutor
 from robonix.prm.camera.rgb_stream import create_rgb_publisher
 from robonix.prm.camera.depth_stream import create_depth_publisher
 from robonix.prm.camera.rgbd_stream import create_rgbd_publisher
 from robonix.prm.camera.intrinsics_stream import create_intrinsics_publisher
 
 def main():
+    rclpy.init()
     runtime_client = ...  # gRPC stub
     node_id = "com.vendor.camera.rgbd"
 
@@ -111,13 +116,27 @@ def main():
     rgbd_pub = create_rgbd_publisher(runtime_client, node_id)
     intrinsics_pub = create_intrinsics_publisher(runtime_client, node_id)
 
-    # 循环：从相机驱动取帧，按需 publish
-    while True:
+    def publish_frame():
         rgb, depth = camera.capture()
         rgb_pub.publish(rgb)
         depth_pub.publish(depth)
         rgbd_pub.publish(RGBD(rgb=rgb, depth=depth))
         intrinsics_pub.publish(camera.get_intrinsics())
+
+    timer = rgb_pub.create_timer(0.5, publish_frame)
+
+    executor = MultiThreadedExecutor()
+    for node in (rgb_pub, depth_pub, rgbd_pub, intrinsics_pub):
+        executor.add_node(node)
+    try:
+        executor.spin()
+    finally:
+        timer.cancel()
+        executor.shutdown()
+        for node in (rgb_pub, depth_pub, rgbd_pub, intrinsics_pub):
+            node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
 ```
 
 ---
@@ -167,15 +186,19 @@ nodes:
 
 **回调挂载**：command server 通过 `server.execute = your_callback` 挂载；`start()` 后收到 action 请求时会调用该回调。
 
+**多节点 spin**：每个 `create_*_server` 返回独立的 rclpy Node，需用 `MultiThreadedExecutor` 将全部 server 加入 executor 后统一 spin。若只 `rclpy.spin(某一个)`，其他 server 的 action 请求将无法被处理。
+
 ```python
 # prm_arm_vendor/arm_node.py
+import rclpy
+from rclpy.executors import MultiThreadedExecutor
 from robonix.prm.arm.move_ee_command import create_move_ee_server
 from robonix.prm.arm.joint_trajectory_command import create_joint_trajectory_server
-from robonix.prm.arm.state_joint_stream import create_state_joint_publisher
 from robonix.prm.gripper.close_command import create_close_server
 from robonix.prm.gripper.open_command import create_open_server
 
 def main():
+    rclpy.init()
     runtime_client = ...
     node_id = "com.vendor.arm.robot_arm"
 
@@ -196,10 +219,21 @@ def main():
     close_srv.start()
     open_srv.start()
 
-    # 可选：state_joint stream 发布关节状态
-    state_pub = create_state_joint_publisher(runtime_client, node_id)
-    # 定时 publish(state_pub, arm_driver.get_joint_state())
-    rclpy.spin(...)
+    # 可选：state_joint stream 发布关节状态，若实现则需加入 executor
+    # state_pub = create_state_joint_publisher(runtime_client, node_id)
+
+    executor = MultiThreadedExecutor()
+    nodes = (move_ee_srv, joint_traj_srv, close_srv, open_srv)
+    for node in nodes:
+        executor.add_node(node)
+    try:
+        executor.spin()
+    finally:
+        executor.shutdown()
+        for node in nodes:
+            node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
 ```
 
 ---
