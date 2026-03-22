@@ -46,7 +46,7 @@ query 接口名 [注解...] {
 }
 ```
 
-注解为 `@key` 或 `@key(param=value)`，可多个。接口级写在接口名后、`{` 前；字段级写在字段类型后、`;` 前。`@desc("...")` 为 LLM/Agent 友好描述，与 `@frame`、`@interruptible` 等并列。
+注解为 `@key` 或 `@key(param=value)`，可多个。接口级写在接口名后、`{` 前；字段级写在字段类型后、`;` 前。常用注解见 §5.2。
 
 ### 3.2 文件结构
 
@@ -59,7 +59,7 @@ namespace robonix/域/子域
 
 ### 3.3 规则摘要
 
-- **关键词**：`namespace`、`import`、`stream`、`command`、`query`、`input`、`output`、`result`、`request`、`response`、`version`。注解 `@desc` 等。
+- **关键词**：`namespace`、`import`、`stream`、`command`、`query`、`input`、`output`、`result`、`request`、`response`、`version`。可选注解见 §5.2。
 - **文件规则**：一文件一接口；接口名必须与文件名一致（如 `depth.ridl` 定义 `stream depth`）。
 - **命名**：namespace 小写、用 `/` 分隔；接口名、字段名小写或 snake_case；类型用 `package/msg/Name` 或 import 后短名。
 - **字段**：以 `;` 结尾。
@@ -108,7 +108,7 @@ namespace robonix/prm/base
 import geometry_msgs/msg/PoseStamped
 
 command navigate @interruptible {
-    input goal PoseStamped;   // 短名，等价于 geometry_msgs/msg/PoseStamped
+    input goal PoseStamped;   // 短名，同 geometry_msgs/msg/PoseStamped
     version 1.0;
 }
 ```
@@ -117,39 +117,29 @@ command navigate @interruptible {
 
 ### 5.2 注解
 
-格式 `@key` 或 `@key(param=value)`。接口级注解写在接口名后、`{` 前；字段级注解写在字段类型后、`;` 前。
+格式 `@key` 或 `@key(param=value)`。接口级写在接口名后、`{` 前；字段级写在字段类型后、`;` 前。
 
-| 注解 | 作用域 | 参数 | 含义 |
-|------|--------|------|------|
-| `@desc` | 接口/字段 | `("...")` | **LLM/Agent 友好**：接口用途或字段含义、格式、示例，供 AI 理解与正确构造请求 |
-| `@requires_interface` | 接口 | `("ns/iface1", "ns/iface2")` | 实现本接口时必须同时实现所列接口 |
-| `@frame` | 字段 | `("map")` | 字段（位姿/点）的参考系，收发双方据此对齐坐标系 |
-| `@interruptible` | 接口 | 无 | command 支持运行时中断（如 cancel）；ROS action 有 cancel API 但 IDL 不声明 |
+| 注解 | 作用域 | 含义 |
+|------|--------|------|
+| `@desc("...")` | 接口或字段 | 简短说明，供文档与工具展示 |
+| `@requires_interface` | 接口 | 实现本接口时需同时提供所列接口（参数为接口 id 列表） |
+| `@frame("...")` | 字段 | 位姿/几何等字段的参考坐标系名 |
+| `@interruptible` | command | 声明该命令可被运行时取消/中断 |
 
 ```ridl
-// navigate.ridl
 namespace robonix/hal/base
 import geometry_msgs/msg/PoseStamped
-command navigate @interruptible @desc("Navigate robot to goal pose.") {
-    input goal PoseStamped @desc("Target pose (frame_id, position, orientation)");
+command navigate @interruptible {
+    input goal PoseStamped;
     version 1.0;
 }
+```
 
-// arm_control.ridl
-namespace robonix/hal/arm
-import robonix_msg/msg/ArmCommand
-import robonix_msg/msg/CommandResult
-command arm_control @requires_interface("robonix/hal/arm/get_params") @desc("Arm control command.") {
-    input cmd ArmCommand @desc("Arm command payload");
-    result status CommandResult @desc("Success/failure");
-    version 1.0;
-}
-
-// pose.ridl
+```ridl
 namespace robonix/hal/localization
 import geometry_msgs/msg/PoseStamped
-stream pose @desc("Localization pose stream.") {
-    output pose PoseStamped @frame("map") @desc("Pose in map frame");
+stream pose {
+    output pose PoseStamped @frame("map");
     version 1.0;
 }
 ```
@@ -161,9 +151,9 @@ stream pose @desc("Localization pose stream.") {
 ```ridl
 namespace robonix/system/debug
 import std_msgs/msg/String
-query ping @desc("Echo test; verify connectivity.") {
-    request data String @desc("Arbitrary string to echo");
-    response data String @desc("Same string echoed back");
+query ping {
+    request data String;
+    response data String;
     version 1.0;
 }
 ```
@@ -172,9 +162,9 @@ query ping @desc("Echo test; verify connectivity.") {
 namespace robonix/system/map
 import std_msgs/msg/String
 import robonix_msg/msg/Object
-query semantic_query @desc("Query objects in semantic map by filter.") {
-    request filter String @desc("JSON filter, e.g. {\"room\":\"kitchen\"}");
-    response objects Object[] @desc("Objects with id, label, pose");
+query semantic_query {
+    request filter String;
+    response objects Object[];
     version 1.0;
 }
 ```
@@ -184,10 +174,10 @@ namespace robonix/hal/base
 import geometry_msgs/msg/Twist
 import nav_msgs/msg/Odometry
 import robonix_msg/msg/CommandResult
-command motion_cmd @desc("Direct velocity control.") {
-    input cmd Twist @desc("Linear/angular velocities");
-    output odom Odometry @desc("Current odometry");
-    result status CommandResult @desc("Success/failure");
+command motion_cmd {
+    input cmd Twist;
+    output odom Odometry;
+    result status CommandResult;
     version 1.0;
 }
 ```
@@ -195,8 +185,8 @@ command motion_cmd @desc("Direct velocity control.") {
 ```ridl
 namespace robonix/hal/localization
 import geometry_msgs/msg/PoseWithCovarianceStamped
-stream pose @desc("Pose with covariance stream.") {
-    output state PoseWithCovarianceStamped @desc("Pose + covariance matrix");
+stream pose {
+    output state PoseWithCovarianceStamped;
     version 1.0;
 }
 ```
