@@ -5,9 +5,6 @@ description = "robonix 手册"
 src = "src"
 title = "robonix 手册"
 
-[preprocessor.toc]
-command = "mdbook-toc"
-
 [output.html]
 additional-css = ["theme/wide.css"]
 default-theme = "light"

@@ -1,7 +1,5 @@
 # Package 开发指南
 
-<!-- toc -->
-
 本指南说明：如何根据 RIDL 找到生成代码中的模块与 **`create_*` 创建函数**，如何在 `robonix_manifest.yaml` 中描述 package 与 node，如何在 Python 入口中连接 meta 并补全 query/command/stream 业务逻辑，以及如何用 `rbnx` 完成构建与启动。建议按章节顺序阅读；示例代码可直接对照仓库 `rust/examples/` 下的同名工程。
 
 ---

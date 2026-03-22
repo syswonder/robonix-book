@@ -1,7 +1,5 @@
 # 快速开始
 
-<!-- toc -->
-
 本节带领你从源码编译开始，理解 Robonix 的基本术语与通信模型，启动 robonix-server，并了解 ridlc 生成代码、自定义 package 与 `rbnx` 构建/运行的大致流程。更细的 package 目录、manifest 说明与多段完整示例见 [Package 开发指南](../chapter3-developer-guide/package-development.md)。
 
 ## 环境

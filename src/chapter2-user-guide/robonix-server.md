@@ -1,7 +1,5 @@
 # robonix-server
 
-<!-- toc -->
-
 ## 作用
 
 - gRPC meta（默认 `0.0.0.0:50051`）：注册、Query channel 分配/解析

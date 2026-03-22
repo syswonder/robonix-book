@@ -3,7 +3,9 @@
 Local build and serve:
 
 ```bash
-cargo install mdbook mdbook-toc mdbook-mermaid
+# for searching in Chinese support
+cargo install mdbook --git https://github.com/Sunshine40/mdBook --branch search-non-english --force
+cargo install mdbook-mermaid
 # Run once for RIDL syntax highlighting
 ./scripts/build-highlight.sh
 # Or directly:
