@@ -1,14 +1,12 @@
 # ridlc 开发手册
 
-本文档描述 ridlc 的代码生成规范与通信实现，供实现者与开发者参考。RIDL 语义定义见 [RFC001](../rfc/RFC001-RIDL.md)。
+本文说明 ridlc 的**代码生成约定**以及当前实现如何把 RIDL 映射到 ROS 2（及与 meta 的协作方式）。RIDL 的语义与语法以 [RFC001](../rfc/RFC001-RIDL.md) 为准，语法速览见 RFC001 §3。
 
-RIDL 语法速览（关键词、文件规则、命名等）见 RFC001 §3。
+阅读本文时建议同时记住三点：
 
-**类型引用简写**：`import pkg/msg/Name` 后，字段类型可使用短名 `Name`，也可使用全名 `pkg/msg/Name`；若多个 import 的末段相同则需用全名避免歧义。详见 RFC001 §5.1。
-
-**LLM/Agent 友好注释**：`@desc("...")` 用于接口或字段，描述用途、含义与格式。会写入 DESCRIPTOR.annotations，供 AI 理解接口、正确构造请求。详见 RFC001 §5.2。
-
-**业务逻辑补全**：生成代码只提供 channel 注册、ROS 绑定和工厂函数；用户需在指定位置补全回调或业务逻辑。§5 详细说明每种原语下**在哪里补全**、**补全什么**、**如何调用**，是编写 server/client/stream 代码的核心参考。
+- **类型引用**：`import pkg/msg/Name` 后，字段中可写短名 `Name`，需要消歧时写全名（RFC001 §5.1）。
+- **注解 `@desc`**：用于接口或字段的人类可读说明，并进入 DESCRIPTOR，便于工具与 Agent 理解载荷含义（RFC001 §5.2）。
+- **用户逻辑**：生成代码负责 channel 与 ROS 绑定；**§5** 按 **stream/command/query** 三种通信语义列出应在何处填写 handler、`execute`、或 `publish`/`subscribe` 回调，并附示例。
 
 ---
 
@@ -22,9 +20,9 @@ RIDL 语法速览（关键词、文件规则、命名等）见 RFC001 §3。
 
 ## 1. 通信实现映射
 
-当前 ridlc 采用 ROS 2 作为后端。各原语与 ROS 2 / gRPC 的映射如下：
+当前 ridlc 采用 ROS 2 作为后端。各**通信语义**与 ROS 2 / gRPC 的映射如下：
 
-| 原语 | ROS 2 | gRPC（可选实现） |
+| 通信语义 | ROS 2 | gRPC（可选实现） |
 |------|-------|------------------|
 | stream | topic | server/client streaming |
 | command | action | 双向流或 server streaming |
@@ -36,7 +34,7 @@ RIDL 语法速览（关键词、文件规则、命名等）见 RFC001 §3。
 
 ### 2.1 命名规律
 
-| 原语 | 生成文件 | Python 工厂 | Rust 模块 |
+| 通信语义 | 生成文件 | Python 创建函数（`create_*`） | Rust 模块 |
 |------|----------|-------------|-----------|
 | query | `{name}_query.py` | `create_{name}_client`, `create_{name}_server` | `{name}_query` |
 | stream | `{name}_stream.py` | `create_{name}_publisher`, `create_{name}_subscriber` | `{name}_stream` |
@@ -64,7 +62,7 @@ RIDL 支持的注解（如 `@desc`、`@frame`、`@requires_interface`、`@interr
 
 ## 5. 用户逻辑补全（Python）
 
-生成代码提供工厂函数和基类，用户需补全「回调」或「业务逻辑」。下表说明每种通信模式下，**在哪里补全**、**补全什么**。
+生成代码提供 **`create_*` 创建函数**（以及必要的类型/基类），用户需补全「回调」或「业务逻辑」。下表说明每种通信模式下，**在哪里补全**、**补全什么**。
 
 ### 5.1 Query（请求-响应）
 
@@ -225,8 +223,8 @@ wrapped = result_future.result()
 
 ### 5.4 快速对照表
 
-| 原语 | Server/Provider 补全 | Client/Consumer 补全 |
-|------|---------------------|----------------------|
+| 通信语义 | Server/Provider 补全 | Client/Consumer 补全 |
+|----------|---------------------|----------------------|
 | **Query** | `server.start(handler)`，`handler(request, response) -> response` | 构造 `Request` → `client.call(request)` → 处理 `Response \| None` |
 | **Stream** | `publisher.publish(msg)`（在定时器或业务逻辑中调用） | `subscriber.start(callback)`，`callback(msg)` 处理消息 |
 | **Command** | `server.execute = fn`，`fn(request, goal_handle) -> result`；可选 `goal_handle.publish_feedback(fb)` | 构造 `Goal` → `client.send(request)` 或 `send_goal_async(..., feedback_callback=on_fb)` → `goal_handle.get_result_async()` → `rclpy.spin_until_future_complete` → `wrapped.result`；feedback 回调内用 `fb_msg.feedback.feedback.<字段名>` 访问 output |

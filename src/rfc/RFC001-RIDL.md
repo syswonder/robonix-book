@@ -66,12 +66,14 @@ namespace robonix/域/子域
 
 ---
 
-## 4. 通信原语
+## 4. 通信语义（stream / command / query）
 
-RIDL 四类原语均为**传输无关**的语义抽象，具体实现由 codegen/运行时选择。
+> 说明：本节说的是**单个 RIDL 接口**的通信形态（stream、command、query）。在 Robonix 文档中，**「原语」一词保留给硬件抽象层**（如 `robonix/prm/*` 下的相机、底盘、机械臂等接口集合），请勿与下表三者的名称混用。
 
-| 原语 | 语义 | 典型用法 |
-|------|------|----------|
+RIDL 用下列三种**通信语义**描述接口，均为**传输无关**的抽象；具体承载方式由 codegen/运行时选择（当前参考实现常对应 ROS 2 的 topic、action、service）。
+
+| 通信语义 | 含义 | 典型用法 |
+|----------|------|----------|
 | stream | 单向数据流 | 位姿/传感器、控制指令 |
 | command | 长任务：输入 + 进度 + 结果 | 运动、skill 执行 |
 | query | 同步请求-响应 | 状态查询、ping |
@@ -203,12 +205,9 @@ stream pose @desc("Pose with covariance stream.") {
 
 ## 7. 运行时 channel
 
-channel 为 interface 在运行时的具体通信端点，由 robonix-server 分配，RIDL 与 manifest 不写 channel 名（§7）。
+**channel** 是某个 interface 在运行时的具体通信端点（例如对应的 ROS 2 topic/service/action 名称）。它由 robonix-server（meta）在运行时分配；RIDL 与 manifest **不承载** channel 的静态命名，从而避免把部署拓扑硬编码进接口描述。
 
-- Server 注册：node 提供 interface 时向 meta API 注册，获得 channel。
-- Client 解析：调用方指定 (node_id, interface_id)，通过 meta API 解析得到 channel 后发起通信。
-
-channel 分配与生命周期由运行时与生成代码负责。
+当 node 作为服务方提供某个 interface 时，会通过 meta API **注册**并获得 channel；当调用方要访问该 interface 时，会携带 `(node_id, interface_id)` 让 meta **解析**出 channel，再发起实际的 ROS 通信。channel 的分配策略与生命周期由运行时与生成代码共同完成。
 
 ---
 
@@ -220,13 +219,11 @@ channel 分配与生命周期由运行时与生成代码负责。
 
 ## 9. 与 RFC002 的边界
 
-RFC001：接口契约（RIDL 语法、原语、类型、channel 概念）。RFC002：package、manifest、node、rbnx 构建与启停。二者通过 (node_id, interface_id) 在运行时衔接。
+**RFC001** 描述接口契约：RIDL 语法、**通信语义**（stream/command/query）、类型与 channel 的概念模型。**RFC002** 描述交付与进程模型：package 目录、`robonix_manifest.yaml`、node、entry，以及 `rbnx build`/`start` 等工具职责。二者在运行时的衔接点是：node 进程使用 manifest 中的 **node id** 向 meta 注册或解析 channel，调用方用 `(node_id, interface_id)` 定位通信端点。
 
----
+## 10. 硬件抽象原语域（prm）
 
-## 10. 原语领域（prm）
-
-`robonix/prm/*` 命名空间下的接口为**抽象硬件原语**。厂商按需实现子集，无需实现全部；同一领域内硬件形态各异（如纯深度相机、RGB 相机、红外相机），不存在统一最小契约。运行时通过 meta 解析 channel，调用方按需查询可用接口。
+`robonix/prm/*` 命名空间下的接口构成 Robonix 的**抽象硬件原语**（文档中常简称**原语**）：用于描述相机、底盘、机械臂等能力边界。每个具体接口仍会用 §4 中的某一种 **通信语义**（stream、command 或 query）来声明。厂商通常只需实现与本机硬件能力匹配的**子集**；同一领域内设备形态差异很大（例如纯深度相机、RGB 相机、红外相机），因此也不存在“所有设备都必须实现”的统一最小契约集合。调用方应通过运行时能力查询或约定，确认目标 node 是否提供所需 interface。
 
 ### 10.1 ROS IDL 无法做到的部分
 
@@ -240,4 +237,4 @@ RFC001：接口契约（RIDL 语法、原语、类型、channel 概念）。RFC0
 | 可中断性（interruptible） | ✗ action 有 cancel 但 IDL 不声明 | ✓ `@interruptible` |
 | 运行时 channel 分配 | ✗ 固定 topic 名 | ✓ 由 meta 分配 |
 
-ROS IDL（.msg/.srv/.action）只描述**载荷结构**，不描述**接口契约**或**通信语义**。RIDL 在原语层补充这些能力。
+ROS IDL（.msg/.srv/.action）只描述**载荷结构**，不描述**接口契约**或 **stream/command/query 这类通信语义**。RIDL 在接口描述层补充这些能力。

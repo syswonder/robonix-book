@@ -4,9 +4,9 @@
 
 ## 作用
 
-- 提供 gRPC meta API（默认 `0.0.0.0:50051`）：节点注册、Query channel 分配与解析
-- 运行 ping query 服务（`robonix/system/debug/ping`）
-- 使用 rclrs + rmw_zenoh 作为 ROS 2 传输层
+- gRPC meta（默认 `0.0.0.0:50051`）：注册、Query channel 分配/解析
+- 内置 ping（`robonix/system/debug/ping`）
+- rclrs + rmw_zenoh
 
 ## 启动
 
@@ -31,4 +31,4 @@ cd rust
 - 日志中出现 `meta-runtime: registered node 'robonix-server'`、`ping query runtime ready`
 - `./callquery robonix-server robonix/system/debug/ping '"test"'` 返回 `pong:"test"`
 
-**说明**：callquery 仅支持 request/response 均为 `std_msgs/msg/String` 的 query。`semantic_query`、`map_manager`、`model_manager`、`skill_library` 等使用 `robonix_msg` 类型（如 Object[]），需用 Python 客户端（如 query_demo）调用。
+**callquery** 仅适合 request/response 均为 `std_msgs/msg/String` 的 query；`semantic_query` 等复杂类型请用 Python 客户端（如 query_demo）。

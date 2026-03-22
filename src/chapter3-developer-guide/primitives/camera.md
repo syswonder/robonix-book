@@ -4,11 +4,11 @@
 
 ## 概述
 
-相机原语抽象视觉传感器，支持 RGB、深度、RGB-D、红外及内参等接口。厂商根据硬件能力实现子集：仅 RGB 相机实现 `rgb`、`intrinsics`；纯深度相机只实现 `depth`（可选 `intrinsics`）；RGB-D 相机实现 `rgb`、`depth`、`rgbd`、`intrinsics`。
+相机原语描述一类**视觉传感器**对外暴露的数据流：既可以是单独的 RGB 或深度图，也可以是同步的 RGB-D，以及红外与内参等辅助流。厂商只需根据自己硬件实际支持的模式，选择实现其中一部分接口；例如纯 RGB 设备通常实现 `rgb` 与 `intrinsics`，而 RGB-D 设备往往还需要 `depth` 与 `rgbd`。
 
 ## 接口列表
 
-| 接口 | 原语类型 | 载荷 | 说明 |
+| 接口 | 通信语义 | 载荷 | 说明 |
 |------|----------|------|------|
 | `rgb` | stream | `sensor_msgs/msg/Image` | RGB 图像流 |
 | `depth` | stream | `sensor_msgs/msg/Image` | 深度图（16-bit 或 32-bit） |

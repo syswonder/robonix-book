@@ -1,66 +1,49 @@
 # 硬件/服务厂商接入指南
 
-本文档说明相机、机械臂等硬件厂商以及地图等系统服务如何接入 Robonix RIDL 接口。设计参考 Android HAL：厂商实现接口子集，按需注册，无需实现全部。
-
-各硬件类型的接口形态详见 [抽象硬件原语](primitives/index.md)。
+本文面向**硬件驱动**与**系统服务**提供方：说明如何在 Robonix 中以 package 形式接入 RIDL，使上层 skill 或其他节点能够通过统一的接口 id 调用你的能力。各硬件类型下具体有哪些 stream/query/command、推荐实现哪些组合，请以 [抽象硬件原语](primitives/index.md) 为索引查阅子页面。
 
 ---
 
-## 1. 接入流程概览
+## 1. 流程与共性
 
-1. 查阅 RIDL 接口定义（robonix-interfaces/ridl/prm/*）
-2. 选择本硬件/服务支持的接口子集
-3. 创建 package，编写 manifest 与 entry
-4. 实现所选接口的 server/publisher，向 meta API 注册
-5. rbnx build + rbnx start 构建与运行
+典型接入可以概括为四步：
 
-**代码分工**：ridlc 生成 `create_*_server`、`create_*_publisher`、`RobonixRuntimeStub` 等；你只写 main 里的连接、回调实现、挂载与启动。
+1. 在 `robonix-interfaces/ridl/` 中阅读与你领域相关的 RIDL，结合硬件能力选定要实现的**接口子集**（不必实现该命名空间下的全部接口）。
+2. 新建 package：编写 `robonix_manifest.yaml` 与 Python 入口模块，在入口中创建 gRPC 连接并获得 `RobonixRuntimeStub`。
+3. 对每一个你决定支持的 interface，调用 ridlc 生成的 `create_*_server` 或 `create_*_publisher` 等**创建函数**，把本进程注册为对应能力的服务方。
+4. 使用 `rbnx build` 构建，并用 `rbnx start` 启动（不要直接用 `python -m` 绕过 rbnx 注入的环境）。
 
-**必备流程**：`rclpy.init()` → `grpc.insecure_channel(endpoint)` → `RobonixRuntimeStub(channel)` 得到 `runtime_client`，用于向 meta 注册 channel。所有 server/publisher 都依赖此 client。
-
-**业务逻辑补全**：command 用 `server.execute = callback` 挂载，callback 内处理 Goal、可选 `goal_handle.publish_feedback()`、返回 Result；query 用 `server.start(handler)` 传入，handler 内根据 request 填 response；stream 在定时器/循环中 `publish(msg)`，订阅方用 `subscriber.start(callback)`。详见 [ridlc 开发手册 §5](ridlc.md#5-用户逻辑补全python)。
-
-**运行方式**：必须通过 `rbnx start` 启动，不支持直接 `python -m` 运行。
+在代码层面，大多数厂商节点都会重复同一骨架：`rclpy.init()` → `grpc.insecure_channel(endpoint)` → `RobonixRuntimeStub(channel)` → 调用各接口的 **`create_*` 创建函数**。**command** 侧通过 `server.execute = callback` 挂载业务；**query** 侧通过 `server.start(handler)` 传入处理函数；**stream** 侧则在定时器或采集循环中调用 `publish(msg)`（订阅方使用 `subscriber.start(callback)`）。更细的补全位置与示例见 [ridlc 手册 §5](ridlc.md#5-用户逻辑补全python)。
 
 ---
 
-## 2. 核心原则：按需实现，无需全量
+## 2. 按需实现
 
-**与 Android HAL 类似**：RIDL 的 `prm/` 目录下定义了大量原语接口，厂商**只需实现本硬件实际支持的接口**，不必实现整个目录。
+下表给出常见硬件/服务形态与**建议实现的接口子集**对照，帮助你快速决定“至少要提供哪些能力”。运行时只会对你实际调用 **`create_*` 创建函数**并注册成功的接口建立 channel；未实现的接口在解析阶段会失败，这属于预期行为而非配置错误。
 
-| 场景 | 需实现的接口 | 不必实现 |
-|------|--------------|----------|
-| 仅 RGB 相机 | rgb, intrinsics | depth, rgbd, ir |
-| 纯深度相机 | depth（+ 可选 intrinsics） | rgb, rgbd, ir |
-| RGB-D 相机 | rgb, depth, rgbd, intrinsics | ir（若硬件不支持） |
-| 机械臂（无夹爪） | move_ee, move_joint, state_joint, joint_trajectory | gripper 全部 |
-| 机械臂 + 夹爪 | 上述 + gripper.close, gripper.open 等 | 按硬件能力 |
-| 语义地图服务 | robonix/system/map/semantic_query | 其他 system 接口 |
+| 场景 | 实现 | 可省略 |
+|------|------|--------|
+| 仅 RGB | rgb, intrinsics | depth, rgbd, ir |
+| 纯深度 | depth（+ intrinsics） | rgb, rgbd, ir |
+| RGB-D | rgb, depth, rgbd, intrinsics | ir 若不支持 |
+| 臂无夹爪 | move_ee, move_joint, state_joint, joint_trajectory | gripper |
+| 臂+夹爪 | 上表 + close/open 等 | 按硬件 |
+| 语义地图 | `robonix/system/map/semantic_query` | 其他 system |
 
-**运行时行为**：node 启动时，仅对**实际实现的接口**调用 `create_*_server` / `create_*_publisher` 并注册。未实现的接口不会被注册，调用方解析时若目标 node 未提供该接口则失败。
-
-**可选：manifest 声明**：为便于文档与工具检查，可在 manifest 中可选声明 `provides`（见 §6）。
+只注册实际实现的接口；未注册则解析失败。可选在 manifest 写 `provides`（§6）供文档/工具。
 
 ---
 
-## 3. 相机厂商接入示例
-
-### 3.1 场景
-
-某厂商提供 RGB-D 相机，支持 rgb、depth、rgbd、intrinsics，不支持 ir。
-
-### 3.2 目录结构
+## 3. 相机示例（RGB-D，无 ir）
 
 ```
 prm_camera_vendor/
 ├── robonix_manifest.yaml
-├── package.xml             # 可选：自定义 ROS2 依赖（如 sensor_msgs）
+├── package.xml              # 可选
 └── prm_camera_vendor/
     ├── __init__.py
-    └── camera_node.py      # entry: prm_camera_vendor.camera_node:main
+    └── camera_node.py       # entry: prm_camera_vendor.camera_node:main
 ```
-
-### 3.3 manifest
 
 ```yaml
 manifestVersion: 1
@@ -70,15 +53,8 @@ package:
   name: prm_camera_vendor
   version: 0.1.0
   vendor: Example Camera Co.
-  description: RGB-D camera driver implementing prm::camera (rgb, depth, rgbd, intrinsics)
+  description: RGB-D (rgb, depth, rgbd, intrinsics)
   license: MulanPSL-2.0
-
-# 可选：声明本 package 提供的接口，便于文档与工具
-# provides:
-#   - robonix/prm/camera/rgb
-#   - robonix/prm/camera/depth
-#   - robonix/prm/camera/rgbd
-#   - robonix/prm/camera/intrinsics
 
 nodes:
   - id: com.vendor.camera.rgbd
@@ -107,10 +83,9 @@ from robonix.prm.camera.intrinsics_stream import create_intrinsics_publisher
 
 def main():
     rclpy.init()
-    runtime_client = ...  # gRPC stub
+    runtime_client = ...  # RobonixRuntimeStub
     node_id = "com.vendor.camera.rgbd"
 
-    # 仅注册本硬件支持的 4 个 stream
     rgb_pub = create_rgb_publisher(runtime_client, node_id)
     depth_pub = create_depth_publisher(runtime_client, node_id)
     rgbd_pub = create_rgbd_publisher(runtime_client, node_id)
@@ -141,25 +116,17 @@ def main():
 
 ---
 
-## 4. 机械臂厂商接入示例
-
-### 4.1 场景
-
-某厂商提供机械臂 + 夹爪，实现 move_ee、move_joint、state_joint、joint_trajectory、gripper.close、gripper.open。
-
-### 4.2 目录结构
+## 4. 机械臂 + 夹爪（单 node）
 
 ```
 prm_arm_vendor/
 ├── robonix_manifest.yaml
-├── package.xml             # 可选：自定义 ROS2 依赖（如 std_msgs、trajectory_msgs）
+├── package.xml
 └── prm_arm_vendor/
     ├── __init__.py
-    ├── arm_node.py         # 机械臂 command/stream
-    └── gripper_node.py     # 夹爪 command（可选：与 arm 同进程或分 node）
+    ├── arm_node.py
+    └── gripper_node.py      # 可选：另起 node
 ```
-
-### 4.3 manifest（单 node 同时提供 arm + gripper）
 
 ```yaml
 manifestVersion: 1
@@ -169,7 +136,7 @@ package:
   name: prm_arm_vendor
   version: 0.1.0
   vendor: Example Arm Co.
-  description: Robot arm + gripper implementing prm::arm and prm::gripper
+  description: Arm + gripper (prm::arm, prm::gripper)
   license: MulanPSL-2.0
 
 nodes:
@@ -202,22 +169,18 @@ def main():
     runtime_client = ...
     node_id = "com.vendor.arm.robot_arm"
 
-    # 注册 command servers
     move_ee_srv = create_move_ee_server(runtime_client, node_id)
     joint_traj_srv = create_joint_trajectory_server(runtime_client, node_id)
     close_srv = create_close_server(runtime_client, node_id)
     open_srv = create_open_server(runtime_client, node_id)
 
-    # 实现 execute 回调，调用真实硬件驱动
     move_ee_srv.execute = lambda req: arm_driver.move_to_pose(req.pose)
     joint_traj_srv.execute = lambda req: arm_driver.execute_trajectory(req.trajectory)
     close_srv.execute = lambda req: gripper_driver.close()
     open_srv.execute = lambda req: gripper_driver.open()
 
-    move_ee_srv.start()
-    joint_traj_srv.start()
-    close_srv.start()
-    open_srv.start()
+    for s in (move_ee_srv, joint_traj_srv, close_srv, open_srv):
+        s.start()
 
     # 可选：state_joint stream 发布关节状态，若实现则需加入 executor
     # state_pub = create_state_joint_publisher(runtime_client, node_id)
@@ -238,24 +201,16 @@ def main():
 
 ---
 
-## 5. 地图服务接入示例
-
-### 5.1 场景
-
-实现 `robonix/system/map/semantic_query` 的 query server，提供语义地图查询。
-
-### 5.2 目录结构
+## 5. 地图服务（semantic_query）
 
 ```
 map_semantic_service/
 ├── robonix_manifest.yaml
-├── package.xml             # 可选：自定义 ROS2 依赖
+├── package.xml
 └── map_semantic_service/
     ├── __init__.py
     └── semantic_server.py
 ```
-
-### 5.3 manifest
 
 ```yaml
 manifestVersion: 1
@@ -265,7 +220,7 @@ package:
   name: map_semantic_service
   version: 0.1.0
   vendor: robonix
-  description: Semantic map query service implementing robonix/system/map/semantic_query
+  description: semantic_query
   license: MulanPSL-2.0
 
 nodes:
@@ -273,14 +228,6 @@ nodes:
     type: python
     entry: map_semantic_service.semantic_server:main
 ```
-
-### 5.4 实现要点
-
-**代码分工**：`create_semantic_query_server` 由 ridlc 生成；你只需写 main 里的连接、handler 实现、`start(handler)`。
-
-**必备流程**：同上（rclpy.init、grpc channel、runtime_client）。
-
-**handler 接法**：query server 通过 `server.start(handler)` 传入，收到请求时调用 `handler(request, response)`。
 
 ```python
 # map_semantic_service/semantic_server.py
@@ -294,7 +241,6 @@ def main():
 
     def handler(request, response):
         filter_str = request.filter.data
-        # 查地图、过滤，填充 response.objects (Object[])
         response.objects = map_backend.query(filter_str)
         return response
 
@@ -304,39 +250,18 @@ def main():
 
 ---
 
-## 6. Manifest 可选字段：provides
-
-为便于文档与工具（如列出某 package 提供的接口），可在 manifest 中可选声明：
+## 6. Manifest：`provides`（可选）
 
 ```yaml
 provides:
   - robonix/prm/camera/rgb
   - robonix/prm/camera/depth
-  - robonix/prm/camera/rgbd
-  - robonix/prm/camera/intrinsics
 ```
 
-- **非强制**：运行时以实际注册为准；未在 provides 中声明但已注册的接口仍可用。
-- **建议**：厂商填写 provides，与实现保持一致，便于集成方查阅。
+非强制；运行时以实际注册为准。建议厂商与实现一致填写。
 
 ---
 
-## 7. 与 Android HAL 的类比
+## 7. 参考
 
-| Android | Robonix |
-|---------|---------|
-| HIDL 接口定义 | RIDL 接口定义（ridl/prm/*, ridl/system/*） |
-| 厂商实现 HAL | 厂商实现 package，提供 server/publisher |
-| 按能力实现（LEGACY/LIMITED/FULL） | 按硬件能力实现接口子集 |
-| 通过 hw_module_t 加载 | 通过 rbnx start 启动 node，向 meta API 注册 |
-| 框架通过 Binder 调用 HAL | 调用方通过 Resolve* 解析 channel 后 ROS 调用 |
-
----
-
-## 8. 参考
-
-- **示例 package**：`rust/examples/prm_camera_vendor/`、`rust/examples/prm_arm_vendor/`、`rust/examples/map_semantic_service/`
-- [Package 开发指南](package-development.md)
-- [ridlc 开发手册](ridlc.md)
-- [RFC001: RIDL](../rfc/RFC001-RIDL.md)
-- [RFC002: Package](../rfc/RFC002-Package-Management.md)
+`rust/examples/prm_camera_vendor/`、`prm_arm_vendor/`、`map_semantic_service/`；[Package 开发指南](package-development.md)、[ridlc](ridlc.md)、[RFC001](../rfc/RFC001-RIDL.md)、[RFC002](../rfc/RFC002-Package-Management.md)。
