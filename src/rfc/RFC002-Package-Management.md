@@ -2,9 +2,9 @@
 
 Robonix 包管理规范
 
-| 版本 | 日期 | 作者 |
-|------|------|------|
-| 0.1 | 2026-03-11 | 韩喻泷 |
+| 版本 | 日期 |
+|------|------|
+| 0.1 | 2026-03-11 |
 
 ## 1. 目标与术语
 
@@ -19,18 +19,16 @@ Manifest 侧重版本、权限（预留）与启动信息；**不要求**在 man
 | 术语 | 含义 |
 |------|------|
 | Package | 根目录含 `robonix_manifest.yaml` 的可构建单元 |
-| Node | 一个进程；stream/query/command 的目标标识 |
+| Node | 一个进程；通信注册与解析的目标标识 |
 | Node id | `nodes[].id`；通信解析用；建议 `com.syswonder.xxx` |
 | Entry | `模块:函数`，`rbnx start` 用来构造启动命令 |
 
----
 
 ## 2. 目录约定
 
 - Package 根：**恰好一个** `robonix_manifest.yaml`。
 - 其余目录由语言/构建策略决定；产物多在 `rbnx-build` 等（实现细节不限定顶层子目录名）。
 
----
 
 ## 3. robonix_manifest.yaml
 
@@ -95,7 +93,6 @@ nodes:
     entry: python_ping_client.call_ping:main
 ```
 
----
 
 ## 4. rbnx
 
@@ -117,7 +114,6 @@ rbnx start -p <package> -n <node_id>
 
 读 manifest；按 `type`+`entry` 启进程；阻塞至退出。Meta：`--endpoint` 或 `ROBONIX_META_GRPC_ENDPOINT`（默认如 `127.0.0.1:50051`）。
 
----
 
 ## 5. 产物（约定级）
 
@@ -125,7 +121,6 @@ rbnx start -p <package> -n <node_id>
 - 日志/PID：如 `rbnx-deploy/logs`（以实现为准）。
 - `start` 注入 ROS/colcon 环境与 meta 地址。
 
----
 
 ## 6. 设计原则
 
@@ -134,7 +129,6 @@ rbnx start -p <package> -n <node_id>
 - **Node id = 通信目标**，可追溯。
 - 预留：`permissions`、`launchProfiles`、`config` 等演进。
 
----
 
 ## 7. 与 RFC001
 

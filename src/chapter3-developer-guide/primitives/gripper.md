@@ -2,18 +2,16 @@
 
 命名空间：`robonix/prm/gripper`
 
-## 概述
-
-夹爪原语描述末端**抓取执行器**常见的离散动作（张开/闭合）、连续量控制（目标宽度）以及宽度状态反馈。它通常与机械臂原语配合使用，但也可以在 manifest 中作为独立 node 实现，取决于你的驱动架构。
+末端抓取执行器的控制与状态接口。
 
 ## 接口列表
 
-| 接口 | 通信语义 | 载荷 | 说明 |
-|------|----------|------|------|
-| `close` | command | req → status | 闭合夹爪 |
-| `open` | command | req → status | 张开夹爪 |
-| `set_width` | command | width → status | 设置目标宽度 |
-| `state_width` | stream | `std_msgs/msg/Float64` | 当前宽度 |
+| 接口 | 方向 | 载荷 | 说明 |
+|------|------|------|------|
+| `close` | 请求 | req → status | 闭合夹爪 |
+| `open` | 请求 | req → status | 张开夹爪 |
+| `set_width` | 请求 | width → status | 设置目标宽度 |
+| `state_width` | 输出 | `std_msgs/msg/Float64` | 当前宽度 |
 
 ## 典型组合
 
