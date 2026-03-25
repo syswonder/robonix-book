@@ -10,6 +10,7 @@
 # 第一章：快速开始
 
 - [快速上手](chapter1-getting-started/quickstart.md)
+- [Tiago 端到端 Demo](chapter1-getting-started/tiago-e2e-demo.md)
 
 # 第二章：用户手册
 

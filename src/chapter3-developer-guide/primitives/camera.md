@@ -4,6 +4,8 @@
 
 视觉传感器对外暴露的数据接口。厂商根据硬件支持的模式选择实现子集。
 
+**Pub-Sub 在 gRPC 上的约定**（server streaming / client streaming 与 ROS publisher 的对应）见 [系统接口规范](../interface-spec.md)。**`rgb` 的参考实现**：`lib/prm_camera/srv/SubscribeRgb.srv`（ridlc → `PrmCameraService.SubscribeRgb`）与 Tiago 示例 `tiago_bridge` 中的 `camera_rgb` + `camera_rgb_ros2` 双接口 POC。
+
 ## 接口列表
 
 | 接口 | 方向 | 载荷 | 说明 |
