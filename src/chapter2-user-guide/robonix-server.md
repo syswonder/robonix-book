@@ -31,7 +31,7 @@ cargo run -p robonix-server
 | `ROBONIX_META_GRPC_ADDR` | 监听地址，默认 `0.0.0.0:50051` |
 | `ROBONIX_META_GRPC_ENDPOINT` | 客户端连接地址，默认同上 |
 | `RUST_LOG` | 日志级别，如 `robonix_server=info` |
-| `RMW_IMPLEMENTATION` | ROS2 中间件，默认 `rmw_zenoh_cpp` |
+| `RMW_IMPLEMENTATION` | 仅当本进程或插件使用 ROS2 客户端时相关；常见为 `rmw_fastrtps_cpp` |
 
 ## 确认运行
 

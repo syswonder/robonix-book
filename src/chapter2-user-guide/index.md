@@ -15,4 +15,4 @@
 3. 消费者通过 `NegotiateChannel` 协商通道，获取系统分配的端点后用原生 API 通信。
 4. 运行 `robonix-agent` 进行交互式任务。
 
-详见 `rust/examples/README.md` 和 `rust/examples/run_e2e.sh`。
+详见 `rust/examples/README.md` 和 `rust/examples/run.sh`。
