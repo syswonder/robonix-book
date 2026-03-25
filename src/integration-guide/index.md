@@ -1,0 +1,16 @@
+# 接入指南
+
+本章面向两类读者：硬件厂商需要将自己的机器人或传感器接入 Robonix（实现 PRM provider），算法开发者需要将自己的感知/规划/模型服务接入 Robonix（实现 System service）。两条路径的整体流程相同，区别在于 namespace 和传输方式。
+
+PRM provider 注册在 `robonix/prm/` 下，通常提供 MCP 工具接口（供 Agent 直接调用）和/或 gRPC/ROS 2 数据面接口（供其他节点消费）。System service 注册在 `robonix/sys/` 下，通常通过 gRPC 提供 RPC 接口。
+
+本章以两个真实的示例贯穿全部内容：
+
+- 示例 A（PRM）：`tiago_bridge` — Tiago 底盘和相机的 MCP + gRPC + ROS 2 桥接，代码在 `rust/examples/packages/tiago_sim_stack/tiago_bridge/node.py`
+- 示例 B（Service）：`vlm_service` — VLM 推理服务，gRPC 接口，代码在 `rust/examples/packages/vlm_service/vlm_service/service.py`
+
+接入流程分四步：
+
+1. [编写 Manifest 和构建脚本](package-and-manifest.md)——定义包的元数据、节点和构建方式
+2. [实现 Provider 注册](provider-registration.md)——在代码中调用 RegisterNode + DeclareInterface，启动数据面
+3. [端到端验收](end-to-end-checklist.md)——从 validate 到 Agent 可调用的完整检查清单
