@@ -45,17 +45,17 @@ cp examples/.env.example examples/.env
 # Qwen (阿里 DashScope，默认)
 VLM_API_KEY=sk-xxx
 VLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
-VLM_MODEL=qwen-vl-plus-latest
+VLM_MODEL=qwen3-vl-plus
 
 # OpenAI GPT-4o
 VLM_API_KEY=sk-xxx
 VLM_BASE_URL=https://api.openai.com/v1
-VLM_MODEL=gpt-4o
+VLM_MODEL=gpt-5.4
 
 # Google Gemini (OpenAI 兼容接口)
 VLM_API_KEY=AIza...
 VLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
-VLM_MODEL=gemini-2.0-flash
+VLM_MODEL=gemini-xx
 ```
 
 ## 一键运行
@@ -122,13 +122,13 @@ Agent 在运行中会持续交替调用感知工具（`get_camera_image`、`get_
 
 ```bash
 # 查看所有已注册节点
-cargo run -p robonix-cli -- nodes --server 127.0.0.1:50051
+rbnx nodes
 
 # 查看可用的 MCP 工具
-cargo run -p robonix-cli -- tools --server 127.0.0.1:50051
+rbnx tools
 
 # 导出完整运行时快照（JSON）
-cargo run -p robonix-cli -- inspect --server 127.0.0.1:50051
+rbnx inspect
 ```
 
 ## 故障排除

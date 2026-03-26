@@ -71,19 +71,19 @@ nodes:
 校验 manifest 格式：
 
 ```bash
-cargo run -p robonix-cli -- validate examples/packages/vlm_service
+rbnx validate examples/packages/vlm_service
 ```
 
 执行构建脚本：
 
 ```bash
-cargo run -p robonix-cli -- build -p examples/packages/vlm_service
+rbnx build -p examples/packages/vlm_service
 ```
 
 启动一个节点（`-n` 指定 node_id，`--endpoint` 指定控制平面地址）：
 
 ```bash
-cargo run -p robonix-cli -- start \
+rbnx start \
   -p examples/packages/vlm_service \
   -n com.robonix.services.vlm \
   --endpoint 127.0.0.1:50051
