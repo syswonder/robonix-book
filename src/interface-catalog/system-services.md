@@ -15,6 +15,38 @@
 
 参考实现是 `rust/examples/packages/vlm_service/vlm_service/service.py`，它通过 OpenAI Python SDK 将请求代理到任意 OpenAI 兼容后端。
 
+## 记忆系统服务 robonix/prm/memsearch
+
+记忆服务（Memsearch Service）是 Robonix Agent 具备长期记忆和自我进化能力的核心组件。它基于 `memsearch[onnx]` 构建，使用本地 `milvus-lite` 向量数据库进行存储和检索。
+
+它通过 Model Context Protocol (MCP) 将能力暴露给 Agent，注册在 `com.robonix.services.memsearch` 节点下。
+
+### MCP 工具接口
+
+该服务提供了三个核心的 MCP 工具供 Agent（或大模型）使用：
+
+1. **`search_memory(query: str)`**
+   - **功能**: 在长期记忆库中搜索与用户意图、偏好或历史上下文相关的记忆。
+   - **使用场景**: Agent 在回答问题前，会自动进行静默召回（Silent RAG），将相关记忆注入到 System Prompt 中。大模型也可以在多轮对话中主动调用它来查阅过往决策。
+
+2. **`save_memory(content: str)`**
+   - **功能**: 将重要的事实、用户偏好或决策持久化保存到本地 Markdown 文件中，并建立向量索引。
+   - **使用场景**: 当大模型识别到用户偏好（如“我最喜欢的咖啡是冰美式”），会自动触发此工具进行记忆写入。
+
+3. **`compact_memory()`**
+   - **功能**: 对近期的零散记忆进行归纳、总结和压缩。
+   - **使用场景**: Agent 会在生命周期结束（如用户输入 `quit` 退出终端）时自动触发，实现自我进化和知识提炼。
+
+### 部署与配置
+
+记忆服务默认开启，它被集成在端到端启动脚本中：
+```bash
+START_MEMSEARCH=1 ./examples/run.sh
+```
+若在边缘设备或不需要记忆模块的场景中，可以通过设置环境变量 `START_MEMSEARCH=0` 来关闭此服务，Agent 会自动降级为无长期记忆状态。
+
+底层数据存储在 `rust/examples/packages/memsearch_service/agent_milvus.db`（向量库）和 `agent_memory/` 目录下。
+
 ## 扩展系统服务
 
 在 `robonix/sys/` 下增加新服务时，先在 `rust/robonix-interfaces/lib/` 中添加对应的 `.srv` 文件，然后运行 `ridlc` 生成 proto，最后将新的 `abstract_interface_id` 添加到 `robonix-server` 的 `ROBO_SYSTEM_INTERFACE_CATALOG` 中。
