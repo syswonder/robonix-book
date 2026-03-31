@@ -74,7 +74,7 @@ VLM_MODEL=gemini-xx
 4. 通过 `rbnx validate + build + start` 启动 `tiago_sim_stack`——`docker compose up` 构建并启动容器，容器内依次启动 Webots（3D 仿真）、Nav2（导航栈）、rviz2（可视化）、`tiago_bridge`（MCP 桥接，向控制平面注册工具接口）
 5. 启动 `robonix-agent`，注册自身，发现 VLM 和 MCP 工具，进入交互模式
 
-启动完成后 Agent 等待 stdin 输入自然语言指令。输入 `quit` 退出。
+启动完成后 Agent 以后台 gRPC 服务运行。使用 `rbnx chat` 在独立 TUI 中与 Agent 交互。
 
 ## 只跑子集
 
@@ -93,7 +93,13 @@ SMOKE_USE_EXISTING_SERVER=1 ./examples/run.sh
 
 ## 交互示例
 
-Agent 启动后会打印 `robonix-agent ready. Type 'quit' to exit.`，之后在终端输入指令即可驱动机器人。一个典型的 ReAct 交互如下：
+Agent 启动后会打印连接信息。在另一个终端运行 `rbnx chat` 进入 TUI 交互界面：
+
+```bash
+rbnx chat
+```
+
+在 TUI 中输入指令即可驱动机器人。一个典型的 ReAct 交互如下：
 
 ```
 > find the door and navigate to it
@@ -116,7 +122,7 @@ Agent 在运行中会持续交替调用感知工具（`get_camera_image`、`get_
 |------|---------|-----------|------|------|
 | VLM 服务 | `com.robonix.services.vlm` | `robonix/sys/model/vlm` | `chat` | gRPC |
 | Tiago 桥接 | `com.robonix.prm.tiago` | `robonix/prm/camera` | `mcp_tools`, `rgb` | MCP, gRPC, ROS 2 |
-| Agent | `com.robonix.runtime.agent` | `robonix/sys/runtime/agent` | — | — |
+| Agent | `com.robonix.runtime.agent` | `robonix/sys/runtime/agent` | `agent_chat` | gRPC |
 
 可以用 `rbnx` CLI 查看运行时状态：
 
@@ -129,6 +135,12 @@ rbnx tools
 
 # 导出完整运行时快照（JSON）
 rbnx inspect
+
+# 与 Agent 交互
+rbnx chat
+
+# 生成系统拓扑图
+rbnx graph -o topology.png
 ```
 
 ## 故障排除

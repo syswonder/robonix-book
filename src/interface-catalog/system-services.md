@@ -47,6 +47,29 @@ START_MEMSEARCH=1 ./examples/run.sh
 
 底层数据存储在 `rust/examples/packages/memsearch_service/agent_milvus.db`（向量库）和 `agent_memory/` 目录下。
 
+## Agent 交互服务 robonix/sys/runtime/agent
+
+| abstract_interface_id | 模式 | Proto | gRPC 映射 |
+|-----------------------|------|-------|-----------|
+| `robonix/sys/runtime/agent/agent_chat` | Server Streaming | `rust/proto/agent_chat.proto` | `AgentChat/Chat` |
+
+`AgentChat.Chat` 是 Agent 的用户交互接口。请求包含一条用户消息（`user_message`），响应以 server-streaming 方式返回一系列 `AgentChatEvent`：
+
+| 事件类型 | 说明 |
+|---------|------|
+| `status` | Agent 状态变更（如 `thinking`） |
+| `tool_call` | 工具调用详情（`ToolCallInfo`：round、tool_name、arguments、result、completed） |
+| `text_chunk` | 流式文本片段 |
+| `final_text` | 完整的最终回复 |
+
+`rbnx chat` TUI 客户端通过此接口与 Agent 交互。Agent 启动时自动在控制平面声明此接口，TUI 通过 `QueryNodes(abstract_interface_id="robonix/sys/runtime/agent/agent_chat")` 发现 Agent 端点。
+
+```protobuf
+service AgentChat {
+  rpc Chat(AgentChatRequest) returns (stream AgentChatEvent);
+}
+```
+
 ## 扩展系统服务
 
 在 `robonix/sys/` 下增加新服务时，先在 `rust/robonix-interfaces/lib/` 中添加对应的 `.srv` 文件，然后运行 `ridlc` 生成 proto，最后将新的 `abstract_interface_id` 添加到 `robonix-server` 的 `ROBO_SYSTEM_INTERFACE_CATALOG` 中。

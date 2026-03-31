@@ -8,7 +8,8 @@
 
 ---
 
-- [快速上手](getting-started/quickstart.md)
+- [快速上手（Tiago Demo）](getting-started/quickstart.md)
+- [ManiSkill VLA 仿真 Demo](getting-started/maniskill-demo.md)
 
 ---
 

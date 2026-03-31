@@ -3,12 +3,14 @@
 Robonix 的架构分为控制平面和数据面两部分。控制平面负责"谁在哪里、能做什么"；数据面负责"实际通信、传数据"。
 
 ```mermaid
+%%{init: {'theme': 'base', 'config': {'securityLevel': 'loose'}}}%%
 graph LR
-    Provider["Provider\n(tiago_bridge / vlm_service)"] -->|"RegisterNode\n+ DeclareInterface"| Server["robonix-server\n(控制平面)"]
-    Agent["robonix-agent"] -->|"QueryNodes\n+ NegotiateChannel"| Server
-    Agent -->|"MCP / gRPC\n(数据面)"| Provider
+    Provider["Provider<br>(tiago_bridge / env_node / vlm_service)"] -->|"RegisterNode<br>+ DeclareInterface"| Server["robonix-server<br>(控制平面)"]
+    Agent["robonix-agent<br>(gRPC 服务)"] -->|"QueryNodes<br>+ NegotiateChannel"| Server
+    Agent -->|"MCP / gRPC<br>(数据面)"| Provider
+    TUI["rbnx chat<br>(TUI 客户端)"] -->|"gRPC AgentChat"| Agent
     CLI["rbnx CLI"] -->|"validate / build / start"| Provider
-    CLI -->|"nodes / tools / inspect"| Server
+    CLI -->|"nodes / tools / inspect / graph"| Server
 ```
 
 ## 控制平面
@@ -45,13 +47,17 @@ graph LR
 
 以用户输入 "find the door" 为例，数据流经过以下路径：
 
-1. 用户在终端输入指令，`robonix-agent` 读取 stdin
-2. Agent 将指令连同系统 prompt（包含 SKILL.md 和工具列表）发送给 VLM 服务（gRPC 数据面）
-3. VLM 返回 tool_calls，例如 `get_camera_image`
-4. Agent 通过 MCP 协议调用 `tiago_bridge` 的 `get_camera_image` 工具
-5. `tiago_bridge` 从 ROS 2 topic 缓存的最新帧中取出图像，转为 JPEG base64 返回
-6. Agent 将图像附加到对话历史，再次调用 VLM 分析
-7. VLM 决定下一步行动（旋转扫描、导航等），循环继续直到任务完成
+1. 用户在 `rbnx chat` TUI 中输入指令
+2. TUI 通过 gRPC 流式调用 `robonix-agent` 的 `AgentChat.Chat` RPC
+3. Agent 将指令连同系统 prompt（包含 SKILL.md 和工具列表）发送给 VLM 服务（gRPC 数据面）
+4. VLM 返回 tool_calls，例如 `get_camera_image`
+5. Agent 通过 gRPC 流向 TUI 推送 `ToolCallInfo` 事件（TUI 实时显示工具调用进度）
+6. Agent 通过 MCP 协议调用 Provider 的对应工具
+7. Provider 返回结果，Agent 将结果追加到对话历史，再次调用 VLM 分析
+8. VLM 决定下一步行动，循环继续直到任务完成
+9. Agent 通过 gRPC 流向 TUI 推送 `final_text` 事件，TUI 显示最终回复
+
+这一模型将 Agent 的日志输出与用户交互完全分离——Agent 作为后台 gRPC 服务运行，所有节点的 stderr 日志不会干扰 TUI 界面。
 
 ## 包管理
 

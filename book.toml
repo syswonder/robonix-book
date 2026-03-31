@@ -5,8 +5,12 @@ description = "robonix 手册"
 src = "src"
 title = "robonix 手册"
 
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+
 [output.html]
 additional-css = ["theme/wide.css"]
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
 default-theme = "light"
 git-repository-url = "https://github.com/syswonder/robonix"
 mathjax-support = true

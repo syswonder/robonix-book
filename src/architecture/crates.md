@@ -40,7 +40,15 @@ Rust 异步 gRPC 客户端库，封装对 `RobonixRuntime` 服务的调用。核
 
 系统智能体，启动后注册为 `com.robonix.runtime.agent`，然后执行两步发现：通过 `QueryNodes` + `NegotiateChannel` 获取 VLM 服务的 gRPC 端点；扫描所有 `transport=mcp` 的接口，从 `metadata_json.endpoint` 连接 MCP 服务器，获取可用工具列表。
 
-发现完成后进入 ReAct 交互循环（`react.rs`）：从 stdin 读取用户指令，将指令、系统 prompt（含 SKILL.md 和工具 schema）、对话历史发送给 VLM，解析 VLM 返回的 `tool_calls`，通过 MCP 协议调用对应工具，将结果追加到历史，再次调用 VLM——如此循环直到 VLM 判定任务完成。
+Agent 以无头 gRPC 服务的形式运行，对外暴露 `AgentChat` 服务（定义在 `rust/proto/agent_chat.proto`）。`AgentChat.Chat` RPC 接收用户消息，以 server-streaming 方式返回事件流，包括：
+
+- `status` — Agent 状态（如 `thinking`）
+- `tool_call` — 工具调用详情（名称、参数、结果）
+- `final_text` — 最终回复文本
+
+Agent 启动后在控制平面声明 `agent_chat` 接口（`abstract_interface_id: robonix/sys/runtime/agent/agent_chat`），`rbnx chat` 通过此接口发现并连接 Agent。
+
+每次收到用户消息时，Agent 执行一轮 ReAct 循环（`react.rs`）：将指令、系统 prompt（含 SKILL.md 和工具 schema）、对话历史发送给 VLM，解析 VLM 返回的 `tool_calls`，通过 MCP 协议调用对应工具，将工具调用事件实时推送给 TUI 客户端，将结果追加到历史，再次调用 VLM——如此循环直到 VLM 判定任务完成。
 
 Agent 的行为由几个关键机制保证持续性：`tool_persist_nudges` 在 VLM 返回无 tool_calls 时自动追加提示，要求继续链式调用；`move_base` 重复检测在发现连续相同的运动命令时强制插入感知步骤（`get_robot_pose` + `get_camera_image`）。
 
@@ -49,6 +57,7 @@ Agent 的行为由几个关键机制保证持续性：`tool_persist_nudges` 在 
 | 变量 | 说明 |
 |------|------|
 | `ROBONIX_SERVER` | 控制平面地址，默认 `localhost:50051` |
+| `AGENT_CHAT_PORT` | AgentChat gRPC 监听端口，默认自动分配 |
 | `ROBONIX_AGENT_MAX_TOOL_ROUNDS` | 每轮对话最大工具调用次数，默认 64 |
 | `ROBONIX_AGENT_TOOL_PERSIST_NUDGES` | 空回复时追加提示的最大次数 |
 
@@ -75,6 +84,39 @@ Agent 的行为由几个关键机制保证持续性：`tool_persist_nudges` 在 
 | `rbnx tools` | 列出 Agent 可见的所有工具 |
 | `rbnx channels` | 查看已协商的通道 |
 | `rbnx inspect` | 导出完整运行时状态（JSON） |
+
+交互和可视化命令：
+
+| 命令 | 作用 |
+|------|------|
+| `rbnx chat` | 启动 TUI 客户端，与 robonix-agent 交互 |
+| `rbnx graph` | 生成系统拓扑图（PNG/SVG/DOT） |
+
+### rbnx chat
+
+`rbnx chat` 是与 Agent 交互的主要方式。它通过控制平面发现 Agent 的 `agent_chat` gRPC 接口，连接后启动一个基于 `ratatui` 的终端 UI：
+
+- 上方为滚动消息历史，按角色着色（用户、Agent、工具调用、工具结果）
+- 下方为文本输入区域
+- 工具调用事件以流式方式实时显示
+- PageUp/PageDown 滚动，Ctrl+C 退出
+
+```bash
+rbnx chat                           # 自动发现 Agent
+rbnx chat --server 192.168.1.5:50051  # 指定控制平面地址
+```
+
+### rbnx graph
+
+`rbnx graph` 查询控制平面中所有已注册节点和已协商通道，生成 [Graphviz DOT](https://graphviz.org/) 格式的拓扑图并渲染为 PNG/SVG。
+
+```bash
+rbnx graph -o topology.png            # 默认 PNG 输出
+rbnx graph -o topology.svg -f svg     # SVG 输出
+rbnx graph -o topology.dot -f dot     # 仅输出 DOT 源码
+```
+
+图中每个节点显示为 record 形状的方框，包含节点 ID 和各接口信息（名称、传输类型、端口号）。已协商的通道显示为有向边。需要系统安装 `graphviz`（`sudo apt install graphviz`），未安装时降级为输出 `.dot` 文件。
 
 ## robonix-buffer
 

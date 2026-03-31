@@ -1,3 +1,5 @@
 book/
 theme/highlight.js
+mermaid.min.js
+mermaid-init.js
 .DS_Store

@@ -36,11 +36,11 @@ jobs:
           source "$HOME/.cargo/env"
           rustup update
           cargo install mdbook --git https://github.com/Sunshine40/mdBook --branch search-non-english --force
-          cargo install mdbook-mermaid
+          cargo install mdbook-mermaid --version 0.14.0
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v5
-      - name: Build with mdBook (RIDL highlight)
+      - name: Build with mdBook (RIDL highlight + mermaid)
         run: |
           ./scripts/build-highlight.sh
       - name: Upload artifact
