@@ -95,7 +95,7 @@ robonix/sys/model/vlm/{chat, describe}
 1. 调用 `QueryNodes`，按 `abstract_interface_id` 或 `namespace` + `transport` 找到 provider
 2. 从返回的 `NodeInfo.interfaces` 中选择目标接口和传输
 3. 调用 `NegotiateChannel`，传入 `consumer_id`、`provider_node_id`、`interface_name`、`transport`
-4. 服务端返回 `channel_id` 和 `endpoint`（对 gRPC/MCP 是 `host:port`，对 ROS 2 是 topic 名）
-5. 消费者用 `endpoint` 直接建立数据面连接
+4. 服务端返回 `channel_id`、`endpoint` 和 `metadata_json`（包含 provider 的缓冲区元数据，如几何信息、CUDA IPC handle 等）
+5. 消费者用 `endpoint` 直接建立数据面连接，用 `metadata_json` 配置缓冲区参数
 
 通道使用完毕后调用 `ReleaseChannel` 释放。节点注销（`UnregisterNode`）时关联的所有通道自动释放。

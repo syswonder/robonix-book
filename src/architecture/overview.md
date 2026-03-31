@@ -28,6 +28,19 @@ graph LR
 | ROS 2 | `/rbnx/ch/n<uuid>` | 容器内 ROS 节点间通信 |
 | shared_memory | `/rbnx_shm_<uuid>` | 同主机高带宽数据（点云、图像） |
 
+### 零拷贝缓冲区
+
+对于 `shared_memory` 传输，Robonix 通过 `robonix-buffer` crate 提供系统级缓冲区管理。核心思路是**操作系统层统一拥有所有缓冲区**——CPU 共享内存和 GPU 显存。节点不直接管理共享内存或 CUDA pinning，而是向 `RobonixBufferManager` 申请。
+
+缓冲区系统**不限于图像**——支持任何需要在进程间高带宽传输的连续数据：图像帧、LiDAR 点云、大模型 embedding 张量、体素网格、音频流、关节状态等。
+
+- 生产者通过 `allocate()` 或 `allocate_raw()` 创建 POSIX SHM 段
+- 消费者通过 `open()` 映射同一段物理内存，零拷贝读取
+- 消费者可选择 GPU pin（`cudaHostRegister`），使 H2D 传输获得 PCIe 满带宽
+- 跨进程 GPU 显存共享通过 CUDA IPC（`cudaIpcGetMemHandle` / `cudaIpcOpenMemHandle`）实现
+
+控制平面通过 `NegotiateChannel` 返回的 `metadata_json` 传递缓冲区元数据（shape、format、CUDA IPC handle 等），消费者据此自动发现和连接数据源。详见[零拷贝缓冲区系统](buffer-system.md)。
+
 ## 一个请求的完整链路
 
 以用户输入 "find the door" 为例，数据流经过以下路径：

@@ -1,6 +1,6 @@
 # Crate 索引
 
-Robonix 的 Rust workspace（`rust/`）包含五个 crate，各自职责清晰、边界明确。
+Robonix 的 Rust workspace（`rust/`）包含六个 crate，各自职责清晰、边界明确。
 
 ## robonix-server
 
@@ -75,6 +75,29 @@ Agent 的行为由几个关键机制保证持续性：`tool_persist_nudges` 在 
 | `rbnx tools` | 列出 Agent 可见的所有工具 |
 | `rbnx channels` | 查看已协商的通道 |
 | `rbnx inspect` | 导出完整运行时状态（JSON） |
+
+## robonix-buffer
+
+系统级缓冲区管理库，负责 POSIX 共享内存的分配/映射、GPU DMA 页面锁定（`cudaHostRegister`）、CUDA IPC 跨进程显存共享，以及缓冲区生命周期管理。编译为 `librobonix_buffer.so`，通过 C FFI 供 Python（ctypes）和 C/C++ 使用。
+
+缓冲区系统不限于图像——支持任何高带宽连续数据（点云、张量、大模型 embedding、体素网格等）。
+
+核心类型是 `RobonixBufferManager`，提供：
+
+| 方法 | 说明 |
+|------|------|
+| `allocate(shm_name, spec)` | 分配图像缓冲区（w×h×c），写入 `BufferHeader` |
+| `allocate_raw(shm_name, size, format)` | 分配任意大小的缓冲区（张量、点云等） |
+| `open(shm_name)` | 打开另一进程创建的 SHM，自动读取 header 获取元信息 |
+| `attach(handle, pin_gpu)` | 附加消费者，可选 `cudaHostRegister` |
+| `detach(handle)` | 分离消费者，自动 `cudaHostUnregister` |
+| `release(handle)` | 释放缓冲区，`munmap` + `shm_unlink` |
+
+`BufferFormat` 枚举覆盖图像格式（RGB8、BGR8、DEPTH_F32 等）和通用数据格式（FLOAT32、BF16、INT8、INT64、RAW_BYTES 等）。Shape 和 stride 等 N-D 元信息通过控制平面的 `metadata_json` 传递。
+
+CUDA 功能通过动态加载 `libcudart.so` 实现，无 CUDA 环境时退化为纯 CPU 模式。CUDA IPC 相关函数（`ipc_get_mem_handle`、`ipc_open_mem_handle`、`ipc_close_mem_handle`）允许在不同进程间共享 GPU 显存。
+
+详细设计和数据流见[零拷贝缓冲区系统](buffer-system.md)。
 
 ## ridlc
 
