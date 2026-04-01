@@ -104,7 +104,9 @@ ros2_topic = resp_ros2.allocated_endpoint   # 如 "/rbnx/ch/n<uuid>"
 
 ### VLM gRPC 服务接口
 
-VLM service 的接口声明更简单——只有一个 gRPC RPC：
+VLM 的数据面在同一个 `VlmService` 上提供**一元** `Chat` 与 **server-streaming** `ChatStream`（外加 `Describe`）。控制平面仍通过 `name="chat"` 声明业务能力（`abstract_interface_id` 为 `robonix/sys/model/vlm/chat`）；流式 RPC 与一元 RPC 共用同一监听端口，客户端协商到端点后按需选择方法。
+
+`metadata_json.contract` 里建议同时写清一元与流式方法名，便于工具链与人工查阅（字段名由示例约定，服务端校验不依赖这些扩展键）：
 
 ```python
 server = grpc.server(futures.ThreadPoolExecutor(max_workers=4))
@@ -122,6 +124,11 @@ resp = stub.DeclareInterface(pb.DeclareInterfaceRequest(
             "proto_file": "robonix-interfaces/robonix_proto/vlm.proto",
             "service": "robonix.vlm.VlmService",
             "rpc_method": "/robonix.vlm.VlmService/Chat",
+            "request_type": "Chat_Request",
+            "response_type": "Chat_Response",
+            "streaming_rpc_method": "/robonix.vlm.VlmService/ChatStream",
+            "stream_request_type": "ChatStream_Request",
+            "stream_event_type": "ChatStreamEvent",
         },
     }),
     listen_port=bound_port,

@@ -6,16 +6,19 @@
 
 | abstract_interface_id | 模式 | IDL | gRPC 映射 |
 |-----------------------|------|-----|-----------|
-| `robonix/sys/model/vlm/chat` | RPC | `lib/vlm/srv/Chat.srv` | `VlmService/Chat` |
+| `robonix/sys/model/vlm/chat` | RPC（一元） | `lib/vlm/srv/Chat.srv` | `VlmService/Chat`（`Chat_Request` → `Chat_Response`） |
+| `robonix/sys/model/vlm/chat` | Server streaming（同一数据面端点） | `lib/vlm/srv/ChatStream.srv`、`lib/vlm/msg/ChatStreamEvent.msg` | `VlmService/ChatStream`（`ChatStream_Request` → `stream ChatStreamEvent`） |
 | `robonix/sys/model/vlm/describe` | RPC | `lib/vlm/srv/Describe.srv` | `VlmService/Describe` |
 
-`Chat` 是主要接口，对应 OpenAI chat completions 的语义。请求中包含消息序列（含可选 image_base64）和工具定义，返回文本和/或 tool_calls。`robonix-agent` 的 ReAct 循环通过这个接口与 VLM 交互。
+`Chat` 是主要接口，对应 OpenAI chat completions 的语义。请求中包含消息序列（含可选 image_base64）和工具定义，返回文本和/或 tool_calls。
+
+`ChatStream` 与 `Chat` 的请求字段语义一致，但使用由 `ridlc` 从 ROS IDL 生成的 `ChatStream_Request`；响应为流式的 `ChatStreamEvent`（`text_delta`、`tool_call`、`finish_reason` 等字段按事件填充，由 producer 约定同一时间只填其中有意义的一个）。`robonix-agent` 的 ReAct 循环**优先**调用 `ChatStream`，失败时回退一元 `Chat`。
 
 `Describe` 是一个简化的图像描述接口，接受一张图片和一个 prompt，返回文本描述。
 
-参考实现是 `rust/examples/packages/vlm_service/vlm_service/service.py`，它通过 OpenAI Python SDK 将请求代理到任意 OpenAI 兼容后端。
+参考实现是 `rust/examples/packages/vlm_service/vlm_service/service.py`，它通过 OpenAI Python SDK 将请求代理到任意 OpenAI 兼容后端；同一进程在相同端口上同时实现 `Chat`、`ChatStream` 与 `Describe`。
 
-## 记忆系统服务 robonix/prm/memsearch
+## 记忆系统服务 robonix/sys/memory/memsearch
 
 记忆服务（Memsearch Service）是 Robonix Agent 具备长期记忆和自我进化能力的核心组件。它基于 `memsearch[onnx]` 构建，使用本地 `milvus-lite` 向量数据库进行存储和检索。
 

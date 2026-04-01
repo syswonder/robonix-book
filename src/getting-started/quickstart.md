@@ -124,6 +124,8 @@ Agent 在运行中会持续交替调用感知工具（`get_camera_image`、`get_
 | Tiago 桥接 | `com.robonix.prm.tiago` | `robonix/prm/camera` | `mcp_tools`, `rgb` | MCP, gRPC, ROS 2 |
 | Agent | `com.robonix.runtime.agent` | `robonix/sys/runtime/agent` | `agent_chat` | gRPC |
 
+其中 VLM 在控制平面上只声明 `chat` 接口，但数据面 gRPC 在同一监听端口上同时实现一元 `Chat` 与 server-streaming `ChatStream`（见 `rust/robonix-interfaces/lib/vlm/srv/`）。
+
 可以用 `rbnx` CLI 查看运行时状态：
 
 ```bash

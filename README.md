@@ -6,6 +6,6 @@ Local build and serve:
 
 ```bash
 cargo install mdbook --git https://github.com/Sunshine40/mdBook --branch search-non-english --force
-cargo install mdbook-mermaid
+cargo install mdbook-mermaid --version 0.14.0
 mdbook serve --open
 ```

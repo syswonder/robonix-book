@@ -27,7 +27,7 @@ flowchart LR
 
     user -->|"交互"| tui
     tui -->|"gRPC stream"| agent
-    agent -->|"gRPC chat"| vlm
+    agent -->|"gRPC VLM ChatStream"| vlm
     agent -->|"MCP 工具调用"| vla
     agent -->|"MCP 工具调用"| perception
     vla -->|"gRPC env_data"| env
@@ -135,17 +135,17 @@ rbnx chat
 这会启动一个终端 TUI 界面：
 
 ```
-+--[ Robonix Agent ]-------------------------------+
++--[ Robonix Agent ]---------------------------------+
 |                                                    |
-|  Connected to agent at http://localhost:XXXX.       |
+|  Connected to agent at http://localhost:XXXX.      |
 |  Type a message and press Enter.                   |
 |                                                    |
 |  You: pick up the red cup                          |
 |                                                    |
 |  > [r1] detect_objects({"text_prompt":"red cup"})  |
-|    = detect_objects -> [{"label":"red cup",...}]    |
+|    = detect_objects -> [{"label":"red cup",...}]   |
 |  > [r2] execute_instruction({"instruction":...})   |
-|    = execute_instruction -> {"status":"done",...}   |
+|    = execute_instruction -> {"status":"done",...}  |
 |  Agent: I've successfully picked up the red cup.   |
 |                                                    |
 +----------------------------------------------------+
