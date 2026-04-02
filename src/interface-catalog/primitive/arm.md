@@ -1,10 +1,10 @@
 # 机械臂 robonix/prm/arm
 
-机械臂原语覆盖末端执行器运动、关节运动、轨迹执行和关节状态反馈。IDL 包 `prm_arm` 尚未完整入库，当前以设计意图为准。
+机械臂原语覆盖末端执行器运动、关节运动、轨迹执行和关节状态反馈。IDL 包 `prm_arm` 尚未完整入库，当前以设计意图为准。**仓库内尚无**对应 `rust/contracts/prm/*.toml`；落地时按 **`rust/contracts/README.md`** 新增版本化 TOML（如 `arm_*.v1.toml`）。
 
 ## 预定义接口
 
-| abstract_interface_id | 模式 | 说明 |
+| 契约 ID（`contract_id`） | 模式 | 说明 |
 |-----------------------|------|------|
 | `robonix/prm/arm/move_ee` | RPC | 将末端执行器移动到目标 pose |
 | `robonix/prm/arm/move_joint` | RPC | 将指定关节移动到目标角度 |

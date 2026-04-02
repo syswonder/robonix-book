@@ -4,13 +4,13 @@
 
 ## 接口
 
-| abstract_interface_id | 模式 | 方向 | ROS IDL | gRPC 映射 |
-|-----------------------|------|------|---------|-----------|
-| `robonix/prm/camera/rgb` | pub-sub | output | `sensor_msgs/msg/Image.msg` | server-streaming `PrmCameraService/SubscribeRgb` |
-| `robonix/prm/camera/depth` | pub-sub | output | `sensor_msgs/msg/Image.msg` | 同上模式 |
-| `robonix/prm/camera/ir` | pub-sub | output | `sensor_msgs/msg/Image.msg` | 同上模式 |
-| `robonix/prm/camera/intrinsics` | pub-sub | output | `sensor_msgs/msg/CameraInfo.msg` | `message CameraInfo` |
-| `robonix/prm/camera/rgbd` | pub-sub | output | `robonix_msg/msg/RGBD.msg` | `robonix_msg.RGBD` |
+| 契约 ID（`contract_id`） | 模式 | 方向 | ROS IDL | gRPC 映射 | 契约源码（TOML） |
+|-----------------------|------|------|---------|-----------|------------------|
+| `robonix/prm/camera/rgb` | pub-sub | output | `sensor_msgs/msg/Image.msg` | server-streaming `PrmCameraService/SubscribeRgb` | `rust/contracts/prm/camera_rgb.v1.toml` |
+| `robonix/prm/camera/depth` | pub-sub | output | `sensor_msgs/msg/Image.msg` | 同上模式 | `rust/contracts/prm/camera_depth.v1.toml` |
+| `robonix/prm/camera/ir` | pub-sub | output | `sensor_msgs/msg/Image.msg` | 同上模式 | — |
+| `robonix/prm/camera/intrinsics` | pub-sub | output | `sensor_msgs/msg/CameraInfo.msg` | `message CameraInfo` | — |
+| `robonix/prm/camera/rgbd` | pub-sub | output | `robonix_msg/msg/RGBD.msg` | `robonix_msg.RGBD` | — |
 
 gRPC streaming RPC 通过 `.srv` 文件首行的 `# @robonix.grpc stream_server sensor_msgs/msg/Image` 指令生成。ROS 2 端使用普通 topic。
 

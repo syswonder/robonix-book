@@ -20,13 +20,19 @@
 ---
 
 - [接口目录](interface-catalog/index.md)
-  - [底盘](interface-catalog/base.md)
-  - [相机](interface-catalog/camera.md)
-  - [传感器](interface-catalog/sensor.md)
-  - [机械臂](interface-catalog/arm.md)
-  - [夹爪](interface-catalog/gripper.md)
-  - [力/力矩](interface-catalog/force-torque.md)
-  - [系统服务](interface-catalog/system-services.md)
+  - [原语（prm）](interface-catalog/primitive/index.md)
+    - [底盘](interface-catalog/primitive/base.md)
+    - [相机](interface-catalog/primitive/camera.md)
+    - [传感器](interface-catalog/primitive/sensor.md)
+    - [机械臂](interface-catalog/primitive/arm.md)
+    - [夹爪](interface-catalog/primitive/gripper.md)
+    - [力/力矩](interface-catalog/primitive/force-torque.md)
+  - [服务（sys）](interface-catalog/service/index.md)
+    - [Pilot](interface-catalog/service/pilot.md)
+    - [Executor](interface-catalog/service/executor.md)
+    - [Liaison](interface-catalog/service/liaison.md)
+    - [VLM Chat](interface-catalog/service/vlm-chat.md)
+    - [Memory Search](interface-catalog/service/memory-search.md)
 
 ---
 

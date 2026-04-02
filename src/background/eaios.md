@@ -27,4 +27,4 @@ Robonix 目前实现的组件与 EAIOS 四级抽象的对应关系：
 | 技能 | SKILL.md 格式 + `QueryAllSkills` RPC + Agent 技能发现 |
 | 任务 | `robonix-agent` 的 ReAct 循环（VLM 驱动的任务规划与执行） |
 
-控制平面（`robonix-server`）负责节点注册、接口声明和通道协商，是配置空间的核心；数据面通信通过 gRPC、MCP、ROS 2、共享内存等传输方式完成，对应操作空间。
+控制平面（`robonix-atlas`）负责节点注册、接口声明和通道协商，是配置空间的核心；数据面通信通过 gRPC、MCP、ROS 2、共享内存等传输方式完成，对应操作空间。

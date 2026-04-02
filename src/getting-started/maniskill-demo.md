@@ -17,7 +17,7 @@ flowchart LR
     end
 
     subgraph rust ["Rust 组件"]
-        server["robonix-server<br>控制平面"]
+        server["robonix-atlas<br>控制平面"]
         agent["robonix-agent<br>gRPC 服务"]
     end
 
@@ -40,7 +40,7 @@ flowchart LR
     agent --> server
 ```
 
-所有节点通过 `robonix-server` 控制平面注册和发现。节点间数据传输使用 gRPC（环境观测）和 MCP（工具调用）。用户通过 `rbnx chat` TUI 客户端与 Agent 交互，不再使用 stdin/stdout。
+所有节点通过 `robonix-atlas` 控制平面注册和发现。节点间数据传输使用 gRPC（环境观测）和 MCP（工具调用）。用户通过 `rbnx chat` TUI 客户端与 Agent 交互，不再使用 stdin/stdout。
 
 ## 前置条件
 
@@ -58,7 +58,7 @@ flowchart LR
 
 | 依赖 | 说明 |
 |------|------|
-| `graphviz` | `rbnx graph` 命令渲染拓扑 PNG |
+| — | `rbnx graph` 内置 PNG/SVG 渲染，无需 graphviz |
 | `rerun-cli` | 独立 Rerun 桌面查看器 |
 
 ## 安装与设置
@@ -101,7 +101,7 @@ VLM_MODEL=qwen3-vl-plus
 
 启动顺序：
 
-1. `robonix-server` — 控制平面
+1. `robonix-atlas` — 控制平面
 2. `vlm_service` — VLM 服务（gRPC）
 3. `env_node` — ManiSkill3 仿真环境（gRPC 数据接口）
 4. `perception_node` — GroundingDINO 目标检测（MCP 工具）
@@ -180,9 +180,8 @@ rbnx graph -o topology.png
 支持的输出格式：
 
 ```bash
-rbnx graph -o topology.png --format png   # 默认
-rbnx graph -o topology.svg --format svg
-rbnx graph -o topology.dot --format dot   # 仅输出 DOT 源码
+rbnx graph -o topology.png --format png   # 默认：内置 SVG → PNG
+rbnx graph -o topology.svg --format svg   # 矢量 SVG
 ```
 
 生成的图中每个节点显示为一个方框，标注节点 ID、接口名称、传输类型和端口号。已协商的通道显示为节点间的有向边。
@@ -198,7 +197,7 @@ rbnx graph -o topology.dot --format dot   # 仅输出 DOT 源码
 | VLA 策略 | `com.robonix.demo.vla` | `robonix/prm/manipulation` | `mcp_tools` | MCP |
 | VLM 服务 | `com.robonix.services.vlm` | `robonix/sys/model/vlm` | `chat` | gRPC |
 | 可视化 | `com.robonix.demo.viz` | `robonix/viz` | — | — |
-| Agent | `com.robonix.runtime.agent` | `robonix/sys/runtime/agent` | `agent_chat` | gRPC |
+| Pilot | `com.robonix.runtime.pilot` | `robonix/sys/runtime/pilot` | `pilot` | gRPC |
 
 ## MCP 工具
 

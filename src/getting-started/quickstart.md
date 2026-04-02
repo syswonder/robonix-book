@@ -24,7 +24,7 @@ cd robonix
 git submodule update --init --recursive
 cd rust
 cargo build --workspace
-make install    # 安装 rbnx, ridlc, robonix-agent, robonix-server 到 ~/.cargo/bin
+make install    # 安装 rbnx, ridlc, robonix-agent, robonix-atlas 到 ~/.cargo/bin
 ```
 
 安装 Python 依赖：
@@ -69,7 +69,7 @@ VLM_MODEL=gemini-xx
 脚本按以下顺序启动所有组件：
 
 1. 检查 Python 依赖（grpcio, openai, mcp, numpy, PIL, uvicorn）
-2. 启动 `robonix-server`，监听 `0.0.0.0:50051`
+2. 启动 `robonix-atlas`，监听 `0.0.0.0:50051`
 3. 通过 `rbnx validate + build + start` 启动 `vlm_service`——Python VLM 服务注册到控制平面，声明 `chat` 接口（gRPC）
 4. 通过 `rbnx validate + build + start` 启动 `tiago_sim_stack`——`docker compose up` 构建并启动容器，容器内依次启动 Webots（3D 仿真）、Nav2（导航栈）、rviz2（可视化）、`tiago_bridge`（MCP 桥接，向控制平面注册工具接口）
 5. 启动 `robonix-agent`，注册自身，发现 VLM 和 MCP 工具，进入交互模式
@@ -87,7 +87,7 @@ START_SIM_STACK=0 ./examples/run.sh
 # 只启动控制平面和仿真栈（不启动 Agent，用于调试桥接）
 START_AGENT=0 ./examples/run.sh
 
-# 使用已经运行的 robonix-server（适合开发时反复重启 Agent）
+# 使用已经运行的 robonix-atlas（适合开发时反复重启 Agent）
 SMOKE_USE_EXISTING_SERVER=1 ./examples/run.sh
 ```
 
@@ -122,7 +122,7 @@ Agent 在运行中会持续交替调用感知工具（`get_camera_image`、`get_
 |------|---------|-----------|------|------|
 | VLM 服务 | `com.robonix.services.vlm` | `robonix/sys/model/vlm` | `chat` | gRPC |
 | Tiago 桥接 | `com.robonix.prm.tiago` | `robonix/prm/camera` | `mcp_tools`, `rgb` | MCP, gRPC, ROS 2 |
-| Agent | `com.robonix.runtime.agent` | `robonix/sys/runtime/agent` | `agent_chat` | gRPC |
+| Pilot（对话入口） | `com.robonix.runtime.pilot` | `robonix/sys/runtime/pilot` | `pilot` | gRPC |
 
 其中 VLM 在控制平面上只声明 `chat` 接口，但数据面 gRPC 在同一监听端口上同时实现一元 `Chat` 与 server-streaming `ChatStream`（见 `rust/robonix-interfaces/lib/vlm/srv/`）。
 
