@@ -1,7 +1,5 @@
 # 系统全景
 
-Robonix 采用六层 EAIOS（Embodied AI Operating System）架构，分为控制平面和数据面两部分。控制平面负责"谁在哪里、能做什么"；数据面负责"实际通信、传数据"。
-
 ```mermaid
 %%{init: {'theme': 'base', 'config': {'securityLevel': 'loose'}}}%%
 graph TB
@@ -27,9 +25,9 @@ graph TB
     TUI["rbnx chat<br>(TUI 客户端)"] -->|"gRPC PilotService<br>(通过 Atlas 发现)"| Pilot
 ```
 
-## 六层架构
+## 架构
 
-| 层 | 组件 | 职责 |
+| 子系统 | crate | 职责 |
 |---|---|---|
 | **Liaison** | `robonix-liaison` | 接收用户输入（文本/语音），构造 `Intent`，流式返回 `PilotEvent` |
 | **Pilot** | `robonix-pilot` | VLM 驱动的 ReAct 推理循环，将意图分解为 **`TaskGraph`** 片段（语义为行为树；当前为线性 `TaskCall[]`，BT/RTDL 待重构） |
