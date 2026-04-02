@@ -24,7 +24,7 @@ cd robonix
 git submodule update --init --recursive
 cd rust
 cargo build --workspace
-make install    # 安装 rbnx, ridlc, robonix-agent, robonix-atlas 到 ~/.cargo/bin
+make install    # 安装 rbnx, ridlc, robonix-pilot, robonix-atlas 到 ~/.cargo/bin
 ```
 
 安装 Python 依赖：
@@ -72,7 +72,7 @@ VLM_MODEL=gemini-xx
 2. 启动 `robonix-atlas`，监听 `0.0.0.0:50051`
 3. 通过 `rbnx validate + build + start` 启动 `vlm_service`——Python VLM 服务注册到控制平面，声明 `chat` 接口（gRPC）
 4. 通过 `rbnx validate + build + start` 启动 `tiago_sim_stack`——`docker compose up` 构建并启动容器，容器内依次启动 Webots（3D 仿真）、Nav2（导航栈）、rviz2（可视化）、`tiago_bridge`（MCP 桥接，向控制平面注册工具接口）
-5. 启动 `robonix-agent`，注册自身，发现 VLM 和 MCP 工具，进入交互模式
+5. 启动 `robonix-pilot`，注册自身，发现 VLM 和 MCP 工具，进入交互模式
 
 启动完成后 Agent 以后台 gRPC 服务运行。使用 `rbnx chat` 在独立 TUI 中与 Agent 交互。
 

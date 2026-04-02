@@ -61,7 +61,7 @@ rbnx tools
 ## 6. 启动 Agent 并测试
 
 ```bash
-robonix-agent
+robonix-pilot
 ```
 
 Agent 启动时会打印它发现的 VLM 和 MCP 工具。在终端输入一条会触发你的工具的指令，观察 Agent 是否成功调用。

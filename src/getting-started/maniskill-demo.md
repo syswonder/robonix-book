@@ -18,7 +18,7 @@ flowchart LR
 
     subgraph rust ["Rust 组件"]
         server["robonix-atlas<br>控制平面"]
-        agent["robonix-agent<br>gRPC 服务"]
+        agent["robonix-pilot<br>gRPC 服务"]
     end
 
     vlm["vlm_service<br>VLM (GPT/Qwen)"]
@@ -107,7 +107,7 @@ VLM_MODEL=qwen3-vl-plus
 4. `perception_node` — GroundingDINO 目标检测（MCP 工具）
 5. `vla_node` — VLA 策略节点（MCP 工具，Octo 或 scripted）
 6. `viz_node` — Rerun 可视化（gRPC 数据服务器）+ Rerun 桌面查看器
-7. `robonix-agent` — 智能体（后台 gRPC 服务）
+7. `robonix-pilot` — 智能体（后台 gRPC 服务）
 
 所有节点启动完成后，终端会打印：
 
