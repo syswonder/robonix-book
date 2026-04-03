@@ -59,17 +59,17 @@ message InterfaceInfo {
 ## 契约 TOML 与 `robonix_proto`
 
 - **`rust/contracts/**`**：描述每个契约的 **通信形状**（`[mode].type`：一元 / 双工流等）及 **`[io]`** 引用的 ROS 路径（`pkg/msg/...`、`pkg/srv/...`、`std_msgs/msg/String` 等）。文件按域分目录，例如 **`rust/contracts/prm/base_move.v1.toml`**、**`rust/contracts/sys/pilot.v1.toml`**；完整清单见 [接口目录 · 契约源码路径](../interface-catalog/index.md#contract-toml-sources) 与 **`rust/contracts/README.md`**。
-- **`rust/robonix-interfaces/lib/**`**：ROS 2 IDL（`.msg` / `.srv`），载荷与具体 `*Service` RPC 的权威定义。
-- **`ridlc`**：统一生成 **`robonix-interfaces/robonix_proto/*.proto`**（含各包的 `*Service`）以及 **`robonix_contracts.proto`**（`package robonix.contracts`，按契约 ID 提供抽象的 `Stream` / `Call` 门面，便于目录化与工具链）。
-- **`robonix_proto/` 下文件全部由 ridlc 生成，禁止手改**；控制面专用 proto（如 `robonix_runtime.proto`）仍在 **`rust/proto/`**。
+- **`rust/crates/robonix-interfaces/lib/**`**：ROS 2 IDL（`.msg` / `.srv`），载荷与具体 `*Service` RPC 的权威定义。
+- **`robonix-codegen`**：统一生成 **`crates/robonix-interfaces/robonix_proto/*.proto`**（含各包的 `*Service`）以及 **`robonix_contracts.proto`**（`package robonix.contracts`，按契约 ID 提供抽象的 `Stream` / `Call` 门面，便于目录化与工具链）。
+- **`robonix_proto/` 下文件全部由 robonix-codegen 生成，禁止手改**；控制面专用 proto（如 `robonix_runtime.proto`）仍在 **`rust/proto/`**。
 
 典型生成命令（在 `rust/` 下）：
 
 ```bash
-cargo run -p ridlc -- --lang proto \
-  -I robonix-interfaces/lib \
+cargo run -p robonix-codegen -- --lang proto \
+  -I crates/robonix-interfaces/lib \
   --contracts contracts \
-  -o robonix-interfaces/robonix_proto
+  -o crates/robonix-interfaces/robonix_proto
 ```
 
 具体 `PilotService.HandleIntent`、`ExecutorService.Execute` 等 **命名 RPC** 由 **`lib/<pkg>/srv`** 生成；`robonix_contracts.proto` 里同一契约可能表现为泛型 `Stream(...)`，详见 `rust/contracts/README.md` 中的「门面 vs 具体服务」说明。

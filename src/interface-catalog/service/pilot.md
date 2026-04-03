@@ -14,7 +14,7 @@
 | **`[mode].type`** | `stream_out`（`Intent` 入 → `PilotEvent` 流） |
 | **`[semantics]`** | `stateful = true`，`interruptible = true` |
 
-## 具体 gRPC（ridlc / `lib/pilot`）
+## 具体 gRPC（robonix-codegen / `lib/pilot`）
 
 TOML 注释：**Payload 级** I/O 如上；**命名 RPC** 由 `lib/pilot/srv/HandleIntent.srv` 生成，即 **`PilotService.HandleIntent(HandleIntent_Request)`**。`robonix_contracts.proto` 中可能表现为泛型 `Stream(Intent)` 门面，见 **`rust/contracts/README.md`**。
 
@@ -22,3 +22,7 @@ TOML 注释：**Payload 级** I/O 如上；**命名 RPC** 由 `lib/pilot/srv/Han
 
 - 二进制示例：**`robonix-pilot`**（`rust/crates/robonix-pilot`）。
 - 注册时 **`declare_interface_full(..., "robonix/sys/runtime/pilot")`**，接口叶子名通常为 `pilot`。
+
+## 与 Executor / VLM 的衔接（工具结果与图像）
+
+Pilot 通过 **Executor** 调用 MCP 工具；若工具返回的 JSON 解析为 **`sensor_msgs/Image` 线对象**（`width` / `height` / `encoding` / base64 **`data`**）或顶层 **`image_base64`**，会将图像以多模态形式送入 **VLM**（详见 [接入指南 · Provider 注册](../../integration-guide/provider-registration.md)）。终端侧 **`rbnx chat`** 按 **Esc** 可向 Pilot 发送 **`AbortSession`** 中断当前轮次。

@@ -14,7 +14,7 @@
 | **`[mode].type`** | `stream_out` |
 | **`[semantics]`** | `stateless = true` |
 
-## 具体 gRPC（ridlc / `lib/executor`）
+## 具体 gRPC（robonix-codegen / `lib/executor`）
 
 **`ExecutorService.Execute(Execute_Request { graph })`** → 流式 **`TaskCallEvent`**。TOML 注明 **`ListTools`** 等同服务上的其它 RPC，**不**占用本契约 ID。
 

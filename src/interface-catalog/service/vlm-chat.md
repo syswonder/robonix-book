@@ -16,7 +16,7 @@
 
 TOML 注释：模型名、token 上限、区域等由部署元数据承载，**不在**本契约内。
 
-## 具体 gRPC（ridlc / `lib/vlm`）
+## 具体 gRPC（robonix-codegen / `lib/vlm`）
 
 与契约对齐的主路径：**`VlmService.ChatStream`** → `stream ChatStreamEvent`（见 **`robonix_proto/vlm.proto`**）。
 

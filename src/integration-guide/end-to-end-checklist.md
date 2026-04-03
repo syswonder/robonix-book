@@ -77,7 +77,7 @@ rbnx inspect
 
 ### DeclareInterface 返回 INVALID_ARGUMENT
 
-对 gRPC/ROS 2 传输，**`contract_id`**（建议在 `DeclareInterface` 中显式填写，与 `rust/contracts` 中 `[contract] id` 一致）必须在系统接口目录中。若定义新能力：先在 `rust/robonix-interfaces/lib/` 增加 IDL，在 **`rust/contracts/`** 增加契约 TOML，运行带 **`--contracts`** 的 `ridlc`，并将该契约 ID 加入 `robonix-atlas` 的 **`ROBO_SYSTEM_INTERFACE_CATALOG`**。
+对 gRPC/ROS 2 传输，**`contract_id`**（建议在 `DeclareInterface` 中显式填写，与 `rust/contracts` 中 `[contract] id` 一致）必须在系统接口目录中。若定义新能力：先在 `rust/crates/robonix-interfaces/lib/` 增加 IDL，在 **`rust/contracts/`** 增加契约 TOML，运行带 **`--contracts`** 的 `robonix-codegen`，并将该契约 ID 加入 `robonix-atlas` 的 **`ROBO_SYSTEM_INTERFACE_CATALOG`**。
 
 MCP 传输不受此限制。
 

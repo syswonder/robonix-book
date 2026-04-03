@@ -9,6 +9,7 @@
 | `robonix/prm/sensor/pointcloud` | pub-sub | output | `sensor_msgs/msg/PointCloud2.msg` | `message PointCloud2` | — |
 | `robonix/prm/sensor/lidar` | pub-sub | output | `sensor_msgs/msg/LaserScan.msg` | `message LaserScan` | `rust/contracts/prm/sensor_lidar.v1.toml` |
 | `robonix/prm/sensor/imu` | pub-sub | output | `sensor_msgs/msg/Imu.msg` | `message Imu` | `rust/contracts/prm/sensor_imu.v1.toml` |
+| `robonix/prm/sensor/lidar_snapshot` | rpc | — | `std_msgs/Empty` → `sensor_msgs/LaserScan` | 单次扫描（与连续 `lidar` 流互补；MCP 常用） | `rust/contracts/prm/sensor_lidar_snapshot.v1.toml` |
 
 ## 典型组合
 

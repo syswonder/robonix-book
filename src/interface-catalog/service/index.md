@@ -11,12 +11,14 @@
 | `robonix/sys/runtime/liaison` | `rust/contracts/sys/liaison.v1.toml` | [Liaison](liaison.md) |
 | `robonix/sys/model/vlm/chat` | `rust/contracts/sys/vlm_chat.v1.toml` | [VLM Chat](vlm-chat.md) |
 | `robonix/sys/memory/search` | `rust/contracts/sys/memory_search.v1.toml` | [Memory Search](memory-search.md) |
+| `robonix/sys/memory/save` | `rust/contracts/sys/memory_save.v1.toml` | [Memory Search](memory-search.md)（MCP 与 gRPC 形态见该页） |
+| `robonix/sys/memory/compact` | `rust/contracts/sys/memory_compact.v1.toml` | [Memory Search](memory-search.md) |
 
 ## 新增系统服务
 
-1. 在 **`rust/robonix-interfaces/lib/`** 增加 IDL（若走 ridlc）。  
+1. 在 **`rust/crates/robonix-interfaces/lib/`** 增加 IDL（若走 robonix-codegen）。  
 2. 在 **`rust/contracts/sys/`** 增加 **`*.v1.toml`**，`[contract] id` 即 **`contract_id`**。  
-3. 运行 **`ridlc --contracts`** 更新 **`robonix_proto/`**（及 **`robonix_contracts.proto`**）。  
+3. 运行 **`robonix-codegen --contracts`** 更新 **`robonix_proto/`**（及 **`robonix_contracts.proto`**）。  
 4. 将契约 ID 加入 Atlas **`ROBO_SYSTEM_INTERFACE_CATALOG`**（`grpc`/`ros2` 校验）。  
 5. 在 **`service/`** 下增加一页，并把本表与侧栏 **`SUMMARY.md`** 链好。
 

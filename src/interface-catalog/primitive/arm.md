@@ -11,6 +11,16 @@
 | `robonix/prm/arm/joint_trajectory` | RPC | 执行一段关节轨迹 |
 | `robonix/prm/arm/state_joint` | pub-sub (output) | 实时关节状态反馈 |
 
+## 已入库：操作执行（`manipulation/exec`）
+
+与上层策略 / VLA 对齐的 **字符串指令** RPC（输入输出均为 **`std_msgs/String`**），契约 TOML 已存在：
+
+| 契约 ID（`contract_id`） | 契约源码（TOML） |
+|-----------------------|------------------|
+| `robonix/prm/manipulation/exec` | `rust/contracts/prm/manipulation_exec.v1.toml` |
+
+MCP 工具实现见 **`mcp_contract`** 与 [接口目录首页](../index.md) 中「MCP 与 Python 工具线格式」。
+
 ## 典型组合
 
 机械臂通常至少实现 `move_ee`（或 `move_joint`）+ `state_joint`。需要轨迹跟踪的场景加上 `joint_trajectory`。provider 按自身硬件能力选择实现子集。

@@ -14,7 +14,7 @@
 | **`[mode].type`** | `stream_out` |
 | **`[semantics]`** | `unified_entry = true`，`interruptible = true` |
 
-## 具体 gRPC（ridlc / `lib/liaison`）
+## 具体 gRPC（robonix-codegen / `lib/liaison`）
 
 **`LiaisonService.HandleIntent`**（`lib/liaison/srv/HandleIntent.srv`）。**`Interrupt`** 等为同服务上的扩展 RPC，本 TOML 不拆额外契约 ID。
 
