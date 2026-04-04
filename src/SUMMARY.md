@@ -36,6 +36,10 @@
 
 ---
 
+- [技能库](skill-library.md)
+
+---
+
 - [接入指南](integration-guide/index.md)
   - [Manifest 与包管理](integration-guide/package-and-manifest.md)
   - [Provider 注册](integration-guide/provider-registration.md)
