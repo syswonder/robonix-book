@@ -89,8 +89,8 @@ cd rust && ./examples/scripts/gen_proto_python.sh
 
 对 ROS 包 `pkgname`，robonix-codegen 生成 `robonix_proto/pkgname.proto`，`package robonix.pkgname`：
 
-- 每个 `.msg` → 同名 `message`。
-- 每个 `.srv` → `Name_Request` / `Name_Response` + `rpc Name`，挂在 `PkgnameService` 上。
+- 每个 `.msg` → 同名 `message`（写入 `{pkg}.proto`）。
+- 契约里引用的 `.srv` → 仅生成 `Name_Request` / `Name_Response`（同一 `{pkg}.proto`）；**不**再生成各包的 `*Service`。**gRPC 门面**只在 **`robonix_contracts.proto`**。
 
 完整能力表与英文说明见 `rust/crates/robonix-interfaces/README.md`、`rust/contracts/README.md`。
 
