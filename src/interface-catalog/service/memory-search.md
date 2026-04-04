@@ -1,6 +1,6 @@
 # Memory Search 服务（gRPC 契约）
 
-对齐 **`rust/contracts/sys/memory_search.v1.toml`**：一元 **字符串** 请求/响应（`std_msgs/msg/String`），用于检索类能力在 gRPC/IDL 路径上的统一形状。与 **MCP 形态的 Memsearch 包**可并存（见下文）。
+对齐 **`rust/contracts/sys/memory_search.v1.toml`**：一元 RPC，**`[io.srv]`** 绑定 **`lib/memory/srv/Search.srv`**（`query` / `results` 为 `std_msgs/String`）。与 **MCP 形态的 Memsearch 包**可并存（见下文）。
 
 ## 契约（与 `memory_search.v1.toml` 同步）
 
@@ -9,8 +9,7 @@
 | **契约 ID（`contract_id`）** | `robonix/sys/memory/search` |
 | **版本** | `1` |
 | **`kind`** | `service` |
-| **`[io].input`** | `std_msgs/msg/String` |
-| **`[io].output`** | `std_msgs/msg/String` |
+| **`[io.srv]`** | `srv = "memory/srv/Search"` |
 | **`[mode].type`** | `rpc` |
 | **`[semantics]`** | `persistent = true`，`searchable = true`；`wire_profile = "mcp_or_future_idl"` |
 

@@ -9,9 +9,8 @@
 | **契约 ID（`contract_id`）** | `robonix/sys/runtime/executor` |
 | **版本** | `1` |
 | **`kind`** | `service` |
-| **`[io].input`** | `pilot/msg/TaskGraph`（语义为行为图；v1 为线性 `TaskCall[]`，BT/RTDL 见 IDL 注释 TODO） |
-| **`[io].output`** | `executor/msg/TaskCallEvent` |
-| **`[mode].type`** | `stream_out` |
+| **`[io.srv]`** | `srv = "executor/srv/Execute"` |
+| **`[mode].type`** | `rpc_server_stream`（request：`TaskGraph`；response 单字段 → 流元素 **`TaskCallEvent`**） |
 | **`[semantics]`** | `stateless = true` |
 
 ## 具体 gRPC（robonix-codegen / `lib/executor`）

@@ -15,6 +15,7 @@ rust/contracts/
 │   ├── base_cmd.v1.toml              # robonix/prm/base/cmd
 │   ├── base_move.v1.toml             # robonix/prm/base/move
 │   ├── base_odom.v1.toml             # robonix/prm/base/odom
+│   ├── base_twist_in.v1.toml         # robonix/prm/base/twist_in
 │   ├── base_navigate.v1.toml         # robonix/prm/base/navigate
 │   ├── base_nav_status.v1.toml       # robonix/prm/base/nav_status
 │   ├── base_nav_cancel.v1.toml       # robonix/prm/base/nav_cancel
@@ -80,8 +81,8 @@ cd rust && ./examples/scripts/gen_proto_python.sh
 ## IDL 政策
 
 - Pub-sub 用 `.msg`；带 RPC 的用 `.srv`。
-- **`robonix_contracts.proto` 中服务的流式形状**（`rpc` / `stream_out` / `stream_in`）完全由契约 TOML 的 `[mode].type` 字段决定，与 `.srv` 文件内容无关。纯流式契约（如相机、IMU）无需对应 `.srv`，仅凭 `[io]` 中引用的 `.msg` 类型与 `[mode]` 即可生成正确的 gRPC 形状。
-- **per-package `*Service`**（如 `vlm.proto` 中的 `VlmService`）的流式 RPC 来自对应 `.srv` 首行的 `# @robonix.grpc stream_server pkg/msg/Name` 指令（见 `lib/vlm/srv/ChatStream.srv`）；这仅影响 IDL 层生成的按包 proto，不影响契约层。
+- **`robonix_contracts.proto` 中服务的形状**完全由契约 TOML 的 **`[mode].type`** 决定：`rpc`（一元 `.srv`）、`rpc_server_stream`（`.srv` **response** 段仅一个字段 = 流元素）、`rpc_client_stream`（**request** 段仅一个字段 = 流元素）、`topic_out` / `topic_in`（单条 **`[io.msg].msg`**）。详见 **`rust/contracts/README.md`**。
+- **per-package `*Service`**（如 `vlm.proto` 中的 `VlmService`）当前由 codegen 为每个 `.srv` 生成 **unary** `rpc`。**带 stream 的 gRPC 门面**只在 **`robonix_contracts.proto`**：由 **`[mode].type`** 与对应 `.srv` 的 **request/response 单字段约定** 共同决定（见 `rust/contracts/README.md`）。
 - **不要在 `robonix_proto/` 添加手写 `.proto`**；控制面专用定义在 **`rust/proto/`**（如 `robonix_runtime.proto`）。
 
 ## Proto 命名规则

@@ -6,8 +6,8 @@
 
 | 契约 ID（`contract_id`） | 模式 | 方向 | ROS IDL | gRPC 映射 | 契约源码（TOML） |
 |-----------------------|------|------|---------|-----------|------------------|
-| `robonix/prm/camera/rgb` | pub-sub | output | `sensor_msgs/msg/Image.msg` | server-streaming `PrmCameraService/SubscribeRgb` | `rust/contracts/prm/camera_rgb.v1.toml` |
-| `robonix/prm/camera/depth` | pub-sub | output | `sensor_msgs/msg/Image.msg` | 同上模式 | `rust/contracts/prm/camera_depth.v1.toml` |
+| `robonix/prm/camera/rgb` | pub-sub | output | `sensor_msgs/msg/Image.msg` | 契约 **`topic_out`** → `robonix_contracts` 中 `Stream(Empty) returns (stream Image)` | `rust/contracts/prm/camera_rgb.v1.toml` |
+| `robonix/prm/camera/depth` | pub-sub | output | `sensor_msgs/msg/Image.msg` | 同上（**`topic_out`**） | `rust/contracts/prm/camera_depth.v1.toml` |
 | `robonix/prm/camera/ir` | pub-sub | output | `sensor_msgs/msg/Image.msg` | 同上模式 | — |
 | `robonix/prm/camera/intrinsics` | pub-sub | output | `sensor_msgs/msg/CameraInfo.msg` | `message CameraInfo` | — |
 | `robonix/prm/camera/rgbd` | pub-sub | output | `robonix_msg/msg/RGBD.msg` | `robonix_msg.RGBD` | — |
@@ -22,7 +22,7 @@
 | `robonix/prm/camera/depth_snapshot` | rpc | — | `Empty` → `sensor_msgs/Image` | 单帧深度图 | `rust/contracts/prm/camera_depth_snapshot.v1.toml` |
 | `robonix/prm/perception/detect` | rpc | — | `sensor_msgs/Image` → `std_msgs/String` | 检测结果 JSON（见 TOML） | `rust/contracts/prm/perception_detect.v1.toml` |
 
-gRPC streaming RPC 通过 `.srv` 文件首行的 `# @robonix.grpc stream_server sensor_msgs/msg/Image` 指令生成。ROS 2 端使用普通 topic。
+契约层带 stream 的 gRPC 形状由 **`rust/contracts`** 的 **`[mode].type`** 与 `.srv` 的 **response/request 单字段约定** 决定（见 **`rust/contracts/README.md`**）。ROS 2 端使用普通 topic。
 
 ## 典型组合
 

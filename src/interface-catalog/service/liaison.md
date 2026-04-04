@@ -9,14 +9,13 @@
 | **契约 ID（`contract_id`）** | `robonix/sys/runtime/liaison` |
 | **版本** | `1` |
 | **`kind`** | `service` |
-| **`[io].input`** | `pilot/msg/Intent` |
-| **`[io].output`** | `pilot/msg/PilotEvent` |
-| **`[mode].type`** | `stream_out` |
+| **`[io.srv]`** | `srv = "liaison/srv/HandleIntent"` |
+| **`[mode].type`** | `rpc_server_stream` |
 | **`[semantics]`** | `unified_entry = true`，`interruptible = true` |
 
 ## 具体 gRPC（robonix-codegen / `lib/liaison`）
 
-**`LiaisonService.HandleIntent`**（`lib/liaison/srv/HandleIntent.srv`）。**`Interrupt`** 等为同服务上的扩展 RPC，本 TOML 不拆额外契约 ID。
+**`LiaisonService.HandleIntent(HandleIntent_Request)`** → stream **`PilotEvent`**。**`Interrupt`** 等为同服务上的扩展 RPC（见 `lib/liaison/srv/Interrupt.srv`），本 TOML 不拆额外契约 ID。
 
 ## 实现与注册
 

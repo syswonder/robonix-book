@@ -9,14 +9,13 @@
 | **契约 ID（`contract_id`）** | `robonix/sys/runtime/pilot` |
 | **版本** | `1`（TOML `version`，不拼进 `contract_id`） |
 | **`kind`** | `service` |
-| **`[io].input`** | `pilot/msg/Intent` |
-| **`[io].output`** | `pilot/msg/PilotEvent` |
-| **`[mode].type`** | `stream_out`（`Intent` 入 → `PilotEvent` 流） |
+| **`[io.srv]`** | `srv = "pilot/srv/HandleIntent"` |
+| **`[mode].type`** | `rpc_server_stream`（request：`Intent`；response 单字段 → 流元素 **`PilotEvent`**） |
 | **`[semantics]`** | `stateful = true`，`interruptible = true` |
 
 ## 具体 gRPC（robonix-codegen / `lib/pilot`）
 
-TOML 注释：**Payload 级** I/O 如上；**命名 RPC** 由 `lib/pilot/srv/HandleIntent.srv` 生成，即 **`PilotService.HandleIntent(HandleIntent_Request)`**。`robonix_contracts.proto` 中可能表现为泛型 `Stream(Intent)` 门面，见 **`rust/contracts/README.md`**。
+**`PilotService.HandleIntent(HandleIntent_Request)`** → `stream PilotEvent`。`robonix_contracts.proto` 中对应契约为泛型 **`Stream(Intent)` → stream `PilotEvent`** 门面，见 **`rust/contracts/README.md`**。
 
 ## 实现与注册
 

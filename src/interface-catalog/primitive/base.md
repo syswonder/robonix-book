@@ -13,17 +13,18 @@
 | `robonix/prm/base/stop` | `srv/Stop.srv` | `PrmBaseService/Stop` | — |
 | `robonix/prm/robot/state` | `std_msgs/Empty` → `prm_base/RobotState` | — | `rust/contracts/prm/robot_state.v1.toml` |
 
-## Pub-sub 接口
+## Pub-sub 接口（契约层：`topic_in` / `topic_out`）
 
-| 契约 ID（`contract_id`） | 方向 | IDL | gRPC 类型 | 契约源码（TOML） |
-|-----------------------|------|-----|-----------|------------------|
-| `robonix/prm/base/move` | input | `msg/MoveCommand.msg` | `message MoveCommand` | `rust/contracts/prm/base_move.v1.toml` |
-| `robonix/prm/base/odom` | output | `nav_msgs/msg/Odometry.msg` | `nav_msgs.Odometry` | `rust/contracts/prm/base_odom.v1.toml` |
-| `robonix/prm/base/pose_cov` | output | `geometry_msgs/msg/PoseWithCovarianceStamped.msg` | `geometry_msgs.PoseWithCovarianceStamped` | — |
-| `robonix/prm/base/joint_state` | output | `sensor_msgs/msg/JointState.msg` | `sensor_msgs.JointState` | — |
-| `robonix/prm/base/goal_status` | output | `srv/GetNavigationStatus.srv`（也可作 topic） | `PrmBaseService/GetNavigationStatus` | — |
+| 契约 ID（`contract_id`） | 方向 | `[mode].type` | IDL（`[io.msg].msg`） | 契约源码（TOML） |
+|-----------------------|------|---------------|---------------------------|------------------|
+| `robonix/prm/base/twist_in` | input | `topic_in` | `geometry_msgs/msg/Twist`（如 cmd_vel） | `rust/contracts/prm/base_twist_in.v1.toml` |
+| `robonix/prm/base/move` | input | `rpc_client_stream` | `prm_base/action/StreamMove` | `rust/contracts/prm/base_move.v1.toml` |
+| `robonix/prm/base/odom` | output | `topic_out` | `nav_msgs/msg/Odometry` | `rust/contracts/prm/base_odom.v1.toml` |
+| `robonix/prm/base/pose_cov` | output | — | `geometry_msgs/msg/PoseWithCovarianceStamped` | — |
+| `robonix/prm/base/joint_state` | output | — | `sensor_msgs/msg/JointState` | — |
+| `robonix/prm/base/goal_status` | output | — | `srv/GetNavigationStatus`（也可作 topic） | — |
 
-Pub-sub 接口在 gRPC 端只有 `message` 定义（没有 RPC）；具体的数据传输通过 ROS 2 topic 或自定义 gRPC stream shim 完成。
+纯 **topic** 形状见 **`rust/contracts/README.md`**（`topic_in` / `topic_out` 与 `robonix_contracts.proto` 中 `Stream` 的对应关系）；ROS 2 上仍由 topic 名与 QoS 约定实现。
 
 ## 典型组合
 
