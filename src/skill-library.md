@@ -13,6 +13,17 @@ Skill 描述的不是接口契约，而是 **Agent 能用工具做什么**——
 任务（task） ←  运行时 TaskGraph 实例
 ```
 
+## Skill 的两种形式
+
+Skill 在实践中有两种互补的形式，可以独立使用，也可以在同一个包内共存：
+
+| 形式 | 载体 | 作用 |
+|------|------|------|
+| **SKILL.md playbook** | 文本文件，随包注册到 Atlas | 向 VLM 描述行为规范：用哪些工具、按什么步骤、有哪些约束 |
+| **Skill Node** | 运行中的进程，注册到 Atlas | 通过 MCP 暴露工具实现，供 Executor 调用 |
+
+两者没有强制绑定关系——SKILL.md 可以单独存在（描述 primitive/service 已有工具的用法），Skill Node 也可以单独运行（不附带 playbook）。但当两者共存时，SKILL.md 是描述 Skill Node 所暴露工具的最佳位置，能直接指导 VLM 如何使用这些工具。
+
 ## SKILL.md 格式
 
 每个 Skill 是一个目录，其中必须包含一个 `SKILL.md` 文件。文件由两部分组成：YAML frontmatter（机器可读元数据）和 Markdown 正文（面向 VLM 的 playbook）。
@@ -208,7 +219,82 @@ VLM 通过 `path` 字段按需调用内置工具 `read_file` 读取完整的 pla
 | `ROBONIX_SKILLS_INJECT_MAX_CHARS` | `16000` | Playbook 注入的总字符预算 |
 | `ROBONIX_SKILLS_INJECT_PER_SKILL_CHARS` | `4000` | 单个 skill 的最大注入字符数（超出截断） |
 
+## Skill Node
+
+Skill Node 是以**运行进程**形式存在的 skill——它向 Atlas 注册为节点，并通过 MCP 暴露工具供 Executor 发现和调用。与 primitive/service 不同，Skill Node 暴露的接口**不受 contract 约束**：由于不同场景和语义的复杂性，我们无法也不应该强制要求 skill 工具符合统一的接口规范，工具的签名和语义完全由 skill 自身决定。
+
+### 注册模式
+
+Skill Node 的注册流程与 primitive 节点相同，但 `namespace` 和 `kind` 通常反映其所属的能力域：
+
+```python
+stub.RegisterNode(pb.RegisterNodeRequest(
+    node_id="com.robonix.demo.vla",
+    namespace="robonix/prm/manipulation",
+    kind="primitive",
+))
+
+stub.DeclareInterface(pb.DeclareInterfaceRequest(
+    node_id="com.robonix.demo.vla",
+    name="mcp_tools",
+    supported_transports=["mcp"],
+    metadata_json=json.dumps({"tools": [...]}),  # MCP 工具列表
+    listen_port=mcp_port,
+    contract_id="robonix/prm/manipulation/tools",  # 可选；不做 schema 校验
+))
+```
+
+Executor 通过 Atlas 发现 MCP 端点，连接后获取工具列表，这些工具会直接出现在 VLM 可见的工具集中。
+
+### 与 SKILL.md 共存
+
+Skill Node 和 SKILL.md 可以在同一个包内共存。当 Skill Node 暴露了自定义工具时，配套的 SKILL.md 是向 VLM 说明**这些工具怎么用**的最佳位置：
+
+```
+<package_root>/
+  robonix_manifest.yaml
+  skills/
+    vla_manipulation/
+      SKILL.md          # 描述 execute_instruction / move_base 的用法和约束
+  maniskill_vla_demo/
+    vla_node.py         # 暴露 execute_instruction、move_base 两个 MCP 工具
+```
+
+对应的 SKILL.md playbook 示例：
+
+```markdown
+---
+name: vla_manipulation
+description: Execute closed-loop manipulation tasks using a VLA policy (Octo).
+---
+
+# VLA Manipulation Skill
+
+Use this skill for pick-and-place or reach tasks in the ManiSkill3 simulation.
+
+## Available Tools
+
+- `execute_instruction(instruction, max_cycles, steps_per_cycle, sim_rate_hz)`
+  — Run a closed-loop VLA predict→step loop. Returns `status: done/timeout`.
+- `move_base(linear, angular, hold_steps)`
+  — Directly command the mobile base (Fetch). Use for coarse repositioning.
+
+## Typical Workflow
+
+1. Call `execute_instruction("pick the red cup")` — VLA policy runs until done or timeout
+2. If `status == "timeout"`, try repositioning with `move_base` then retry
+3. Check `reward` in the result to confirm task success
+```
+
+### 注意事项
+
+- Skill Node 不需要提供 SKILL.md，SKILL.md 也不要求对应一个运行节点
+- `contract_id` 在 Skill Node 的 `DeclareInterface` 中是可选的，即使填写也仅作为标注用途，Atlas 不做接口 schema 的合规性校验
+- Skill Node 的工具在 Executor 层被发现后，VLM 可以直接调用，无需额外配置
+
 ## 典型开发流程
+
+### 仅 SKILL.md
 
 1. 在包的 `skills/<name>/` 目录下创建 `SKILL.md`
 2. 填写 frontmatter（`name` + `description` 至少两字段）
@@ -216,3 +302,11 @@ VLM 通过 `path` 字段按需调用内置工具 `read_file` 读取完整的 pla
 4. `rbnx start <package>`（或重启包）→ skills 自动注册到 Atlas
 5. `rbnx describe` 确认已注册；`rbnx tools` 确认 Agent 可见
 6. `rbnx chat` 测试 Agent 能否正确调用对应行为
+
+### Skill Node + SKILL.md
+
+1. 实现 Skill Node 进程：`RegisterNode` → `DeclareInterface`（MCP）→ 启动 MCP HTTP server
+2. 在 `skills/<name>/SKILL.md` 中描述节点暴露的工具及用法
+3. `rbnx start <package>` 注册 SKILL.md；同时启动 Skill Node 进程
+4. `rbnx tools` 确认 MCP 工具已出现在 Agent 可见工具集中
+5. `rbnx chat` 验证 VLM 能依据 SKILL.md playbook 正确调用 skill 工具
