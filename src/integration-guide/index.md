@@ -4,7 +4,7 @@
 
 PRM provider 注册在 `robonix/prm/` 下，通常提供 MCP 工具接口（供 Agent 直接调用）和/或 gRPC/ROS 2 数据面接口（供其他节点消费）。System service 注册在 `robonix/sys/` 下，通常通过 gRPC 提供 RPC 接口。
 
-**MCP 数据面端口**：在实现 `DeclareInterface(..., supported_transports=["mcp"], listen_port=...)` 之前，必须先通过 **`robonix-codegen --lang mcp`** 生成 **`robonix_mcp_types/`**（与 `rust/contracts` 的 IO 类型一致），并在构建或运行环境中把该目录与 **`robonix_mcp_contract`** 包加入 **`PYTHONPATH`**；工具实现使用 **`mcp_contract`** 装饰器，使 MCP 参数与线格式一致。详见 [Provider 注册](provider-registration.md) 中的「MCP 工具接口」与 [快速上手](../getting-started/quickstart.md) 中的「MCP 与 codegen」。
+**MCP 数据面**：声明 MCP 接口（`supported_transports=["mcp"]`）之前，须先通过 `robonix-codegen --lang mcp` 生成 `robonix_mcp_types/`，并确保 `robonix_mcp_contract` 包在 `PYTHONPATH` 中。工具实现使用 `mcp_contract` 装饰器。详见 [Provider 注册](provider-registration.md) 和 [快速上手](../getting-started/quickstart.md) 中的「MCP 与 codegen」。
 
 本章以两个真实的示例贯穿全部内容：
 

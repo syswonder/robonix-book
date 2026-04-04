@@ -7,37 +7,44 @@
 ## 系统架构
 
 ```mermaid
-%%{init: {'theme': 'base', 'config': {'securityLevel': 'loose'}}}%%
-flowchart LR
-    subgraph nodes ["Python 节点"]
-        env["env_node<br>ManiSkill3 环境"]
-        perception["perception_node<br>GroundingDINO 检测"]
-        vla["vla_node<br>Octo/Scripted 策略"]
-        viz["viz_node<br>Rerun 可视化"]
+%%{init: {'theme': 'base', 'themeVariables': {'fontSize': '14px'}}}%%
+flowchart TB
+    user(["用户"])
+    tui["rbnx chat<br>(TUI)"]
+
+    subgraph ctrl ["控制平面"]
+        atlas["robonix-atlas"]
     end
 
-    subgraph rust ["Rust 组件"]
-        server["robonix-atlas<br>控制平面"]
-        agent["robonix-pilot<br>gRPC 服务"]
+    subgraph runtime ["运行时"]
+        agent["robonix-pilot<br>VLM ReAct"]
+        vlm["vlm_service<br>gRPC"]
     end
 
-    vlm["vlm_service<br>VLM (GPT/Qwen)"]
-    tui["rbnx chat<br>TUI 客户端"]
-    user["用户"]
+    subgraph nodes ["Python 节点（向 Atlas 注册）"]
+        direction LR
+        env["env_node<br>ManiSkill3 环境<br>gRPC"]
+        perception["perception_node<br>GroundingDINO 检测<br>MCP"]
+        vla["vla_node<br>Octo/Scripted 策略<br>MCP"]
+        viz["viz_node<br>Rerun 可视化<br>gRPC"]
+    end
 
-    user -->|"交互"| tui
-    tui -->|"gRPC stream"| agent
-    agent -->|"gRPC VLM ChatStream"| vlm
-    agent -->|"MCP 工具调用"| vla
+    user -->|"指令"| tui
+    tui -->|"PilotService.HandleIntent"| agent
+    agent -->|"VlmService.ChatStream"| vlm
+
     agent -->|"MCP 工具调用"| perception
+    agent -->|"MCP 工具调用"| vla
     vla -->|"gRPC env_data"| env
     perception -->|"gRPC env_data"| env
     viz -->|"gRPC env_data"| env
     viz -->|"MCP detect"| perception
-    env --> server
-    perception --> server
-    vla --> server
-    agent --> server
+
+    env -->|"RegisterNode + DeclareInterface"| atlas
+    perception -->|"RegisterNode + DeclareInterface"| atlas
+    vla -->|"RegisterNode + DeclareInterface"| atlas
+    agent -->|"RegisterNode + QueryNodes"| atlas
+    vlm -->|"RegisterNode + DeclareInterface"| atlas
 ```
 
 所有节点通过 `robonix-atlas` 控制平面注册和发现。节点间数据传输使用 gRPC（环境观测）和 MCP（工具调用）。用户通过 `rbnx chat` TUI 客户端与 Agent 交互，不再使用 stdin/stdout。

@@ -1,23 +1,16 @@
 # Liaison 服务
 
-统一入口（语音 / 多模态等），**载荷契约与 Pilot 相同**：`Intent` → 流式 `PilotEvent`。控制面 **`contract_id = robonix/sys/runtime/liaison`**。
+统一入口，接收文本/语音等多模态输入，转发至 Pilot。载荷契约与 Pilot 相同：`Intent` → 流式 `PilotEvent`。
 
-## 契约（与 `rust/contracts/sys/liaison.v1.toml` 同步）
+## 接口
 
-| 项 | 值 |
-|----|-----|
-| **契约 ID（`contract_id`）** | `robonix/sys/runtime/liaison` |
-| **版本** | `1` |
-| **`kind`** | `service` |
-| **`[io.srv]`** | `srv = "liaison/srv/HandleIntent"` |
-| **`[mode].type`** | `rpc_server_stream` |
-| **`[semantics]`** | `unified_entry = true`，`interruptible = true` |
+| 契约 ID（`contract_id`） | 模式 | 载荷（IDL） | 契约 TOML |
+|--------------------------|------|-------------|-----------|
+| `robonix/sys/runtime/liaison` | `rpc_server_stream` | `liaison/HandleIntent_Request` → stream `pilot/PilotEvent` | `sys/liaison.v1.toml` |
 
-## 具体 gRPC（robonix-codegen / `lib/liaison`）
+> 契约 TOML 路径省略 `rust/contracts/` 前缀。`unified_entry = true`，`interruptible = true`。`Interrupt` 等扩展 RPC 在同服务上（`lib/liaison/srv/Interrupt.srv`），不另立契约 ID。
 
-**`LiaisonService.HandleIntent(HandleIntent_Request)`** → stream **`PilotEvent`**。**`Interrupt`** 等为同服务上的扩展 RPC（见 `lib/liaison/srv/Interrupt.srv`），本 TOML 不拆额外契约 ID。
+## 实现
 
-## 实现与注册
-
-- 二进制示例：**`robonix-liaison`**。
-- 注册时 **`declare_interface_full(..., "robonix/sys/runtime/liaison")`**，接口叶子名通常为 `liaison`。
+- **二进制**：`robonix-liaison`（`rust/crates/robonix-liaison`）
+- **注册**：`declare_interface_full(..., "robonix/sys/runtime/liaison")`，接口叶子名通常为 `liaison`

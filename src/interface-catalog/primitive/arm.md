@@ -1,26 +1,28 @@
 # 机械臂 robonix/prm/arm
 
-机械臂原语覆盖末端执行器运动、关节运动、轨迹执行和关节状态反馈。IDL 包 `prm_arm` 尚未完整入库，当前以设计意图为准。**仓库内尚无**对应 `rust/contracts/prm/*.toml`；落地时按 **`rust/contracts/README.md`** 新增版本化 TOML（如 `arm_*.v1.toml`）。
+## 已入库契约
 
-## 预定义接口
+### 操作执行（`manipulation/exec`）
 
-| 契约 ID（`contract_id`） | 模式 | 说明 |
-|-----------------------|------|------|
-| `robonix/prm/arm/move_ee` | RPC | 将末端执行器移动到目标 pose |
-| `robonix/prm/arm/move_joint` | RPC | 将指定关节移动到目标角度 |
-| `robonix/prm/arm/joint_trajectory` | RPC | 执行一段关节轨迹 |
-| `robonix/prm/arm/state_joint` | pub-sub (output) | 实时关节状态反馈 |
+接收自然语言或结构化字符串指令，输入输出均为 `std_msgs/String`，与上层策略/VLA 对齐。
 
-## 已入库：操作执行（`manipulation/exec`）
+| 契约 ID（`contract_id`） | 模式 | 载荷（IDL） | 契约 TOML |
+|--------------------------|------|-------------|-----------|
+| `robonix/prm/manipulation/exec` | `rpc` | `std_msgs/String` → `std_msgs/String` | `prm/manipulation_exec.v1.toml` |
 
-与上层策略 / VLA 对齐的 **字符串指令** RPC（输入输出均为 **`std_msgs/String`**），契约 TOML 已存在：
+> 契约 TOML 路径省略 `rust/contracts/` 前缀。MCP 工具实现使用 `mcp_contract` 装饰器，见 [接口目录首页](../index.md) 中「MCP 与 Python 工具线格式」。
 
-| 契约 ID（`contract_id`） | 契约源码（TOML） |
-|-----------------------|------------------|
-| `robonix/prm/manipulation/exec` | `rust/contracts/prm/manipulation_exec.v1.toml` |
+## 规划中的接口（尚无 TOML）
 
-MCP 工具实现见 **`mcp_contract`** 与 [接口目录首页](../index.md) 中「MCP 与 Python 工具线格式」。
+以下接口为设计意图，IDL 包 `prm_arm` 尚未完整入库，暂无对应 TOML。新增时按 `rust/contracts/README.md` 规范创建版本化文件（如 `arm_move_ee.v1.toml`）。
+
+| 契约 ID（`contract_id`） | 模式 | 载荷（IDL） | 契约 TOML |
+|--------------------------|------|-------------|-----------|
+| `robonix/prm/arm/move_ee` | `rpc` | `geometry_msgs/PoseStamped` → `std_msgs/String` | — |
+| `robonix/prm/arm/move_joint` | `rpc` | `prm_arm/JointTarget` → `std_msgs/String` | — |
+| `robonix/prm/arm/joint_trajectory` | `rpc` | `trajectory_msgs/JointTrajectory` → `std_msgs/String` | — |
+| `robonix/prm/arm/state_joint` | `pub-sub (out)` | `sensor_msgs/JointState` | — |
 
 ## 典型组合
 
-机械臂通常至少实现 `move_ee`（或 `move_joint`）+ `state_joint`。需要轨迹跟踪的场景加上 `joint_trajectory`。provider 按自身硬件能力选择实现子集。
+已有硬件实现 `manipulation/exec` 即可接入上层 Agent。完整关节控制的 provider 通常还需实现 `move_ee`（或 `move_joint`）+ `state_joint`，有轨迹跟踪需求时加 `joint_trajectory`。

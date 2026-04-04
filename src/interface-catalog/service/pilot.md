@@ -1,27 +1,20 @@
 # Pilot 服务
 
-推理、规划与会话运行时。控制面 `DeclareInterface` 建议使用 **`contract_id = robonix/sys/runtime/pilot`**（与下表一致）；数据面由 **`PilotService`** 暴露。
+推理、规划与会话运行时。VLM 驱动的 ReAct 推理循环，将 `Intent` 分解为 `TaskGraph` 逐轮执行。
 
-## 契约（与 `rust/contracts/sys/pilot.v1.toml` 同步）
+## 接口
 
-| 项 | 值 |
-|----|-----|
-| **契约 ID（`contract_id`）** | `robonix/sys/runtime/pilot` |
-| **版本** | `1`（TOML `version`，不拼进 `contract_id`） |
-| **`kind`** | `service` |
-| **`[io.srv]`** | `srv = "pilot/srv/HandleIntent"` |
-| **`[mode].type`** | `rpc_server_stream`（request：`Intent`；response 单字段 → 流元素 **`PilotEvent`**） |
-| **`[semantics]`** | `stateful = true`，`interruptible = true` |
+| 契约 ID（`contract_id`） | 模式 | 载荷（IDL） | 契约 TOML |
+|--------------------------|------|-------------|-----------|
+| `robonix/sys/runtime/pilot` | `rpc_server_stream` | `pilot/HandleIntent_Request` → stream `pilot/PilotEvent` | `sys/pilot.v1.toml` |
 
-## 具体 gRPC（robonix-codegen / `lib/pilot`）
+> 契约 TOML 路径省略 `rust/contracts/` 前缀。`HandleIntent` 为有状态流式 RPC，`interruptible = true`（`rbnx chat` 按 Esc 发 `AbortSession` 中断当前轮次）。
 
-**`PilotService.HandleIntent(HandleIntent_Request)`** → `stream PilotEvent`。`robonix_contracts.proto` 中对应契约为泛型 **`Stream(Intent)` → stream `PilotEvent`** 门面，见 **`rust/contracts/README.md`**。
+## 实现
 
-## 实现与注册
+- **二进制**：`robonix-pilot`（`rust/crates/robonix-pilot`）
+- **注册**：`declare_interface_full(..., "robonix/sys/runtime/pilot")`，接口叶子名通常为 `pilot`
 
-- 二进制示例：**`robonix-pilot`**（`rust/crates/robonix-pilot`）。
-- 注册时 **`declare_interface_full(..., "robonix/sys/runtime/pilot")`**，接口叶子名通常为 `pilot`。
+## 与 Executor / VLM 的衔接
 
-## 与 Executor / VLM 的衔接（工具结果与图像）
-
-Pilot 通过 **Executor** 调用 MCP 工具；若工具返回的 JSON 解析为 **`sensor_msgs/Image` 线对象**（`width` / `height` / `encoding` / base64 **`data`**）或顶层 **`image_base64`**，会将图像以多模态形式送入 **VLM**（详见 [接入指南 · Provider 注册](../../integration-guide/provider-registration.md)）。终端侧 **`rbnx chat`** 按 **Esc** 可向 Pilot 发送 **`AbortSession`** 中断当前轮次。
+Pilot 通过 Executor 下发 MCP 工具调用；若工具返回 JSON 中含 **`sensor_msgs/Image` 线格式**字段（`width` / `height` / `encoding` / base64 `data`）或顶层 `image_base64`，会将图像以多模态形式送入 VLM（详见 [Provider 注册](../../integration-guide/provider-registration.md)）。

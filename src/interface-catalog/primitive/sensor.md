@@ -1,16 +1,18 @@
 # 传感器 robonix/prm/sensor
 
-通用传感器原语覆盖点云、激光雷达和 IMU。这些接口的 payload 类型均来自 `common_interfaces` 中的 `sensor_msgs`。
+通用传感器原语覆盖激光雷达、点云和 IMU。载荷类型来自 `common_interfaces` 中的 `sensor_msgs`。
 
 ## 接口
 
-| 契约 ID（`contract_id`） | 模式 | 方向 | ROS IDL | gRPC 类型 | 契约源码（TOML） |
-|-----------------------|------|------|---------|-----------|------------------|
-| `robonix/prm/sensor/pointcloud` | pub-sub | output | `sensor_msgs/msg/PointCloud2.msg` | `message PointCloud2` | — |
-| `robonix/prm/sensor/lidar` | pub-sub | output | `sensor_msgs/msg/LaserScan.msg` | `message LaserScan` | `rust/contracts/prm/sensor_lidar.v1.toml` |
-| `robonix/prm/sensor/imu` | pub-sub | output | `sensor_msgs/msg/Imu.msg` | `message Imu` | `rust/contracts/prm/sensor_imu.v1.toml` |
-| `robonix/prm/sensor/lidar_snapshot` | rpc | — | `std_msgs/Empty` → `sensor_msgs/LaserScan` | 单次扫描（与连续 `lidar` 流互补；MCP 常用） | `rust/contracts/prm/sensor_lidar_snapshot.v1.toml` |
+| 契约 ID（`contract_id`） | 模式 | 载荷（IDL） | 契约 TOML |
+|--------------------------|------|-------------|-----------|
+| `robonix/prm/sensor/lidar` | `pub-sub (out)` | `sensor_msgs/LaserScan` | `prm/sensor_lidar.v1.toml` |
+| `robonix/prm/sensor/pointcloud` | `pub-sub (out)` | `sensor_msgs/PointCloud2` | — |
+| `robonix/prm/sensor/imu` | `pub-sub (out)` | `sensor_msgs/Imu` | `prm/sensor_imu.v1.toml` |
+| `robonix/prm/sensor/lidar_snapshot` | `rpc` | `std_msgs/Empty` → `sensor_msgs/LaserScan` | `prm/sensor_lidar_snapshot.v1.toml` |
+
+> 契约 TOML 路径省略 `rust/contracts/` 前缀。
 
 ## 典型组合
 
-带激光雷达的移动机器人通常实现 `lidar`，配合 SLAM 和导航使用。工业场景可能额外提供 `pointcloud`（如 3D LiDAR 或深度相机点云）。`imu` 在有惯性导航需求时实现。
+带激光雷达的移动机器人通常实现 `lidar`，配合 SLAM 和导航使用。需要按需查询单次扫描时用 `lidar_snapshot`（MCP 友好）。工业场景可额外提供 `pointcloud`（3D LiDAR 或深度相机点云）。`imu` 在有惯性导航需求时实现。

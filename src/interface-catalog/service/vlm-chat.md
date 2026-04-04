@@ -1,27 +1,16 @@
 # VLM Chat 服务
 
-多模态对话（含工具调用）能力，契约 ID **`robonix/sys/model/vlm/chat`**。
+多模态对话（含工具调用）能力。Pilot 通过 `VlmService.ChatStream` 驱动 ReAct 推理，支持图像输入。
 
-## 契约（与 `rust/contracts/sys/vlm_chat.v1.toml` 同步）
+## 接口
 
-| 项 | 值 |
-|----|-----|
-| **契约 ID（`contract_id`）** | `robonix/sys/model/vlm/chat` |
-| **版本** | `1` |
-| **`kind`** | `service` |
-| **`[io.srv]`** | `srv = "vlm/srv/ChatStream"`（request：`ChatStream_Request`；response 单字段 → 流元素 **`ChatStreamEvent`**） |
-| **`[mode].type`** | `rpc_server_stream` |
-| **`[semantics]`** | `multimodal = true`，`tool_use = true` |
+| 契约 ID（`contract_id`） | 模式 | 载荷（IDL） | 契约 TOML |
+|--------------------------|------|-------------|-----------|
+| `robonix/sys/model/vlm/chat` | `rpc_server_stream` | `vlm/ChatStream_Request` → stream `vlm/ChatStreamEvent` | `sys/vlm_chat.v1.toml` |
 
-TOML 注释：模型名、token 上限、区域等由部署元数据承载，**不在**本契约内。
+> 契约 TOML 路径省略 `rust/contracts/` 前缀。模型名、token 上限、区域等为部署元数据，不在契约内。同包 `VlmService` 上还保留 `Chat`（一元）、`Describe` 等 RPC，均不另立契约 ID。
 
-## 具体 gRPC（robonix-codegen / `lib/vlm`）
+## 实现
 
-- 契约门面：`robonix_contracts.proto` 中由 **`vlm_chat.v1.toml`** 的 **`[mode].type = "rpc_server_stream"`** 与 **`lib/vlm/srv/ChatStream.srv`**（**response** 段单一字段 **`vlm/ChatStreamEvent`**）定义 **`Stream(…Request) returns (stream ChatStreamEvent)`**。
-- 同包 **`VlmService`** 上还可保留 **`ChatStream`**、**`Chat`**、**`Describe`** 等由 IDL 生成的 RPC；与 **`robonix/sys/model/vlm/chat`** 契约 id 对齐的是 codegen 生成的 **`VlmChat`** 服务名（见 `robonix_contracts.proto`）。
-
-参考实现：**`rust/examples/packages/vlm_service/vlm_service/service.py`**（OpenAI 兼容后端）。
-
-## 注册
-
-`DeclareInterface` 使用 **`contract_id="robonix/sys/model/vlm/chat"`**，接口叶子名常为 `chat`。
+- **参考实现**：`rust/examples/packages/vlm_service/vlm_service/service.py`（OpenAI 兼容后端）
+- **注册**：`contract_id="robonix/sys/model/vlm/chat"`，接口叶子名常为 `chat`

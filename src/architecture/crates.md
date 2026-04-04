@@ -1,14 +1,14 @@
 # Crate 索引
 
-Robonix 的 Rust workspace（`rust/`）包含 atlas、sdk、pilot、executor、liaison、cli、robonix-codegen、buffer 等 crate，各自职责清晰、边界明确。
+Robonix 的 Rust workspace（`rust/`）包含 atlas、sdk、pilot、executor、liaison、cli、robonix-codegen、buffer 等 crate，各自职责独立、边界清晰。
 
 ## robonix-atlas
 
-控制平面的核心进程。启动后在 `ROBONIX_META_GRPC_ADDR`（默认 `0.0.0.0:50051`）上提供 `RobonixRuntime` gRPC 服务。
+控制平面核心进程。启动后在 `ROBONIX_META_GRPC_ADDR`（默认 `0.0.0.0:50051`）上提供 `RobonixRuntime` gRPC 服务。
 
-内部维护一个 `MetaRuntimeRegistry`，存储所有已注册节点、接口和通道的状态。注册时服务端会校验 `node_id` 的 reverse-DNS 格式（至少三段，例如以 `com.` 、`org.` 、`cn.` 开头），对 gRPC/ROS 2 传输的接口声明还会检查 **`contract_id`**（`DeclareInterfaceRequest` 显式字段或由其推导）是否在系统接口目录（`ROBO_SYSTEM_INTERFACE_CATALOG`）中——不在目录里的路径会被拒绝。MCP 传输不受此约束，允许自由注册。
+内部维护 `MetaRuntimeRegistry`，存储所有已注册节点、接口和通道的状态。注册时服务端校验 `node_id` 的 reverse-DNS 格式（至少三段，如以 `com.`、`org.`、`cn.` 开头）；对 gRPC/ROS 2 传输的接口声明，还会检查 **`contract_id`**（`DeclareInterfaceRequest` 显式字段或由其推导）是否在系统接口目录（`ROBO_SYSTEM_INTERFACE_CATALOG`）中，不在目录中的路径会被拒绝。MCP 传输不受此约束，允许自由注册。
 
-端口分配逻辑：对 gRPC/MCP 传输，如果 provider 指定了 `listen_port` 则直接使用，否则服务端从 50100 开始递增分配。同一节点上同类传输的多个接口会复用同一端口。ROS 2 和共享内存传输则生成基于 UUID 的唯一端点名。
+端口分配逻辑：对 gRPC/MCP 传输，若 provider 指定了 `listen_port` 则直接使用，否则服务端从 50100 开始递增分配。同一节点上同类传输的多个接口复用同一端口。ROS 2 和共享内存传输生成基于 UUID 的唯一端点名。
 
 构建与启动：
 
@@ -34,13 +34,13 @@ Rust 异步 gRPC 客户端库，封装对 `RobonixRuntime` 服务的调用。核
 
 其他 Rust crate（如 `robonix-cli`、`robonix-pilot`）通过 `robonix-sdk` 与控制平面通信。Proto 类型由 `tonic-build` 在编译期从 `rust/proto/robonix_runtime.proto` 生成。
 
-这个 crate 只是 library，没有可执行文件。
+此 crate 仅为 library，不含可执行文件。
 
 ## robonix-pilot
 
 推理与会话运行时（二进制 **`robonix-pilot`**）。在 Atlas 注册 **`contract_id = robonix/sys/runtime/pilot`**，数据面为 **`PilotService.HandleIntent`**：请求侧 **`Intent`**，响应为 **`PilotEvent`** 流（契约见 **`rust/contracts/sys/pilot.v1.toml`**、`lib/pilot/`）。
 
-Pilot 内部编排 VLM、Executor 等；**`rbnx chat`** 经 Atlas 按 **`robonix/sys/runtime/pilot`** 发现端点后，用 **`PilotService`** 与用户流式对话——仓库**已移除** `rust/proto/agent_chat.proto` 与 **`AgentChat`** 控制面契约。
+Pilot 内部编排 VLM、Executor 等；**`rbnx chat`** 经 Atlas 按 **`robonix/sys/runtime/pilot`** 发现端点后，使用 **`PilotService`** 与用户流式对话——仓库**已移除** `rust/proto/agent_chat.proto` 与 **`AgentChat`** 控制面契约。
 
 主要环境变量（节选）：
 
@@ -96,7 +96,7 @@ rbnx chat --server 192.168.1.5:50051  # 指定控制平面地址
 
 ### rbnx graph
 
-`rbnx graph` 查询控制平面中所有已注册节点和已协商通道，用内置布局与 SVG 绘制拓扑，再按需输出 **PNG**（同图经 [resvg](https://github.com/linebender/resvg) 光栅化）或 **原始 SVG**。
+`rbnx graph` 查询控制平面中所有已注册节点和已协商通道，用内置布局与 SVG 绘制拓扑，按需输出 **PNG**（经 [resvg](https://github.com/linebender/resvg) 光栅化）或**原始 SVG**。
 
 ```bash
 rbnx graph -o topology.png                 # 默认 PNG
@@ -104,13 +104,13 @@ rbnx graph -o topology.svg --format svg    # SVG
 rbnx graph -o out.png --format png       # 显式 PNG
 ```
 
-图中每个节点为带接口子块的卡片（节点 ID、`kind`、namespace、各接口的 `contract_id` / 端点）。已协商的通道为贝塞尔有向边。`--test` 可不连 Atlas 生成随机示例图。
+图中每个节点为带接口子块的卡片（节点 ID、`kind`、namespace、各接口的 `contract_id` / 端点）。已协商的通道以贝塞尔有向边表示。`--test` 可在不连接 Atlas 的情况下生成随机示例图。
 
 ## robonix-buffer
 
-系统级缓冲区管理库，负责 POSIX 共享内存的分配/映射、GPU DMA 页面锁定（`cudaHostRegister`）、CUDA IPC 跨进程显存共享，以及缓冲区生命周期管理。编译为 `librobonix_buffer.so`，通过 C FFI 供 Python（ctypes）和 C/C++ 使用。
+系统级缓冲区管理库，负责 POSIX 共享内存的分配/映射、GPU DMA 页面锁定（`cudaHostRegister`）、CUDA IPC 跨进程显存共享及缓冲区生命周期管理。编译为 `librobonix_buffer.so`，通过 C FFI 供 Python（ctypes）和 C/C++ 使用。
 
-缓冲区系统不限于图像——支持任何高带宽连续数据（点云、张量、大模型 embedding、体素网格等）。
+缓冲区系统不限于图像，支持任何高带宽连续数据（点云、张量、大模型 embedding、体素网格等）。
 
 核心类型是 `RobonixBufferManager`，提供：
 
@@ -125,7 +125,7 @@ rbnx graph -o out.png --format png       # 显式 PNG
 
 `BufferFormat` 枚举覆盖图像格式（RGB8、BGR8、DEPTH_F32 等）和通用数据格式（FLOAT32、BF16、INT8、INT64、RAW_BYTES 等）。Shape 和 stride 等 N-D 元信息通过控制平面的 `metadata_json` 传递。
 
-CUDA 功能通过动态加载 `libcudart.so` 实现，无 CUDA 环境时退化为纯 CPU 模式。CUDA IPC 相关函数（`ipc_get_mem_handle`、`ipc_open_mem_handle`、`ipc_close_mem_handle`）允许在不同进程间共享 GPU 显存。
+CUDA 功能通过动态加载 `libcudart.so` 实现，无 CUDA 环境时退化为纯 CPU 模式。CUDA IPC 相关函数（`ipc_get_mem_handle`、`ipc_open_mem_handle`、`ipc_close_mem_handle`）用于跨进程共享 GPU 显存。
 
 详细设计和数据流见[零拷贝缓冲区系统](buffer-system.md)。
 

@@ -1,6 +1,6 @@
 # 端到端验收
 
-写完代码和 manifest 之后，按以下步骤从零走到"Agent 能调用你的接口"。每一步给出具体命令和预期输出。
+完成代码和 manifest 编写后，按以下步骤验证"Agent 能调用你的接口"。每步给出具体命令和预期输出。
 
 ## 1. 校验 Manifest
 
@@ -9,7 +9,7 @@ cd rust && make install
 rbnx validate path/to/your_package
 ```
 
-预期输出包含 `manifest OK` 或类似确认。如果 `manifestVersion`、`package.id`、`nodes` 结构有问题会报具体错误。
+预期输出包含 `manifest OK` 或类似确认。若 `manifestVersion`、`package.id`、`nodes` 结构有问题，会输出具体错误信息。
 
 ## 2. 构建
 
@@ -17,17 +17,17 @@ rbnx validate path/to/your_package
 rbnx build -p path/to/your_package
 ```
 
-执行 `build.script` 中定义的脚本。对 Python 包通常是设置 PYTHONPATH，对 Docker compose 包则是构建镜像。检查退出码为 0。
+执行 `build.script` 中定义的脚本。Python 包通常设置 PYTHONPATH，Docker compose 包则构建镜像。确认退出码为 0。
 
 ## 3. 启动控制平面
 
 ```bash
-rbnx server
+robonix-atlas
 ```
 
-日志中出现 `starting robonix runtime meta API (gRPC)` 表示就绪。
+日志中出现 `starting robonix runtime meta API (gRPC)` 表示服务就绪。
 
-## 4. 启动你的节点
+## 4. 启动节点
 
 ```bash
 rbnx start \
@@ -50,7 +50,7 @@ rbnx start \
 rbnx nodes
 ```
 
-应看到你的 node_id、namespace 和接口列表。如果提供了 MCP 工具：
+应看到你的 node_id、namespace 和接口列表。若提供了 MCP 工具：
 
 ```bash
 rbnx tools
@@ -66,7 +66,7 @@ robonix-pilot
 
 Agent 启动时会打印它发现的 VLM 和 MCP 工具。在终端输入一条会触发你的工具的指令，观察 Agent 是否成功调用。
 
-对 gRPC 接口（非 MCP 工具），可以用 `grpcurl` 或写一个小脚本通过 `NegotiateChannel` 获取端点后直接调用：
+对 gRPC 接口（非 MCP 工具），可用 `grpcurl` 或编写小脚本，通过 `NegotiateChannel` 获取端点后直接调用：
 
 ```bash
 # 查看运行时快照，确认接口和通道
@@ -77,27 +77,27 @@ rbnx inspect
 
 ### DeclareInterface 返回 INVALID_ARGUMENT
 
-对 gRPC/ROS 2 传输，**`contract_id`**（建议在 `DeclareInterface` 中显式填写，与 `rust/contracts` 中 `[contract] id` 一致）必须在系统接口目录中。若定义新能力：先在 `rust/crates/robonix-interfaces/lib/` 增加 IDL，在 **`rust/contracts/`** 增加契约 TOML，运行带 **`--contracts`** 的 `robonix-codegen`，并将该契约 ID 加入 `robonix-atlas` 的 **`ROBO_SYSTEM_INTERFACE_CATALOG`**。
+对 gRPC/ROS 2 传输，**`contract_id`**（建议在 `DeclareInterface` 中显式填写，与 `rust/contracts` 中 `[contract] id` 一致）必须在系统接口目录中。若需定义新能力：先在 `rust/crates/robonix-interfaces/lib/` 添加 IDL，在 **`rust/contracts/`** 添加契约 TOML，运行带 **`--contracts`** 的 `robonix-codegen`，并将该契约 ID 加入 `robonix-atlas` 的 **`ROBO_SYSTEM_INTERFACE_CATALOG`**。
 
 MCP 传输不受此限制。
 
 ### Agent 发现不到 MCP 工具
 
-Agent 通过 `QueryNodes(transport="mcp")` 发现 MCP provider，然后从 `metadata_json.endpoint` 连接 MCP server。确认：
+Agent 通过 `QueryNodes(transport="mcp")` 发现 MCP provider，再从 `metadata_json.endpoint` 连接 MCP server。确认以下各项：
 
-- DeclareInterface 的 `supported_transports` 包含 `"mcp"`
+- `DeclareInterface` 的 `supported_transports` 包含 `"mcp"`
 - `metadata_json` 是合法 JSON 且包含工具定义
 - MCP HTTP server 确实在 `listen_port` 上监听
-- 网络可达（如果 provider 在 Docker 中，endpoint 的 host 部分需要是宿主机可访问的地址）
+- 网络可达（若 provider 在 Docker 中，endpoint 的 host 部分须为宿主机可访问的地址）
 
 ### gRPC 端口冲突
 
-如果多个节点都让控制平面自动分配端口（`listen_port=0`），分配从 50100 开始递增，一般不会冲突。但如果你指定了固定端口且与其他服务重叠，会导致绑定失败。建议 provider 自行绑定到一个空闲端口，再通过 `listen_port` 告诉控制平面。
+若多个节点均由控制平面自动分配端口（`listen_port=0`），端口从 50100 开始递增，通常不会冲突。若指定了固定端口且与其他服务重叠，会导致绑定失败。建议 provider 自行绑定到空闲端口，再通过 `listen_port` 告知控制平面。
 
 ### 容器内 provider 的 endpoint 不可达
 
-Docker 容器内 provider 注册时，`ROBONIX_DATA_PLANE_HOST` 默认是 `localhost`，但容器的 localhost 与宿主机不同。设置 `ROBONIX_DATA_PLANE_HOST` 为容器对外暴露的地址（如 Docker 网络的网关 IP 或 `host.docker.internal`）。
+Docker 容器内的 provider 注册时，`ROBONIX_DATA_PLANE_HOST` 默认为 `localhost`，但容器的 localhost 与宿主机隔离。需将 `ROBONIX_DATA_PLANE_HOST` 设置为容器对外暴露的地址（如 Docker 网络的网关 IP 或 `host.docker.internal`）。
 
 ### 节点注册后消失
 
-如果 provider 进程崩溃或被 kill，节点会留在控制平面的注册表中但心跳停止。当前实现不会自动清理过期节点。重启 provider 时会通过 `RegisterNode` 更新已有记录（upsert 语义）。
+若 provider 进程崩溃或被终止，节点会保留在控制平面注册表中，但心跳停止。当前实现不会自动清理过期节点。重启 provider 时，`RegisterNode` 会以 upsert 语义更新已有记录。

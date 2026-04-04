@@ -1,28 +1,84 @@
 # 系统全景
 
+## 系统架构
+
 ```mermaid
-%%{init: {'theme': 'base', 'config': {'securityLevel': 'loose'}}}%%
-graph TB
-    User["用户 / 外部触发"]
-    Liaison["robonix-liaison<br>(Liaison 层)"]
-    Pilot["robonix-pilot<br>(Pilot 层 · VLM ReAct)"]
-    Executor["robonix-executor<br>(Executor 层 · 工具分发)"]
-    Atlas["robonix-atlas<br>(Atlas 控制平面)"]
-    Capability["Capability 层<br>(VLM Service / Tiago Bridge / PRM 节点…)"]
-    SystemServices["系统服务<br>(ASR / TTS / MemSearch…)"]
+%%{init: {'theme': 'base', 'themeVariables': {'fontSize': '14px'}}}%%
+flowchart TB
+    User(["用户"])
+
+    subgraph clients ["客户端工具"]
+        direction LR
+        TUI["rbnx chat<br>(TUI)"]
+        CLI["rbnx CLI"]
+    end
+
+    subgraph runtime ["运行时"]
+        direction LR
+        Liaison["Liaison<br>robonix-liaison"]
+        Pilot["Pilot<br>robonix-pilot<br>VLM ReAct"]
+        Executor["Executor<br>robonix-executor<br>工具分发"]
+    end
+
+    subgraph ctrl ["控制平面"]
+        Atlas[("Atlas<br>robonix-atlas<br>注册 · 发现 · 协商")]
+    end
+
+    subgraph caps ["能力层（向 Atlas 注册）"]
+        direction LR
+        VLM["vlm_service<br>gRPC ChatStream"]
+        PRM["PRM Provider<br>tiago_bridge 等<br>MCP / gRPC / ROS 2"]
+        SysSvc["系统服务<br>MemSearch / ASR…<br>MCP / gRPC"]
+    end
 
     User -->|"文本 / 语音"| Liaison
-    Liaison -->|"Intent (gRPC)"| Pilot
-    Pilot -->|"PilotEvent stream"| Liaison
-    Pilot -->|"TaskGraph (gRPC)"| Executor
-    Executor -->|"BatchResult stream"| Pilot
+    TUI -->|"PilotService.HandleIntent"| Pilot
+    CLI -->|"gRPC"| Atlas
+
+    Liaison -->|"Intent"| Pilot
+    Pilot -.->|"PilotEvent stream"| Liaison
+    Pilot -->|"TaskGraph"| Executor
+    Executor -.->|"TaskCallEvent stream"| Pilot
+    Pilot -->|"VlmService.ChatStream"| VLM
+
     Pilot -->|"QueryAllSkills / QueryNodes"| Atlas
-    Executor -->|"RegisterNode / QueryNodes"| Atlas
-    Capability -->|"RegisterNode + DeclareInterface"| Atlas
-    Executor -->|"MCP / gRPC 数据面"| Capability
-    Executor -->|"MCP / gRPC 数据面"| SystemServices
-    CLI["rbnx CLI"] -->|"validate / build / start / nodes / inspect"| Atlas
-    TUI["rbnx chat<br>(TUI 客户端)"] -->|"gRPC PilotService<br>(通过 Atlas 发现)"| Pilot
+    Executor -->|"QueryNodes / NegotiateChannel"| Atlas
+    VLM -->|"RegisterNode + DeclareInterface"| Atlas
+    PRM -->|"RegisterNode + DeclareInterface"| Atlas
+    SysSvc -->|"RegisterNode + DeclareInterface"| Atlas
+
+    Executor -->|"MCP / gRPC 数据面"| PRM
+    Executor -->|"MCP / gRPC 数据面"| SysSvc
+```
+
+## ReAct 推理循环
+
+```mermaid
+%%{init: {'theme': 'base'}}%%
+sequenceDiagram
+    actor U as 用户
+    participant L as Liaison
+    participant P as Pilot
+    participant V as VLM
+    participant E as Executor
+    participant T as 工具 (MCP/gRPC)
+
+    U->>L: 自然语言指令
+    L->>P: Intent
+    P->>V: 消息历史 + 工具列表 (ChatStream)
+
+    loop VLM ReAct 循环
+        V-->>P: tool_calls
+        P->>E: TaskGraph
+        E->>T: 工具调用（按路由分发）
+        T-->>E: 结果
+        E-->>P: TaskCallEvent stream
+        P->>V: 追加结果，继续推理
+    end
+
+    V-->>P: FinalText（无 tool_calls，循环终止）
+    P-->>L: FinalText event
+    L-->>U: 结果
 ```
 
 ## 架构
@@ -42,26 +98,26 @@ graph TB
 
 1. 用户在 `robonix-liaison`（或 `rbnx chat`）中输入指令
 2. Liaison 构造 `Intent` 消息，通过 gRPC 发送给 Pilot 的 `PilotService.HandleIntent`
-3. Pilot 调用 `executor.ListTools` 获取所有可用工具；从 Atlas 拉取 `SKILL.md` 注入系统 prompt
-4. Pilot 将用户消息 + 历史 + 工具列表发送给 VLM（`VlmService.ChatStream`）
+3. Pilot 调用 `executor.ListTools` 获取所有可用工具，并从 Atlas 拉取 `SKILL.md` 注入系统 prompt
+4. Pilot 将用户消息、历史记录和工具列表发送给 VLM（`VlmService.ChatStream`）
 5. VLM 返回 `tool_calls`（例如 `get_camera_image`）
 6. Pilot 将 tool_calls 打包为 **`TaskGraph`**（v1 等同有序调用列表），通过 gRPC 发送给 Executor
 7. Executor 按工具路由（BUILTIN / MCP / gRPC）分发调用，流式返回 `TaskCallEvent`
 8. Pilot 收到所有结果后将其追加到对话历史，再次调用 VLM 分析
-9. VLM 决定下一步行动，**循环**直到任务完成（无 tool_calls = 终止）
-10. Pilot 向 Liaison 推送最终 `FinalText` 事件，Liaison 显示给用户
+9. VLM 决定下一步行动，**循环**直到任务完成（无 tool_calls 时终止）
+10. Pilot 向 Liaison 推送最终 `FinalText` 事件，Liaison 将结果展示给用户
 
 每个 VLM 推理轮次生成一个 **`TaskGraph`** 片段，构成**增量任务图**：不预先规划完整行为树，而是逐轮生成、执行、反馈（全量 BT/RTDL 为后续工作）。
 
 ## 控制平面（Atlas）
 
-`robonix-atlas` 是控制平面的唯一入口，提供 `RobonixRuntime` gRPC 服务（定义在 `rust/proto/robonix_runtime.proto`）。Provider 进程启动后通过 `RegisterNode` 注册自身，再通过 `DeclareInterface` 声明它能提供哪些接口、支持哪些传输方式。控制平面为每个接口分配数据面端点（端口、topic 名等）。
+`robonix-atlas` 是控制平面的唯一入口，提供 `RobonixRuntime` gRPC 服务（定义在 `rust/proto/robonix_runtime.proto`）。Provider 进程启动后通过 `RegisterNode` 注册自身，再通过 `DeclareInterface` 声明所提供的接口及支持的传输方式。控制平面为每个接口分配数据面端点（端口、topic 名等）。
 
 消费者（通常是 `robonix-executor`）通过 `QueryNodes` 发现符合条件的 provider，再通过 `NegotiateChannel` 获取数据面端点，随后直接与 provider 通信——控制平面不转发数据。
 
 ## 数据面
 
-数据面的传输方式是可插拔的。同一个逻辑接口（如 `robonix/prm/camera/rgb`）可以同时在 gRPC 和 ROS 2 两种传输上声明，消费者在 `NegotiateChannel` 时指定自己想用哪种传输。目前支持的传输方式：
+数据面的传输方式是可插拔的。同一个逻辑接口（如 `robonix/prm/camera/rgb`）可以同时在 gRPC 和 ROS 2 两种传输上声明，消费者在 `NegotiateChannel` 时通过 `transport` 字段指定所需传输。目前支持的传输方式：
 
 | 传输 | 端点格式 | 典型场景 |
 |------|---------|---------|
@@ -72,16 +128,16 @@ graph TB
 
 ### 零拷贝缓冲区
 
-对于 `shared_memory` 传输，Robonix 通过 `robonix-buffer` crate 提供系统级缓冲区管理。核心思路是**操作系统层统一拥有所有缓冲区**——CPU 共享内存和 GPU 显存。节点不直接管理共享内存或 CUDA pinning，而是向 `RobonixBufferManager` 申请。
+对于 `shared_memory` 传输，Robonix 通过 `robonix-buffer` crate 提供系统级缓冲区管理。核心设计是**由操作系统层统一管理所有缓冲区**——包括 CPU 共享内存和 GPU 显存。节点不直接管理共享内存或 CUDA pinning，而是向 `RobonixBufferManager` 申请。
 
-缓冲区系统**不限于图像**——支持任何需要在进程间高带宽传输的连续数据：图像帧、LiDAR 点云、大模型 embedding 张量、体素网格、音频流、关节状态等。
+缓冲区系统**不限于图像**，支持任何需要在进程间高带宽传输的连续数据：图像帧、LiDAR 点云、大模型 embedding 张量、体素网格、音频流、关节状态等。
 
 - 生产者通过 `allocate()` 或 `allocate_raw()` 创建 POSIX SHM 段
 - 消费者通过 `open()` 映射同一段物理内存，零拷贝读取
 - 消费者可选择 GPU pin（`cudaHostRegister`），使 H2D 传输获得 PCIe 满带宽
 - 跨进程 GPU 显存共享通过 CUDA IPC（`cudaIpcGetMemHandle` / `cudaIpcOpenMemHandle`）实现
 
-控制平面通过 `NegotiateChannel` 返回的 `metadata_json` 传递缓冲区元数据（shape、format、CUDA IPC handle 等），消费者据此自动发现和连接数据源。
+控制平面通过 `NegotiateChannel` 返回的 `metadata_json` 传递缓冲区元数据（shape、format、CUDA IPC handle 等），消费者据此自动发现并连接数据源。
 
 ## 包管理
 
@@ -89,6 +145,6 @@ graph TB
 
 ## SKILL.md 与技能库
 
-SKILL.md 是面向 LLM 的行为描述文件。每个技能（如 `object_search_wander`）用 Markdown 编写，包含技能名称、适用场景、可用工具和行为规范。Pilot 启动时通过 `QueryAllSkills` RPC 获取所有已注册的技能描述，将其注入系统 prompt，VLM 据此决定在什么情况下使用哪些工具、以什么节奏交替感知和行动。
+SKILL.md 是面向 LLM 的行为描述文件。每个技能（如 `object_search_wander`）用 Markdown 编写，包含技能名称、适用场景、可用工具和行为规范。Pilot 启动时通过 `QueryAllSkills` RPC 获取所有已注册的技能描述，将其注入系统 prompt，VLM 据此决定在何种场景下使用哪些工具、以何种节奏交替进行感知和行动。
 
-除了自然语言的 SKILL.md，Atlas 还预留了**结构化技能图（Skill Graph）**的扩展点——将 **`TaskGraph` / BT** 持久化为具名、机器可执行的技能，供 Pilot 直接下发而无需额外 VLM 推理（设计 TODO，待技能库团队实现）。
+除自然语言的 SKILL.md 外，Atlas 还预留了**结构化技能图（Skill Graph）**的扩展点——将 **`TaskGraph` / BT** 持久化为具名、机器可执行的技能，供 Pilot 直接下发而无需额外 VLM 推理（设计 TODO，待技能库团队实现）。
