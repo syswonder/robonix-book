@@ -223,15 +223,17 @@ VLM 通过 `path` 字段按需调用内置工具 `read_file` 读取完整的 pla
 
 Skill Node 是以**运行进程**形式存在的 skill——它向 Atlas 注册为节点，并通过 MCP 暴露工具供 Executor 发现和调用。与 primitive/service 不同，Skill Node 暴露的接口**不受 contract 约束**：由于不同场景和语义的复杂性，我们无法也不应该强制要求 skill 工具符合统一的接口规范，工具的签名和语义完全由 skill 自身决定。
 
+换句话说，**自然语言驱动的操作接口、任务级执行入口、策略封装工具，不应伪装成 `robonix/prm/...` primitive contract。** 这类能力正是 Skill Node 最适合承载的内容。
+
 ### 注册模式
 
-Skill Node 的注册流程与 primitive 节点相同，但 `namespace` 和 `kind` 通常反映其所属的能力域：
+Skill Node 的注册流程与其他节点相同，但 `namespace` 和 `kind` 应反映其“技能 / 应用层”属性，而不是冒充基础原语：
 
 ```python
 stub.RegisterNode(pb.RegisterNodeRequest(
     node_id="com.robonix.demo.vla",
-    namespace="robonix/prm/manipulation",
-    kind="primitive",
+    namespace="robonix/skill/manipulation",
+    kind="skill",
 ))
 
 stub.DeclareInterface(pb.DeclareInterfaceRequest(
@@ -240,7 +242,7 @@ stub.DeclareInterface(pb.DeclareInterfaceRequest(
     supported_transports=["mcp"],
     metadata_json=json.dumps({"tools": [...]}),  # MCP 工具列表
     listen_port=mcp_port,
-    contract_id="robonix/prm/manipulation/tools",  # 可选；不做 schema 校验
+    contract_id="robonix/skill/manipulation/tools",  # 可选；仅用于发现，不属于 prm 标准面
 ))
 ```
 

@@ -4,6 +4,11 @@
 
 **契约**（稳定 ID + 通信模型摘要）在 **`rust/contracts/**/*.toml`**：`[contract] id` 即控制平面上的 **`contract_id`**，与 `DeclareInterface` / `QueryNodes` 使用同一字符串。
 
+接口边界约定：
+
+- **`robonix/prm/...`** 只用于可标准化、可替换的基础能力，如底盘、相机、传感器、机械臂、夹爪、力/力矩等设备或仿真邻近能力。
+- **任务级、策略级、自然语言驱动的执行接口不属于 `prm`。** 这类开放语义应放在 [技能库（Skill Library）](../skill-library.md) 中的 Skill Node / SKILL.md，或在确属平台运行时的一部分时放入 `robonix/sys/...`。
+
 ### 契约源码路径（仓库内） {#contract-toml-sources}
 
 相对仓库根目录，**已提交的契约 TOML** 以仓库内实际文件为准（与 `[contract] id` 一一对应；完整说明见 **`rust/contracts/README.md`**）。当前 `rust/contracts/` 大致包含：
@@ -23,7 +28,6 @@ rust/contracts/
 │   ├── camera_depth.v1.toml          # robonix/prm/camera/depth
 │   ├── camera_snapshot.v1.toml       # robonix/prm/camera/snapshot
 │   ├── camera_depth_snapshot.v1.toml # robonix/prm/camera/depth_snapshot
-│   ├── manipulation_exec.v1.toml     # robonix/prm/manipulation/exec
 │   ├── perception_detect.v1.toml    # robonix/prm/perception/detect
 │   ├── robot_state.v1.toml           # robonix/prm/robot/state
 │   ├── sensor_imu.v1.toml            # robonix/prm/sensor/imu
@@ -113,7 +117,7 @@ cd rust && ./examples/scripts/gen_proto_python.sh
 | `robonix/prm/base` | [底盘](primitive/base.md) |
 | `robonix/prm/camera` | [相机](primitive/camera.md) |
 | `robonix/prm/sensor` | [传感器](primitive/sensor.md) |
-| `robonix/prm/arm` | [机械臂](primitive/arm.md)（含 **`manipulation/exec`** 契约说明） |
+| `robonix/prm/arm` | [机械臂](primitive/arm.md) |
 | `robonix/prm/gripper` | [夹爪](primitive/gripper.md) |
 | `robonix/prm/force_torque` | [力/力矩](primitive/force-torque.md) |
 | `robonix/prm/perception` | [相机](primitive/camera.md)（**`perception/detect`**） |
