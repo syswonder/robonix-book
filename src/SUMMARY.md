@@ -16,6 +16,7 @@
 - [系统全景](architecture/overview.md)
 - [Crate 索引](architecture/crates.md)
 - [命名空间与接口模型](architecture/namespace-and-interfaces.md)
+- [多 Transport 并发模型](architecture/multi-transport.md)
 
 ---
 
