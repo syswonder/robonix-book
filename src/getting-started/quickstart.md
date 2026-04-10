@@ -142,9 +142,9 @@ Agent 在运行中持续交替调用感知工具（如 `camera_snapshot`、`robo
 
 | 节点 | node_id | namespace | 接口 | 传输 |
 |------|---------|-----------|------|------|
-| VLM 服务 | `com.robonix.services.vlm` | `robonix/sys/model/vlm` | `chat` | gRPC |
+| VLM 服务 | `com.robonix.services.vlm` | `robonix/srv/model/vlm` | `chat` | gRPC |
 | Tiago 桥接 | `com.robonix.prm.tiago` | `robonix/prm` | 每契约一个 MCP 接口名（如 `camera_snapshot`、`base_navigate`…）+ `rgb` | MCP, gRPC, ROS 2 |
-| Pilot（对话入口） | `com.robonix.runtime.pilot` | `robonix/sys/runtime/pilot` | `pilot` | gRPC |
+| Pilot（对话入口） | `com.robonix.runtime.pilot` | `robonix/srv/runtime/pilot` | `pilot` | gRPC |
 
 其中 VLM 在控制平面上只声明 `chat` 接口，数据面 gRPC 在同一监听端口上同时实现一元 `Chat` 与 server-streaming `ChatStream`（见 `rust/crates/robonix-interfaces/lib/vlm/srv/`）。
 

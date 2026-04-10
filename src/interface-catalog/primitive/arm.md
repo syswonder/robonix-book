@@ -10,7 +10,7 @@
 - 任务级 pick / place / handover 等策略语义
 - 带显式 planning / policy / workflow 含义的开放接口
 
-上述能力应放在 Skill Node / SKILL.md 中，或在确属平台运行时的一部分时放到 `robonix/sys/...` 服务层。
+上述能力应放在 Skill Node / SKILL.md 中，或在确属平台运行时的一部分时放到 `robonix/srv/...` 服务层。
 
 ## 规划中的接口（尚无 TOML）
 

@@ -31,7 +31,7 @@ stub.RegisterNode(pb.RegisterNodeRequest(
 # System service（摘自 vlm_service/service.py）
 stub.RegisterNode(pb.RegisterNodeRequest(
     node_id="com.robonix.services.vlm",
-    namespace="robonix/sys/model/vlm",
+    namespace="robonix/srv/model/vlm",
     kind="service",
     skill_md=_load_skill_md(),
 ))
@@ -151,7 +151,7 @@ stub.DeclareInterface(pb.DeclareInterfaceRequest(
     node_id="com.robonix.services.vlm",
     name="chat",
     supported_transports=["grpc"],
-    contract_id="robonix/sys/model/vlm/chat",
+    contract_id="robonix/srv/cognition/reason",
     metadata_json=json.dumps({
         "transport": "grpc",
         "contract": {

@@ -15,7 +15,7 @@ package:
   name: vlm_service
   version: 0.1.0
   vendor: robonix
-  description: VLM service registered under robonix/sys/model/vlm
+  description: VLM service registered under robonix/srv/model/vlm
   license: MulanPSL-2.0
 
 nodes:

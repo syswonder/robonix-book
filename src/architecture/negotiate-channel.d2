@@ -1,0 +1,22 @@
+shape: sequence_diagram
+
+Provider
+Atlas
+Consumer
+
+Provider."启动时注册"
+
+Provider -> Atlas: "RegisterNode(node_id, contract_id)"
+Provider -> Atlas: "DeclareInterface(name, transport, port, contract_id)"
+Atlas -> Provider: allocated_endpoint
+
+Consumer."运行时发现与协商"
+
+Consumer -> Atlas: "QueryNodes(contract_id)"
+Atlas -> Consumer: "NodeInfo[] (含 InterfaceInfo)"
+Consumer -> Atlas: "NegotiateChannel(provider_node_id, interface, transport)"
+Atlas -> Consumer: "Channel { endpoint }"
+
+Consumer."直连数据面 (Atlas 不转发)"
+
+Consumer -> Provider: "数据面连接 (MCP / gRPC / ROS 2)"

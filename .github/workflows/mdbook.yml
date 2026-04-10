@@ -40,7 +40,7 @@ jobs:
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v5
-      - name: Build with mdBook (RIDL highlight + mermaid)
+      - name: Build with mdBook
         run: |
           ./scripts/build-highlight.sh
       - name: Upload artifact

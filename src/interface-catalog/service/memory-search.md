@@ -9,9 +9,9 @@
 
 | 契约 ID（`contract_id`） | 模式 | 载荷（IDL） | 契约 TOML |
 |--------------------------|------|-------------|-----------|
-| `robonix/sys/memory/search` | `rpc` | `std_msgs/String` → `std_msgs/String` | `sys/memory_search.v1.toml` |
-| `robonix/sys/memory/save` | `rpc` | `std_msgs/String` → `std_msgs/String` | `sys/memory_save.v1.toml` |
-| `robonix/sys/memory/compact` | `rpc` | `std_msgs/String` → `std_msgs/String` | `sys/memory_compact.v1.toml` |
+| `robonix/srv/memory/search` | `rpc` | `std_msgs/String` → `std_msgs/String` | `sys/memory_search.v1.toml` |
+| `robonix/srv/memory/save` | `rpc` | `std_msgs/String` → `std_msgs/String` | `sys/memory_save.v1.toml` |
+| `robonix/srv/memory/compact` | `rpc` | `std_msgs/String` → `std_msgs/String` | `sys/memory_compact.v1.toml` |
 
 > 契约 TOML 路径省略 `rust/contracts/` 前缀。索引参数、embedding 模型、`top_k` 等为部署侧元数据，不在契约内。
 
@@ -21,9 +21,9 @@
 
 | MCP 工具名 | 契约 ID |
 |------------|---------|
-| `search_memory` | `robonix/sys/memory/search` |
-| `save_memory` | `robonix/sys/memory/save` |
-| `compact_memory` | `robonix/sys/memory/compact` |
+| `search_memory` | `robonix/srv/memory/search` |
+| `save_memory` | `robonix/srv/memory/save` |
+| `compact_memory` | `robonix/srv/memory/compact` |
 
 载荷用 `robonix-codegen --lang mcp` 生成的 `std_msgs_mcp.String`（线格式 `{"data": "<UTF-8 文本>"}`），通过 `@mcp_contract(mcp, contract_id=...)` 注册，与 `to_dict()` 一致。
 

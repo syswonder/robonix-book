@@ -2,54 +2,14 @@
 
 ## 系统架构
 
-```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'fontSize': '14px'}}}%%
-flowchart TB
-    User(["用户"])
+![系统架构](overview-arch.svg)
 
-    subgraph clients ["客户端工具"]
-        direction LR
-        TUI["rbnx chat<br>(TUI)"]
-        CLI["rbnx CLI"]
-    end
+## 客户端与连接说明
 
-    subgraph runtime ["运行时"]
-        direction LR
-        Liaison["Liaison<br>robonix-liaison"]
-        Pilot["Pilot<br>robonix-pilot<br>VLM ReAct"]
-        Executor["Executor<br>robonix-executor<br>工具分发"]
-    end
+四类客户端（CLI / GUI / 语音 / 机器人）均经由 Liaison 进入系统，Liaison 负责会话管理与界面适配。
 
-    subgraph ctrl ["控制平面"]
-        Atlas[("Atlas<br>robonix-atlas<br>注册 · 发现 · 协商")]
-    end
-
-    subgraph caps ["能力层（向 Atlas 注册）"]
-        direction LR
-        VLM["vlm_service<br>gRPC ChatStream"]
-        PRM["PRM Provider<br>tiago_bridge 等<br>MCP / gRPC / ROS 2"]
-        SysSvc["系统服务<br>MemSearch / ASR…<br>MCP / gRPC"]
-    end
-
-    User -->|"文本 / 语音"| Liaison
-    TUI -->|"PilotService.HandleIntent"| Pilot
-    CLI -->|"gRPC"| Atlas
-
-    Liaison -->|"Intent"| Pilot
-    Pilot -.->|"PilotEvent stream"| Liaison
-    Pilot -->|"TaskGraph"| Executor
-    Executor -.->|"TaskCallEvent stream"| Pilot
-    Pilot -->|"VlmService.ChatStream"| VLM
-
-    Pilot -->|"QueryAllSkills / QueryNodes"| Atlas
-    Executor -->|"QueryNodes / NegotiateChannel"| Atlas
-    VLM -->|"RegisterNode + DeclareInterface"| Atlas
-    PRM -->|"RegisterNode + DeclareInterface"| Atlas
-    SysSvc -->|"RegisterNode + DeclareInterface"| Atlas
-
-    Executor -->|"MCP / gRPC 数据面"| PRM
-    Executor -->|"MCP / gRPC 数据面"| SysSvc
-```
+- `rbnx chat` 当前直连 Pilot（`PilotService.HandleIntent`），属于调试过渡形态；长期目标是所有用户交互统一经由 Liaison。
+- `rbnx` 其余只读子命令（`nodes` / `describe` / `tools` / `inspect` 等）永久直连 Atlas。Atlas 定位为注册中心与状态目录，CLI 作为状态监控工具直接查询 Atlas 是合理的。
 
 ## ReAct 推理循环
 
@@ -59,13 +19,13 @@ sequenceDiagram
     actor U as 用户
     participant L as Liaison
     participant P as Pilot
-    participant V as VLM
+    participant V as VLM (Cognition)
     participant E as Executor
     participant T as 工具 (MCP/gRPC)
 
     U->>L: 自然语言指令
     L->>P: Intent
-    P->>V: 消息历史 + 工具列表 (ChatStream)
+    P->>V: 消息历史 + 工具列表
 
     loop VLM ReAct 循环
         V-->>P: tool_calls
@@ -81,43 +41,53 @@ sequenceDiagram
     L-->>U: 结果
 ```
 
-## 架构
+## 子系统
 
 | 子系统 | crate | 职责 |
 |---|---|---|
-| **Liaison** | `robonix-liaison` | 接收用户输入（文本/语音），构造 `Intent`，流式返回 `PilotEvent` |
-| **Pilot** | `robonix-pilot` | VLM 驱动的 ReAct 推理循环，将意图分解为 **`TaskGraph`** 片段（语义为行为树；当前为线性 `TaskCall[]`，BT/RTDL 待重构） |
-| **Executor** | `robonix-executor` | 接收 **`TaskGraph`**，按 v1 线性顺序分发到 builtin/MCP/gRPC 工具，流式返回结果 |
-| **Atlas** | `robonix-atlas` | 控制平面：节点注册、接口声明、通道协商、技能库 |
-| **Capability** | VLM Service、PRM 节点、tiago_bridge… | 具体能力提供者，向 Atlas 注册并暴露工具接口 |
-| **System Services** | ASR、TTS、MemSearch… | 跨切面服务，同样通过 Atlas 注册 |
+| Liaison | `robonix-liaison` | 接收用户输入（文本/语音），构造 `Intent`，流式返回 `PilotEvent`；内含会话管理与界面适配器（规划中） |
+| Pilot | `robonix-pilot` | VLM 驱动的 ReAct 推理循环：将意图分解为 RTDL/`TaskGraph` 片段，向认知大模型发送意图并处理规划结果 |
+| Executor | `robonix-executor` | 接收 RTDL/`TaskGraph`，按工具路由（Built-in / MCP / gRPC）分发调用，流式返回结果；包含 Skill Engine 与异常上报 |
+| Atlas | `robonix-atlas` | 控制平面：节点注册、接口声明、通道协商、技能库 |
+| 默认框架服务 | VLM Service、ASR、TTS、MemSearch 等 | 每个 Robonix 部署均应具备的基础服务（详见[框架服务](../interface-catalog/service/index.md)） |
+| 场景工具 | Skill Nodes、Service Nodes、Primitive Nodes | 面向具体部署场景的技能、服务与硬件驱动节点，向 Atlas 注册并暴露工具接口 |
 
 ## 一次任务的完整链路
 
 以用户输入 "find the door" 为例：
 
-1. 用户在 `robonix-liaison`（或 `rbnx chat`）中输入指令
-2. Liaison 构造 `Intent` 消息，通过 gRPC 发送给 Pilot 的 `PilotService.HandleIntent`
-3. Pilot 调用 `executor.ListTools` 获取所有可用工具，并从 Atlas 拉取 `SKILL.md` 注入系统 prompt
-4. Pilot 将用户消息、历史记录和工具列表发送给 VLM（`VlmService.ChatStream`）
-5. VLM 返回 `tool_calls`（例如 `get_camera_image`）
-6. Pilot 将 tool_calls 打包为 **`TaskGraph`**（v1 等同有序调用列表），通过 gRPC 发送给 Executor
-7. Executor 按工具路由（BUILTIN / MCP / gRPC）分发调用，流式返回 `TaskCallEvent`
-8. Pilot 收到所有结果后将其追加到对话历史，再次调用 VLM 分析
-9. VLM 决定下一步行动，**循环**直到任务完成（无 tool_calls 时终止）
-10. Pilot 向 Liaison 推送最终 `FinalText` 事件，Liaison 将结果展示给用户
+1. 用户在 `robonix-liaison`（或 `rbnx chat`）中输入指令。
+2. Liaison 构造 `Intent` 消息，经 gRPC 发送至 Pilot 的 `PilotService.HandleIntent`。
+3. Pilot 调用 `executor.ListTools` 获取所有可用工具，并从 Atlas 拉取 `SKILL.md` 注入系统 prompt。
+4. Pilot 将用户消息、历史记录与工具列表发送至认知大模型（`CognitionService.Reason`，即 VLM）。
+5. VLM 返回 `tool_calls`（例如 `get_camera_image`）。
+6. Pilot 将 tool_calls 打包为 RTDL/`TaskGraph`——确定性结构，不含自然语言——经 gRPC 发送至 Executor。
+7. Executor 按工具路由（Built-in / MCP / gRPC）分发调用，流式返回 `TaskCallEvent`。
+8. Pilot 收到全部结果后将其追加至对话历史，再次调用 VLM 进行分析。
+9. VLM 决定下一步行动；循环持续至任务完成（无 tool_calls 时终止）。
+10. Pilot 向 Liaison 推送 `FinalText` 事件，Liaison 将结果展示给用户。
 
-每个 VLM 推理轮次生成一个 **`TaskGraph`** 片段，构成**增量任务图**：不预先规划完整行为树，而是逐轮生成、执行、反馈（全量 BT/RTDL 为后续工作）。
+每个 VLM 推理轮次生成一个 `TaskGraph` 片段，构成增量任务图——逐轮生成、执行、反馈，而非预先规划完整行为树（全量 BT/RTDL 为后续工作）。
+
+### 认知层多角色展望
+
+当前 Pilot 调用单一 VLM 服务（`robonix/srv/cognition/reason`）承担全部推理工作。长期设计目标是多模型分工的认知层：
+
+- 推理模型（reason）：接收感知数据与用户意图，执行 CoT 推理与逻辑分析
+- 世界模型（world，规划中）：预测环境状态变化，辅助规划决策
+- 代码模型（code，规划中）：生成结构化 RTDL/TaskGraph 执行计划
+
+各角色对应独立的 `robonix/srv/cognition/*` 契约，Pilot 依据场景调用不同后端。
 
 ## 控制平面（Atlas）
 
-`robonix-atlas` 是控制平面的唯一入口，提供 `RobonixRuntime` gRPC 服务（定义在 `rust/proto/robonix_runtime.proto`）。Provider 进程启动后通过 `RegisterNode` 注册自身，再通过 `DeclareInterface` 声明所提供的接口及支持的传输方式。控制平面为每个接口分配数据面端点（端口、topic 名等）。
+`robonix-atlas` 是控制平面的唯一入口，提供 `RobonixRuntime` gRPC 服务（定义于 `rust/proto/robonix_runtime.proto`）。Provider 进程启动后通过 `RegisterNode` 注册自身，再通过 `DeclareInterface` 声明所提供的接口及支持的传输方式；控制平面为每个接口分配数据面端点（端口、topic 名等）。
 
-消费者（通常是 `robonix-executor`）通过 `QueryNodes` 发现符合条件的 provider，再通过 `NegotiateChannel` 获取数据面端点，随后直接与 provider 通信——控制平面不转发数据。
+消费者（通常为 `robonix-executor`）通过 `QueryNodes` 发现符合条件的 Provider，再通过 `NegotiateChannel` 获取数据面端点，随后直接与 Provider 通信。控制平面不转发数据。
 
 ## 数据面
 
-数据面的传输方式是可插拔的。同一个逻辑接口（如 `robonix/prm/camera/rgb`）可以同时在 gRPC 和 ROS 2 两种传输上声明，消费者在 `NegotiateChannel` 时通过 `transport` 字段指定所需传输。目前支持的传输方式：
+数据面传输方式可插拔。同一逻辑接口（如 `robonix/prm/camera/rgb`）可同时在 gRPC 与 ROS 2 两种传输上声明，消费者在 `NegotiateChannel` 时通过 `transport` 字段指定所需传输。当前支持的传输方式：
 
 | 传输 | 端点格式 | 典型场景 |
 |------|---------|---------|
@@ -128,9 +98,9 @@ sequenceDiagram
 
 ### 零拷贝缓冲区
 
-对于 `shared_memory` 传输，Robonix 通过 `robonix-buffer` crate 提供系统级缓冲区管理。核心设计是**由操作系统层统一管理所有缓冲区**——包括 CPU 共享内存和 GPU 显存。节点不直接管理共享内存或 CUDA pinning，而是向 `RobonixBufferManager` 申请。
+对于 `shared_memory` 传输，Robonix 通过 `robonix-buffer` crate 提供系统级缓冲区管理。核心设计为由操作系统层统一管理所有缓冲区（包括 CPU 共享内存与 GPU 显存），节点不直接管理共享内存或 CUDA pinning，而是向 `RobonixBufferManager` 申请。
 
-缓冲区系统**不限于图像**，支持任何需要在进程间高带宽传输的连续数据：图像帧、LiDAR 点云、大模型 embedding 张量、体素网格、音频流、关节状态等。
+缓冲区系统不限于图像，支持任何需要在进程间高带宽传输的连续数据，包括图像帧、LiDAR 点云、大模型 embedding 张量、体素网格、音频流及关节状态等。
 
 - 生产者通过 `allocate()` 或 `allocate_raw()` 创建 POSIX SHM 段
 - 消费者通过 `open()` 映射同一段物理内存，零拷贝读取
@@ -141,10 +111,10 @@ sequenceDiagram
 
 ## 包管理
 
-`rbnx` CLI 负责包的生命周期管理。每个包通过 `robonix_manifest.yaml` 描述其构建和启动方式。`rbnx validate` 检查 manifest 合法性，`rbnx build` 执行构建脚本，`rbnx start` 启动指定节点并在需要时向 Atlas 注册技能信息。
+`rbnx` CLI 负责包的生命周期管理。每个包通过 `robonix_manifest.yaml` 描述其构建与启动方式。`rbnx validate` 检查 manifest 合法性，`rbnx build` 执行构建脚本，`rbnx start` 启动指定节点并按需向 Atlas 注册技能信息。
 
 ## SKILL.md 与技能库
 
-SKILL.md 是面向 LLM 的行为描述文件。每个技能（如 `object_search_wander`）用 Markdown 编写，包含技能名称、适用场景、可用工具和行为规范。Pilot 启动时通过 `QueryAllSkills` RPC 获取所有已注册的技能描述，将其注入系统 prompt，VLM 据此决定在何种场景下使用哪些工具、以何种节奏交替进行感知和行动。
+SKILL.md 是面向 LLM 的行为描述文件。每个技能（如 `object_search_wander`）以 Markdown 编写，包含技能名称、适用场景、可用工具与行为规范。Pilot 启动时通过 `QueryAllSkills` RPC 获取所有已注册的技能描述并注入系统 prompt，VLM 据此决定在何种场景下使用哪些工具，以及感知与行动的交替节奏。
 
-除自然语言的 SKILL.md 外，Atlas 还预留了**结构化技能图（Skill Graph）**的扩展点——将 **`TaskGraph` / BT** 持久化为具名、机器可执行的技能，供 Pilot 直接下发而无需额外 VLM 推理（设计 TODO，待技能库团队实现）。
+除自然语言形式的 SKILL.md 外，Atlas 预留了结构化技能图（Skill Graph）扩展点——将 `TaskGraph` / BT 持久化为具名、机器可执行的技能，供 Pilot 直接下发而无需额外 VLM 推理（待技能库团队实现）。

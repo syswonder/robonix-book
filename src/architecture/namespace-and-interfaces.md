@@ -1,6 +1,6 @@
 # 命名空间与接口模型
 
-Robonix 用树形命名空间管理所有硬件能力和系统服务。每个注册节点占据树上一个位置，每个接口对应一个稳定的**契约 ID**（与 `rust/contracts` 中 `[contract] id` 一致）。该命名与具体 ROS 2 topic 名称无关——topic 属于实现细节。
+Robonix 采用树形命名空间统一管理硬件能力与系统服务。每个注册节点占据树上一个位置，每个接口对应一个稳定的契约 ID（与 `rust/contracts` 中 `[contract] id` 一致）。命名空间与 ROS 2 topic 名称无关，后者属于传输层实现细节。
 
 完整设计稿见 `rust/docs/NAMESPACE.md`。
 
@@ -10,19 +10,19 @@ Robonix 用树形命名空间管理所有硬件能力和系统服务。每个注
 
 | 域 | 用途 |
 |----|------|
-| `prm` | 物理机器人、仿真、虚拟硬件的能力抽象（底盘、相机、机械臂等） |
-| `sys` | 框架服务：VLM/LLM、地图、规划、技能/任务管理、调试工具、`runtime`（Pilot/Executor/Liaison 等） |
+| `prm` | 物理机器人、仿真及虚拟硬件的能力抽象（底盘、相机、机械臂等） |
+| `srv` | 系统组件（Liaison / Pilot / Executor，不可替换）与默认服务（认知、记忆、地图、数据采集、系统监控等，可替换实现） |
 
-`prm` 下按硬件类别细分：`base`、`camera`、`sensor`、`arm`、`gripper`、`force_torque`。`sys` 下按功能域细分：`model`、`memory`、`runtime` 等。
+`prm` 下按硬件类别细分为 `base`、`camera`、`sensor`、`arm`、`gripper`、`force_torque`。`srv` 下分两层：系统组件（Liaison / Pilot / Executor）构成 Robonix 的编排骨架，不可替换；默认服务（`cognition`、`memory`、`planning` 等）为框架提供的可替换能力。
 
 ## 契约 ID（`contract_id`）
 
-**契约 ID** 是发现与校验时使用的稳定路径字符串，与 **`rust/contracts/**/*.toml`** 里 `[contract]` 节的 `id` 字段一致（例如 `robonix/sys/runtime/pilot`、`robonix/prm/camera/rgb`）。版本仅在 TOML 文件名/内容中维护，**不**拼入 `contract_id`。
+契约 ID 是发现与校验时使用的稳定路径字符串，与 `rust/contracts/**/*.toml` 中 `[contract]` 节的 `id` 字段一致（例如 `robonix/srv/runtime/pilot`、`robonix/prm/camera/rgb`）。版本仅在 TOML 文件名及文件内容中维护，不拼入 `contract_id`。
 
 在控制平面上：
 
-- `DeclareInterfaceRequest.contract_id`：建议显式填写契约 ID；**若留空**，Atlas 会按旧规则由 `RegisterNode.namespace` + `DeclareInterface.name` 推导（`namespace + "/" + name`），结果应与对应契约一致。
-- `QueryNodesRequest.contract_id`：非空时按契约 ID **精确**匹配接口；此时忽略 `namespace` / `name` 过滤（仍可配合 `transport`）。
+- `DeclareInterfaceRequest.contract_id`：建议显式填写契约 ID。若留空，Atlas 按旧规则由 `RegisterNode.namespace` + `DeclareInterface.name` 推导（`namespace + "/" + name`），结果应与对应契约一致。
+- `QueryNodesRequest.contract_id`：非空时按契约 ID 精确匹配接口，此时忽略 `namespace` / `name` 过滤（仍可配合 `transport`）。
 - `InterfaceInfo.contract_id`：声明后解析得到的稳定路径，供客户端展示与匹配。
 
 `rust/proto/robonix_runtime.proto` 中的相关片段：
@@ -54,14 +54,14 @@ message InterfaceInfo {
 }
 ```
 
-旧代码中曾使用 **abstract_interface_id**，该字段已全部迁移为 `contract_id`，两者含义相同。
+旧代码中曾使用 `abstract_interface_id`，该字段已全部迁移为 `contract_id`，两者含义相同。
 
 ## 契约 TOML 与 `robonix_proto`
 
-- **`rust/contracts/**`**：描述每个契约的**通信形状**（`[mode].type`：`rpc` / `rpc_server_stream` / `rpc_client_stream` / `topic_out` / `topic_in`）及 **`[io]`** 引用的 ROS 路径。文件按域分目录，例如 **`rust/contracts/prm/base_move.v1.toml`**、**`rust/contracts/sys/pilot.v1.toml`**；完整清单见 [接口目录 · 契约源码路径](../interface-catalog/index.md#contract-toml-sources) 与 **`rust/contracts/README.md`**。
-- **`rust/crates/robonix-interfaces/lib/**`**：ROS 2 IDL（`.msg` / `.srv`），载荷与具体 `*Service` RPC 的权威定义。
-- **`robonix-codegen`**：统一生成 **`crates/robonix-interfaces/robonix_proto/*.proto`**（含各包的 `*Service`）以及 **`robonix_contracts.proto`**（`package robonix.contracts`，按契约 ID 提供抽象的 `Stream` / `Call` 门面，便于目录化与工具链）。
-- **`robonix_proto/` 下文件全部由 robonix-codegen 生成，禁止手改**；控制面专用 proto（如 `robonix_runtime.proto`）仍在 **`rust/proto/`**。
+- `rust/contracts/**`：描述每个契约的通信形状（`[mode].type`：`rpc` / `rpc_server_stream` / `rpc_client_stream` / `topic_out` / `topic_in`）及 `[io]` 引用的 ROS 路径。文件按域分目录，例如 `rust/contracts/prm/base_move.v1.toml`、`rust/contracts/sys/pilot.v1.toml`；完整清单见[接口目录 · 契约源码路径](../interface-catalog/index.md#contract-toml-sources)与 `rust/contracts/README.md`。
+- `rust/crates/robonix-interfaces/lib/**`：ROS 2 IDL（`.msg` / `.srv`），载荷与具体 `*Service` RPC 的权威定义。
+- `robonix-codegen`：统一生成 `crates/robonix-interfaces/robonix_proto/*.proto`（含各包的 `*Service`）以及 `robonix_contracts.proto`（`package robonix.contracts`，按契约 ID 提供抽象的 `Stream` / `Call` 门面，便于目录化与工具链）。
+- `robonix_proto/` 下文件全部由 robonix-codegen 生成，禁止手动修改；控制面专用 proto（如 `robonix_runtime.proto`）仍位于 `rust/proto/`。
 
 典型生成命令（在 `rust/` 下）：
 
@@ -72,7 +72,7 @@ cargo run -p robonix-codegen -- --lang proto \
   -o crates/robonix-interfaces/robonix_proto
 ```
 
-具体 `PilotService.HandleIntent`、`ExecutorService.Execute` 等**命名 RPC** 由 **`lib/<pkg>/srv`** 生成；`robonix_contracts.proto` 中同一契约可能表现为泛型 `Stream(...)`，详见 `rust/contracts/README.md` 中的「门面 vs 具体服务」说明。
+具体命名 RPC（如 `PilotService.HandleIntent`、`ExecutorService.Execute`）由 `lib/<pkg>/srv` 生成；`robonix_contracts.proto` 中同一契约可能表现为泛型 `Stream(...)`，详见 `rust/contracts/README.md` 中"门面 vs 具体服务"一节。
 
 ## 多传输
 
@@ -101,9 +101,9 @@ stub.DeclareInterface(DeclareInterfaceRequest(
 
 ## 系统接口目录
 
-对 **gRPC** 与 **ROS 2** 传输，Atlas 维护系统接口目录（`ROBO_SYSTEM_INTERFACE_CATALOG`），仅允许目录中出现的**契约 ID** 注册，以防止未经设计的路径被使用。
+对 gRPC 与 ROS 2 传输，Atlas 维护系统接口目录（`ROBO_SYSTEM_INTERFACE_CATALOG`），仅允许目录中出现的契约 ID 注册，以防止未经设计的路径被使用。
 
-**MCP** 传输不受此约束（工具名可自由定义）。
+MCP 传输不受此约束，工具名可自由定义。
 
 目录中的路径应与 `rust/contracts` 及接口目录文档保持一致，例如：
 
@@ -111,9 +111,9 @@ stub.DeclareInterface(DeclareInterfaceRequest(
 robonix/prm/base/move, … /odom, …
 robonix/prm/camera/rgb, … /depth, …
 robonix/prm/sensor/imu, … /lidar, …
-robonix/sys/model/vlm/chat, …
-robonix/sys/memory/search, …
-robonix/sys/runtime/pilot, executor, liaison, …
+robonix/srv/cognition/reason, …
+robonix/srv/memory/search, …
+robonix/srv/runtime/pilot, executor, liaison, …
 ```
 
 （完整列表以 Atlas 内嵌目录为准。）
@@ -132,7 +132,7 @@ sequenceDiagram
     participant C as 消费者 (Executor)
 
     Note over P,A: 启动时注册
-    P->>A: RegisterNode(node_id, namespace, kind)
+    P->>A: RegisterNode(node_id, contract_id)
     P->>A: DeclareInterface(name, transport, listen_port, contract_id)
     A-->>P: allocated_endpoint
 
@@ -146,7 +146,7 @@ sequenceDiagram
     C->>P: 数据面连接 (MCP / gRPC / ROS 2)
 ```
 
-1. 调用 `QueryNodes`，通过 **`contract_id`** 或 `namespace` + `transport` 找到 provider。
+1. 调用 `QueryNodes`，通过 `contract_id` 或 `namespace` + `transport` 找到 provider。
 2. 从 `NodeInfo.interfaces` 中选择目标接口与传输。
 3. 调用 `NegotiateChannel`，传入 `consumer_id`、`provider_node_id`、`interface_name`、`transport`。
 4. 使用返回的 `endpoint` 直接建立数据面连接。

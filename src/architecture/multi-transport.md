@@ -49,7 +49,7 @@ realtime = true
 **需要注意**：多个 transport 暴露同一个 RPC，意味着同一操作可能从不同入口并发调用。
 
 ```toml
-# 示例：robonix/sys/slam/save_map
+# 示例：robonix/srv/slam/save_map
 [mode]
 type = "rpc"             # ← 需要 provider 保证并发安全
 

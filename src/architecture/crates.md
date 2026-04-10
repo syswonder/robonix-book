@@ -1,12 +1,12 @@
 # Crate 索引
 
-Robonix 的 Rust workspace（`rust/`）包含 atlas、sdk、pilot、executor、liaison、cli、robonix-codegen、buffer 等 crate，各自职责独立、边界清晰。
+Robonix 的 Rust workspace（`rust/`）包含 atlas、sdk、pilot、executor、liaison、cli、robonix-codegen、buffer 等 crate，各 crate 职责独立、边界清晰。
 
 ## robonix-atlas
 
 控制平面核心进程。启动后在 `ROBONIX_META_GRPC_ADDR`（默认 `0.0.0.0:50051`）上提供 `RobonixRuntime` gRPC 服务。
 
-内部维护 `MetaRuntimeRegistry`，存储所有已注册节点、接口和通道的状态。注册时服务端校验 `node_id` 的 reverse-DNS 格式（至少三段，如以 `com.`、`org.`、`cn.` 开头）；对 gRPC/ROS 2 传输的接口声明，还会检查 **`contract_id`**（`DeclareInterfaceRequest` 显式字段或由其推导）是否在系统接口目录（`ROBO_SYSTEM_INTERFACE_CATALOG`）中，不在目录中的路径会被拒绝。MCP 传输不受此约束，允许自由注册。
+内部维护 `MetaRuntimeRegistry`，存储所有已注册节点、接口和通道的状态。注册时服务端校验 `node_id` 的 reverse-DNS 格式（至少三段，如以 `com.`、`org.`、`cn.` 开头）；对 gRPC / ROS 2 传输的接口声明，还会检查 `contract_id`（`DeclareInterfaceRequest` 显式字段或由其推导）是否在系统接口目录（`ROBO_SYSTEM_INTERFACE_CATALOG`）中，不在目录中的路径将被拒绝。MCP 传输不受此约束，允许自由注册。
 
 端口分配逻辑：对 gRPC/MCP 传输，若 provider 指定了 `listen_port` 则直接使用，否则服务端从 50100 开始递增分配。同一节点上同类传输的多个接口复用同一端口。ROS 2 和共享内存传输生成基于 UUID 的唯一端点名。
 
@@ -38,9 +38,9 @@ Rust 异步 gRPC 客户端库，封装对 `RobonixRuntime` 服务的调用。核
 
 ## robonix-pilot
 
-推理与会话运行时（二进制 **`robonix-pilot`**）。在 Atlas 注册 **`contract_id = robonix/sys/runtime/pilot`**，数据面为 **`PilotService.HandleIntent`**：请求侧 **`Intent`**，响应为 **`PilotEvent`** 流（契约见 **`rust/contracts/sys/pilot.v1.toml`**、`lib/pilot/`）。
+推理与会话运行时（二进制 `robonix-pilot`）。在 Atlas 注册 `contract_id = robonix/srv/runtime/pilot`，数据面为 `PilotService.HandleIntent`：请求侧为 `Intent`，响应为 `PilotEvent` 流（契约见 `rust/contracts/sys/pilot.v1.toml`、`lib/pilot/`）。
 
-Pilot 内部编排 VLM、Executor 等；**`rbnx chat`** 经 Atlas 按 **`robonix/sys/runtime/pilot`** 发现端点后，使用 **`PilotService`** 与用户流式对话——仓库**已移除** `rust/proto/agent_chat.proto` 与 **`AgentChat`** 控制面契约。
+Pilot 内部编排认知大模型（`robonix/srv/cognition/reason`）与 Executor。`rbnx chat` 经 Atlas 按 `robonix/srv/runtime/pilot` 发现端点后，通过 `PilotService` 与用户进行流式对话。
 
 主要环境变量（节选）：
 
@@ -50,9 +50,35 @@ Pilot 内部编排 VLM、Executor 等；**`rbnx chat`** 经 Atlas 按 **`robonix
 | `ROBONIX_PILOT_PORT` | Pilot gRPC 端口，默认 `50071` |
 | `ROBONIX_EXECUTOR_ENDPOINT` | Executor，默认 `localhost:50061` |
 
+## robonix-executor
+
+工具调用执行引擎（二进制 `robonix-executor`）。在 Atlas 注册 `contract_id = robonix/srv/runtime/executor`，接收 Pilot 下发的 RTDL / `TaskGraph`，按工具路由分发调用并流式返回结果。
+
+Pilot 与 Executor 之间传递的是确定性的结构化执行图，不含自然语言。Executor 不做推理，专注于分发与执行。
+
+### Built-in Tools
+
+Executor 进程内置一组无需注册的基础工具，供 VLM 直接调用：
+
+| 工具 | 说明 |
+|------|------|
+| `read_file` | 读取文件内容（如 SKILL.md） |
+| `list_dir` | 列出目录内容 |
+| `exec` | 执行 shell 命令 |
+| `patch` | 对文件做文本替换 |
+
+Built-in Tools 不经过 Atlas 注册，不占用契约命名空间，但出现在 `rbnx tools` 列表中，对 VLM 可见。无需为这些基础功能单独部署 Skill Node。
+
+主要环境变量：
+
+| 变量 | 说明 |
+|------|------|
+| `ROBONIX_ATLAS` / `ROBONIX_ATLAS_ENDPOINT` | 控制平面 |
+| `ROBONIX_EXECUTOR_PORT` | Executor gRPC 端口，默认 `50061` |
+
 ## robonix-cli (rbnx)
 
-命令行工具，二进制名 `rbnx`。分为两类功能：
+命令行工具，二进制名 `rbnx`。TUI 仅为 `rbnx chat` 的展现形式；`rbnx` 整体为一个 CLI 工具，提供三类功能。
 
 包管理命令操作本地文件系统和 `robonix_manifest.yaml`：
 
@@ -78,12 +104,12 @@ Pilot 内部编排 VLM、Executor 等；**`rbnx chat`** 经 Atlas 按 **`robonix
 
 | 命令 | 作用 |
 |------|------|
-| `rbnx chat` | 启动 TUI 客户端，连接 **Pilot**（`robonix/sys/runtime/pilot`） |
+| `rbnx chat` | 启动 TUI 客户端，连接 Pilot（`robonix/srv/runtime/pilot`）；当前直连 Pilot 是调试过渡，长期走 Liaison |
 | `rbnx graph` | 生成系统拓扑图（内置渲染 PNG/SVG） |
 
 ### rbnx chat
 
-`rbnx chat` 通过 Atlas **`QueryNodes(contract_id=robonix/sys/runtime/pilot)`** 发现 Pilot 端点，使用 **`PilotService.HandleIntent`** 流式会话，基于 `ratatui` 的终端 UI：
+`rbnx chat` 通过 Atlas **`QueryNodes(contract_id=robonix/srv/runtime/pilot)`** 发现 Pilot 端点，使用 **`PilotService.HandleIntent`** 流式会话，基于 `ratatui` 的终端 UI：
 
 - 上方为滚动消息历史，按角色着色（用户、模型回复、工具调用等）
 - 下方为文本输入区域
@@ -96,7 +122,7 @@ rbnx chat --server 192.168.1.5:50051  # 指定控制平面地址
 
 ### rbnx graph
 
-`rbnx graph` 查询控制平面中所有已注册节点和已协商通道，用内置布局与 SVG 绘制拓扑，按需输出 **PNG**（经 [resvg](https://github.com/linebender/resvg) 光栅化）或**原始 SVG**。
+`rbnx graph` 查询控制平面中所有已注册节点与已协商通道，以内置布局与 SVG 绘制拓扑，按需输出 PNG（经 [resvg](https://github.com/linebender/resvg) 光栅化）或原始 SVG。
 
 ```bash
 rbnx graph -o topology.png                 # 默认 PNG
@@ -108,9 +134,9 @@ rbnx graph -o out.png --format png       # 显式 PNG
 
 ## robonix-buffer
 
-系统级缓冲区管理库，负责 POSIX 共享内存的分配/映射、GPU DMA 页面锁定（`cudaHostRegister`）、CUDA IPC 跨进程显存共享及缓冲区生命周期管理。编译为 `librobonix_buffer.so`，通过 C FFI 供 Python（ctypes）和 C/C++ 使用。
+系统级缓冲区管理库，负责 POSIX 共享内存分配与映射、GPU DMA 页面锁定（`cudaHostRegister`）、CUDA IPC 跨进程显存共享及缓冲区生命周期管理。编译为 `librobonix_buffer.so`，通过 C FFI 供 Python（ctypes）及 C/C++ 调用。
 
-缓冲区系统不限于图像，支持任何高带宽连续数据（点云、张量、大模型 embedding、体素网格等）。
+缓冲区系统不限于图像，支持任意高带宽连续数据（点云、张量、大模型 embedding、体素网格等）。
 
 核心类型是 `RobonixBufferManager`，提供：
 
@@ -127,11 +153,11 @@ rbnx graph -o out.png --format png       # 显式 PNG
 
 CUDA 功能通过动态加载 `libcudart.so` 实现，无 CUDA 环境时退化为纯 CPU 模式。CUDA IPC 相关函数（`ipc_get_mem_handle`、`ipc_open_mem_handle`、`ipc_close_mem_handle`）用于跨进程共享 GPU 显存。
 
-详细设计和数据流见[零拷贝缓冲区系统](buffer-system.md)。
+robonix-buffer 目前处于原型阶段，尚非正式功能。Atlas 对 `shared_memory` 传输的支持亦未经验证。
 
 ## robonix-codegen
 
-ROS IDL 到 Proto 的代码生成器。读取 `crates/robonix-interfaces/lib/` 下的 `.msg` 和 `.srv` 文件，按包名生成对应的 `.proto` 文件到 `crates/robonix-interfaces/robonix_proto/`。
+ROS IDL 到 Proto 的代码生成器。读取 `crates/robonix-interfaces/lib/` 下的 `.msg` 与 `.srv` 文件，按包名生成对应 `.proto` 文件至 `crates/robonix-interfaces/robonix_proto/`。
 
 命名规则：ROS 包 `prm_base` 生成 `prm_base.proto`，包名空间 `robonix.prm_base`。每个 `.msg` 生成一个 `message`，每个 `.srv` 生成 `_Request`/`_Response` message 和对应的 `rpc`。
 

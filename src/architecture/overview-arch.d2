@@ -1,0 +1,118 @@
+direction: down
+
+user: 用户 / 机器人 {
+  shape: person
+  style.font-size: 24
+}
+
+clients: 交互通道 (CLI · GUI · 语音 · 机器人) {
+  style.fill: "#ECEFF1"
+  style.stroke: "#607D8B"
+  style.font-size: 22
+}
+
+liaison: Robonix Liaison {
+  style.fill: "#E8F0FE"
+  style.stroke: "#4285F4"
+  style.font-size: 24
+  grid-columns: 3
+  a: 界面适配 { style.font-size: 18 }
+  b: 语音服务调用\n(ASR/TTS) { style.font-size: 18 }
+  c: 用户区分 { style.font-size: 18 }
+}
+
+pilot: Robonix Pilot {
+  style.fill: "#E8F0FE"
+  style.stroke: "#4285F4"
+  style.font-size: 24
+  grid-columns: 3
+  a: 意图理解\n→ 认知大模型 { style.font-size: 18 }
+  b: ReAct\n推理循环 { style.font-size: 18 }
+  c: 会话 (Session)\n管理 { style.font-size: 18 }
+}
+
+sys: 默认框架服务 {
+  style.fill: "#FFF3E0"
+  style.stroke: "#F57C00"
+  style.font-size: 24
+  grid-columns: 4
+  a: Cognition\n(VLM) { style.font-size: 18 }
+  b: ASR / TTS { style.font-size: 18 }
+  c: 记忆 { style.font-size: 18 }
+  d: 地图与定位 { style.font-size: 18 }
+  e: 数据采集 { style.font-size: 18 }
+  f: 系统监控 { style.font-size: 18 }
+}
+
+executor: Robonix Executor {
+  style.fill: "#E8F0FE"
+  style.stroke: "#4285F4"
+  style.font-size: 24
+  grid-columns: 2
+  a: Skill Engine\n(工具调用 / RTDL) { style.font-size: 18 }
+  b: 异常上报 { style.font-size: 18 }
+}
+
+atlas: Atlas {
+  style.fill: "#FCE4EC"
+  style.stroke: "#E91E63"
+  style.font-size: 24
+  grid-columns: 4
+  a: 节点/接口\n注册 { style.font-size: 18 }
+  b: 节点/能力\n查询 { style.font-size: 18 }
+  c: 通道分配 { style.font-size: 18 }
+  d: Skill Library { style.font-size: 18 }
+}
+
+tools: 场景工具 (家庭 / 工厂 / …) {
+  style.fill: "#F3E5F5"
+  style.stroke: "#9C27B0"
+  style.font-size: 24
+  grid-columns: 4
+  a: 技能节点\nSkill Nodes { style.font-size: 18 }
+  b: 服务节点\nService Nodes { style.font-size: 18 }
+  c: 原语节点\nPrimitive Nodes { style.font-size: 18 }
+  d: Built-in\nTools { style.font-size: 18 }
+}
+
+hw: 本体硬件 (Go2 · Piper · Ranger …) {
+  style.fill: "#ECEFF1"
+  style.stroke: "#607D8B"
+  style.font-size: 22
+}
+
+# 数据面
+user -> clients: 文本/图片/视频/音频 { style.font-size: 16 }
+clients -> liaison
+liaison -> pilot: Intent (user_id, session_id) { style.font-size: 16 }
+pilot -> sys: 调用框架服务 { style.font-size: 16 }
+pilot -> executor: RTDL 任务图\n(确定性, 无自然语言) { style.font-size: 16 }
+executor -> tools: Tool Call\n(built-in / MCP / gRPC) { style.font-size: 16 }
+tools -> hw
+
+# Atlas 控制面
+liaison -> atlas: 注册 {
+  style.stroke-dash: 5
+  style.stroke: "#E91E63"
+  style.font-size: 14
+}
+pilot -> atlas: 查询 {
+  style.stroke-dash: 5
+  style.stroke: "#E91E63"
+  style.font-size: 14
+}
+executor -> atlas: 查询/协商 {
+  style.stroke-dash: 5
+  style.stroke: "#E91E63"
+  style.font-size: 14
+}
+sys -> atlas: 注册/声明 {
+  style.stroke-dash: 5
+  style.stroke: "#E91E63"
+  style.font-size: 14
+}
+tools -> atlas: 注册/声明 {
+  style.stroke-dash: 5
+  style.stroke: "#E91E63"
+  style.font-size: 14
+}

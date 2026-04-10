@@ -9,7 +9,7 @@
 ---
 
 - [快速上手（Tiago Demo）](getting-started/quickstart.md)
-- [ManiSkill VLA 仿真 Demo](getting-started/maniskill-demo.md)
+- [ManiSkill3 仿真 Demo](getting-started/maniskill-demo.md)
 
 ---
 
@@ -28,11 +28,11 @@
     - [机械臂](interface-catalog/primitive/arm.md)
     - [夹爪](interface-catalog/primitive/gripper.md)
     - [力/力矩](interface-catalog/primitive/force-torque.md)
-  - [服务（sys）](interface-catalog/service/index.md)
+  - [服务（`srv`）](interface-catalog/service/index.md)
     - [Pilot](interface-catalog/service/pilot.md)
     - [Executor](interface-catalog/service/executor.md)
     - [Liaison](interface-catalog/service/liaison.md)
-    - [VLM Chat](interface-catalog/service/vlm-chat.md)
+    - [Cognition · Reason](interface-catalog/service/cognition-reason.md)
     - [Memory Search](interface-catalog/service/memory-search.md)
 
 ---
