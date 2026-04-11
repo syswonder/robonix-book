@@ -6,6 +6,9 @@
 set -e
 cd "$(dirname "$0")/.."
 
+# Copy bundled mermaid.min.js / mermaid-init.js (listed in book.toml additional-js, gitignored).
+mdbook-mermaid install .
+
 # First build to get default highlight.js (mdBook >=0.4.0 puts it under book/)
 mdbook build
 
