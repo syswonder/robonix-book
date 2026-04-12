@@ -1,6 +1,8 @@
 # ManiSkill3 仿真 Demo
 
-本节介绍如何运行 ManiSkill3 仿真 Demo。该 Demo 使用 Fetch 机器人在 ReplicaCAD 室内场景中执行语言指令驱动的操作任务，集成 GroundingDINO 目标检测、Rerun 3D 可视化及可选的 Octo 策略模型。
+本节介绍如何运行 ManiSkill3 仿真 Demo。该 Demo 使用 Fetch 机器人在 ReplicaCAD 室内场景中执行语言指令驱动的操作任务，集成 YOLOE 开放词汇目标检测与 Rerun 3D 可视化。
+
+> **Octo 策略模型处于 TODO 状态**：目前未针对 Fetch 微调，默认运行的是 `scripted` 策略（规则式基线）。`VLA_POLICY=octo` 仍然可选用来调试 pipeline，但开箱行为会不准确。
 
 与 Tiago 仿真 Demo 不同，ManiSkill Demo 不依赖 Docker 或 ROS 2，全部在本地 Python 环境中运行。
 
@@ -18,7 +20,7 @@
 | Rust 工具链 (stable >= 1.85) | `rustup` 安装 |
 | Python 3.11 | ManiSkill3 和 Octo 的依赖要求 |
 | [uv](https://docs.astral.sh/uv/) | Python 包管理器 |
-| NVIDIA GPU (>= 6 GB VRAM) | ManiSkill3 渲染 + GroundingDINO + Octo |
+| NVIDIA GPU (>= 6 GB VRAM) | ManiSkill3 渲染 + YOLOE + Octo |
 | X11 或 Wayland 桌面 | Rerun 可视化窗口 |
 | VLM API 密钥 | Agent 的视觉语言推理后端 |
 
@@ -41,7 +43,7 @@ cd rust/examples/packages/maniskill_vla_demo
 `setup` 阶段会：
 
 1. 通过 `uv` 安装 Python 3.11 并创建 `.venv`
-2. 安装完整依赖栈（ManiSkill3、Octo、JAX、GroundingDINO、Rerun 等）
+2. 安装完整依赖栈（ManiSkill3、Octo、JAX、YOLOE、Rerun 等）
 3. 下载 ReplicaCAD 场景资产（约 2 GB）
 4. 生成 gRPC proto stubs
 
@@ -72,7 +74,7 @@ VLM_MODEL=qwen3-vl-plus
 1. `robonix-atlas` — 控制平面
 2. `vlm_service` — VLM 服务（gRPC）
 3. `env_node` — ManiSkill3 仿真环境（gRPC 数据接口）
-4. `perception_node` — GroundingDINO 目标检测（MCP 工具）
+4. `perception_node` — YOLOE 目标检测（MCP 工具）
 5. `policy_node` — 策略节点（MCP 工具，Octo 或 scripted）
 6. `viz_node` — Rerun 可视化（gRPC 数据服务器）+ Rerun 桌面查看器
 7. `robonix-pilot` — 智能体（后台 gRPC 服务）
@@ -175,7 +177,7 @@ Agent 通过 MCP 协议调用以下工具：
 |------|---------|------|
 | `execute_instruction` | policy_node | 闭环执行语言指令（策略模型 → 环境步进循环） |
 | `move_base` | policy_node | 直接控制底盘移动 |
-| `detect_objects` | perception_node | GroundingDINO 目标检测 |
+| `detect_objects` | perception_node | YOLOE 目标检测 |
 | `step_action` | env_node | 低级环境步进 |
 | `get_obs` | env_node | 获取当前观测 |
 
@@ -193,7 +195,7 @@ Agent 通过 MCP 协议调用以下工具：
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `VLA_POLICY` | `octo` | 策略选择：`octo`（Octo 模型）或 `scripted`（脚本策略） |
+| `VLA_POLICY` | `scripted` | 策略选择：`scripted`（规则基线，默认，当前唯一开箱可用的选择）或 `octo`（模型未微调，仅供调试 pipeline） |
 | `MANISKILL_ENV_ID` | `ReplicaCADTidyHouseTrain_SceneManipulation-v1` | ManiSkill3 环境 ID |
 | `MANISKILL_CAM_W` / `_CAM_H` | `640` / `480` | 相机分辨率 |
 | `HF_ENDPOINT` | `https://hf-mirror.com` | HuggingFace 镜像 |
@@ -218,16 +220,16 @@ viz_node 提供四个可视化面板：
 - **Joint Positions** — 关节位置时间序列
 - **Detections** — 目标检测叠加（来自 perception_node）
 
-检测面板始终显示实时相机画面作为背景。viz_node 内部运行后台检测线程，持续对最新相机帧执行 GroundingDINO 推理，检测框在主循环中实时更新至 Rerun。检测线程独立于渲染帧率运行，GPU 处理越快则检测结果更新越及时。可通过 `VIZ_NO_DETECT=1` 禁用检测以节省显存。
+检测面板始终显示实时相机画面作为背景。viz_node 内部运行后台检测线程，持续对最新相机帧执行 YOLOE 推理，检测框在主循环中实时更新至 Rerun。检测线程独立于渲染帧率运行，GPU 处理越快则检测结果更新越及时。可通过 `VIZ_NO_DETECT=1` 禁用检测以节省显存。
 
 ## 故障排除
 
 **Rerun 窗口不显示**：确认 `DISPLAY` 或 `WAYLAND_DISPLAY` 环境变量已设置。`run.sh` 会自动检测，但通过 SSH 运行时需手动配置 X11 转发。
 
-**显存不足**：设置 `DEMO_MEMORY_PROFILE=low` 将相机分辨率降至 512x384。亦可用 `VLA_POLICY=scripted` 跳过 Octo 模型加载（节省约 2 GB）。
+**显存不足**：设置 `DEMO_MEMORY_PROFILE=low` 将相机分辨率降至 512x384。默认 `VLA_POLICY=scripted` 已经不加载 Octo，无需额外节省。
 
-**GroundingDINO dtype 错误**：perception_node 会自动检测 FP16 不兼容并回退至 FP32。若仍失败，设置 `PERCEPTION_FP16=0`。
+**YOLOE dtype 错误**：perception_node 会自动检测 FP16 不兼容并回退至 FP32。若仍失败，设置 `PERCEPTION_FP16=0`。
 
-**Octo 安装失败**：确认使用 Python 3.11。Octo 依赖特定版本的 JAX (0.4.20)、TensorFlow (2.15) 和 transformers (<5.0)，`pyproject.toml` 中已固定这些约束。
+**Octo 相关问题**：Octo 处于 TODO（未微调），不在默认启动路径上。只有显式 `VLA_POLICY=octo` 时才会加载；否则可忽略本 issue。
 
 **环境资产下载失败**：若 HuggingFace 不可访问，设置 `HF_ENDPOINT` 指向镜像站。亦可使用 `MANISKILL_ENV_ID=PickCube-v1` 运行无需额外资产的简单环境。
