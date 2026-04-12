@@ -67,7 +67,13 @@ sequenceDiagram
 9. VLM 决定下一步行动；循环持续至任务完成（无 tool_calls 时终止）。
 10. Pilot 向 Liaison 推送 `FinalText` 事件，Liaison 将结果展示给用户。
 
-每个 VLM 推理轮次生成一个 `TaskGraph` 片段，构成增量任务图——逐轮生成、执行、反馈，而非预先规划完整行为树（全量 BT/RTDL 为后续工作）。
+每一轮 VLM 推理对应一个 `TaskGraph`，但每个 `TaskGraph` 只包含 **当前这一步所需的工具调用**；下一轮要做什么，要等到这一轮的执行结果回来之后，VLM 重新推理才能决定。举例：
+
+- 用户说"打开门"，VLM 第一轮可能先决定 `read_skill("open_door")`——这一轮的 TaskGraph 里就只有这一个节点，它不知道也不预测后续要做什么。
+- `read_skill` 返回技能文档后，VLM 结合文档重新推理，第二轮的 TaskGraph 才会包含 `camera_snapshot`、`base_cmd`、`grasp` 等后续节点。
+- 每一轮都是"这一刻能想到的下一批动作"，合起来才是完整的增量任务图。
+
+> **TODO**：目前 VLM 是通过 OpenAI chat-completions 的 `tool_calls` 列表返回当轮工具调用的。这把每一轮的 TaskGraph 压扁成了一个**并列 tool call 列表**——没有顺序、分支、循环、条件等图结构。后续工作是让 VLM 直接按 Robonix 定义的 `TaskGraph` / RTDL 结构（支持顺序、并行、条件分支、行为树子结构等）返回当轮计划，Executor 再按图语义执行，而不是按列表顺序串行调一遍。
 
 ### 认知层多角色展望
 
