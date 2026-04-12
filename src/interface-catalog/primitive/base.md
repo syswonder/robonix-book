@@ -1,14 +1,14 @@
 # 底盘 robonix/prm/base
 
-底盘原语覆盖移动机器人的导航、运动控制和位姿反馈。IDL 定义在 `rust/crates/robonix-interfaces/lib/prm_base/`，生成的 proto 在 `robonix_proto/prm_base.proto`。
+底盘原语覆盖移动机器人的**低层**运动控制和位姿反馈。IDL 定义在 `rust/crates/robonix-interfaces/lib/prm_base/`，生成的 proto 在 `robonix_proto/prm_base.proto`。
+
+> **注意**：目标式导航（`navigate` / `nav_status` / `nav_cancel`）已经不属于底盘原语。它们是规划/决策层能力，由 `robonix/srv/navigation/*` 服务承担，通常由 Nav2 等导航栈提供——详见
+> [导航服务](../service/navigation.md)。原语层只负责下发瞬时速度（`cmd`/`twist_in`）和反馈底盘状态（`odom`/`pose_cov` 等）。
 
 ## 接口
 
 | 契约 ID（`contract_id`） | 模式 | 载荷（IDL） | 契约 TOML |
 |--------------------------|------|-------------|-----------|
-| `robonix/srv/navigation/navigate` | `rpc` | `geometry_msgs/PoseStamped` → `std_msgs/String` | `prm/base_navigate.v1.toml` |
-| `robonix/srv/navigation/status` | `rpc` | `std_msgs/String` → `std_msgs/String` | `prm/base_nav_status.v1.toml` |
-| `robonix/srv/navigation/cancel` | `rpc` | `std_msgs/String` → `std_msgs/String` | `prm/base_nav_cancel.v1.toml` |
 | `robonix/prm/base/cmd` | `rpc` | `prm_base/MoveCommand` → `std_msgs/String` | `prm/base_cmd.v1.toml` |
 | `robonix/prm/base/stop` | `rpc` | `std_msgs/Empty` → `std_msgs/String` | — |
 | `robonix/prm/robot/state` | `rpc` | `std_msgs/Empty` → `prm_base/RobotState` | `prm/robot_state.v1.toml` |
@@ -23,4 +23,4 @@
 
 ## 典型组合
 
-基础移动底盘实现 `navigate` + `stop` + `cmd`。带完整导航栈的底盘还应实现 `nav_status` 和 `nav_cancel`。`odom` 和 `pose_cov` 为可选输出，供 Agent 获取空间感知数据。
+基础移动底盘实现 `cmd` + `stop` + `odom`。用作导航底盘时，把 `odom` 作为输出给 `robonix/srv/slam/*` 做融合定位、`twist_in` 作为 Nav2 控制器的输入（`cmd_vel`）。

@@ -34,6 +34,8 @@
     - [Liaison](interface-catalog/service/liaison.md)
     - [Cognition · Reason](interface-catalog/service/cognition-reason.md)
     - [Memory Search](interface-catalog/service/memory-search.md)
+    - [SLAM](interface-catalog/service/slam.md)
+    - [Navigation](interface-catalog/service/navigation.md)
 
 ---
 
@@ -46,3 +48,7 @@
   - [Provider 注册](integration-guide/provider-registration.md)
   - [Build 与 Codegen（全局 source path）](integration-guide/build-and-codegen.md)
   - [端到端验收](integration-guide/end-to-end-checklist.md)
+
+---
+
+- [Roadmap](roadmap.md)
