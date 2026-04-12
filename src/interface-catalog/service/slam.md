@@ -1,4 +1,4 @@
-# SLAM 服务（`robonix/srv/slam/*` + `robonix/srv/common/map/*`）
+# SLAM 服务
 
 SLAM（**S**imultaneous **L**ocalization **A**nd **M**apping）服务负责把传感器数据变成两件东西：
 **机器人实时位姿** 和 **空间地图**。Robonix 把"SLAM 控制面"（状态查询、模式切换、地图存取）放在
@@ -52,17 +52,19 @@ idle ──(switch_mode=mapping)──► mapping ─(save_map)─► (disk)
 
 | Contract | 载荷 | 来源 | 下游典型消费者 |
 |----------|------|------|---|
-| `common/map/pointcloud` | `sensor_msgs/PointCloud2` | SLAM 的 world-frame 注册点云 | RViz、3D 可视化、3D costmap（voxel / octomap）、碰撞检测 |
-| `common/map/occupancy_grid` | `nav_msgs/OccupancyGrid` | 3D→2D 高度投影 | Nav2 `static_layer`、map_server、2D 路径规划 |
-| `common/map/scan_2d` | `sensor_msgs/LaserScan` | 3D 点云投影到单层扫描 | Nav2 `obstacle_layer`、AMCL、经典 2D 导航栈 |
+| `common/map/pointcloud` | `sensor_msgs/PointCloud2` | SLAM 的 world-frame 注册点云 | RViz、3D 可视化、voxel/octomap 层、碰撞检测 |
+| `common/map/occupancy_grid` | `nav_msgs/OccupancyGrid` | 3D→2D 高度切片投影（**静态地图**，供 Nav2 costmap 的 `static_layer` 订阅） | Nav2 `static_layer`、经典 `map_server`、2D 路径规划 |
+| `common/map/scan_2d` | `sensor_msgs/LaserScan` | 3D 点云投影到单层扫描（**实时障碍物输入**，供 Nav2 costmap 的 `obstacle_layer` 订阅） | Nav2 `obstacle_layer` / `voxel_layer`、AMCL、经典 2D 导航栈 |
+
+> 术语澄清：`occupancy_grid` 和 `scan_2d` 都是**喂给 Nav2 costmap 的原料**，不是 costmap 本身。Nav2 的 `global_costmap` / `local_costmap` 由其内部的 `costmap_2d` 库运行时合成，layer 机制大致是：`static_layer`（订阅静态 `OccupancyGrid`）+ `obstacle_layer`（订阅 `LaserScan`/`PointCloud2` 实时障碍）+ `inflation_layer`（在前二者上做膨胀）。SLAM 只负责产出前两类输入。
 
 ### 为什么是这 3 条？
 
 3D 点云、2D 占据栅格、2D 激光扫描是**导航/定位/感知栈的三种事实标准表示**，不同下游选不同抽象层：
 
 - **3D 点云** 原始、无损，适合 3D 规划、深度学习、碰撞检测。但 2D 规划器用不了——它不关心高度。
-- **2D 占据栅格** 是 map_server / Nav2 静态层的标准输入，适合"大地图远期规划"（A\*、Dijkstra）。SLAM 负责选一个高度切片（比如 0.1 ~ 1.5 m）投影成栅格。
-- **2D LaserScan** 是 Nav2 障碍物层（`obstacle_layer`、`voxel_layer`）、AMCL 等传统 2D 栈的实时输入。即使实际硬件是 3D LiDAR，投成单层 scan 也能直接接上经典栈。
+- **2D 占据栅格** 是 map_server 标准的静态地图载荷、也是 Nav2 costmap `static_layer` 的订阅输入。SLAM 负责选一个高度切片（比如 0.1 ~ 1.5 m）投影成栅格；Nav2 拿到之后进自己的 costmap 合成。
+- **2D LaserScan** 喂给 Nav2 costmap `obstacle_layer` / `voxel_layer` 做实时动态障碍，也是 AMCL 等经典 2D 栈的观测输入。即使实际硬件是 3D LiDAR，投成单层 scan 也能直接接上经典栈。
 
 三条流全部由 mapping_rbnx 通过 `pointcloud_to_laserscan` + 高度切片自动生成，下游什么都不用改。这样 Nav2、RViz、旧 2D 栈都能无缝接入同一套 SLAM 后端。
 
