@@ -125,7 +125,7 @@ robonix/srv/runtime/pilot, executor, liaison, …
 ## NegotiateChannel 流程
 
 ```mermaid
-%%{init: {'theme': 'base'}}%%
+%%{init: {'theme': 'neutral'}}%%
 sequenceDiagram
     participant P as Provider
     participant A as Atlas (控制平面)

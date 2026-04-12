@@ -14,7 +14,7 @@
 ## ReAct 推理循环
 
 ```mermaid
-%%{init: {'theme': 'base'}}%%
+%%{init: {'theme': 'neutral'}}%%
 sequenceDiagram
     actor U as 用户
     participant L as Liaison
