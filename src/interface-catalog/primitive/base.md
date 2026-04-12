@@ -6,9 +6,9 @@
 
 | 契约 ID（`contract_id`） | 模式 | 载荷（IDL） | 契约 TOML |
 |--------------------------|------|-------------|-----------|
-| `robonix/prm/base/navigate` | `rpc` | `geometry_msgs/PoseStamped` → `std_msgs/String` | `prm/base_navigate.v1.toml` |
-| `robonix/prm/base/nav_status` | `rpc` | `std_msgs/String` → `std_msgs/String` | `prm/base_nav_status.v1.toml` |
-| `robonix/prm/base/nav_cancel` | `rpc` | `std_msgs/String` → `std_msgs/String` | `prm/base_nav_cancel.v1.toml` |
+| `robonix/srv/navigation/navigate` | `rpc` | `geometry_msgs/PoseStamped` → `std_msgs/String` | `prm/base_navigate.v1.toml` |
+| `robonix/srv/navigation/status` | `rpc` | `std_msgs/String` → `std_msgs/String` | `prm/base_nav_status.v1.toml` |
+| `robonix/srv/navigation/cancel` | `rpc` | `std_msgs/String` → `std_msgs/String` | `prm/base_nav_cancel.v1.toml` |
 | `robonix/prm/base/cmd` | `rpc` | `prm_base/MoveCommand` → `std_msgs/String` | `prm/base_cmd.v1.toml` |
 | `robonix/prm/base/stop` | `rpc` | `std_msgs/Empty` → `std_msgs/String` | — |
 | `robonix/prm/robot/state` | `rpc` | `std_msgs/Empty` → `prm_base/RobotState` | `prm/robot_state.v1.toml` |

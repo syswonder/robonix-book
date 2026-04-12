@@ -44,4 +44,5 @@
 - [接入指南](integration-guide/index.md)
   - [Manifest 与包管理](integration-guide/package-and-manifest.md)
   - [Provider 注册](integration-guide/provider-registration.md)
+  - [Build 与 Codegen（全局 source path）](integration-guide/build-and-codegen.md)
   - [端到端验收](integration-guide/end-to-end-checklist.md)

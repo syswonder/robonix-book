@@ -4,7 +4,7 @@
 
 PRM provider 注册在 `robonix/prm/` 下，通常提供 MCP 工具接口（供 Agent 直接调用）和/或 gRPC/ROS 2 数据面接口（供其他节点消费）。System service 注册在 `robonix/srv/` 下，通常通过 gRPC 提供 RPC 接口。
 
-MCP 数据面：声明 MCP 接口（`supported_transports=["mcp"]`）前，须先通过 `robonix-codegen --lang mcp` 生成 `robonix_mcp_types/`，并确保 `robonix_mcp_contract` 包在 `PYTHONPATH` 中。工具实现使用 `mcp_contract` 装饰器。详见 [Provider 注册](provider-registration.md)和[快速上手](../getting-started/quickstart.md)中的"MCP 与 codegen"一节。
+MCP 数据面：声明 MCP 接口（`supported_transports=["mcp"]`）前，须先通过 `robonix-codegen --lang mcp` 生成 `robonix_mcp_types/`，并确保 `robonix_py` 包在 `PYTHONPATH` 中。工具实现使用 `mcp_contract` 装饰器。详见 [Provider 注册](provider-registration.md)和[快速上手](../getting-started/quickstart.md)中的"MCP 与 codegen"一节。
 
 本章以两个示例贯穿全部内容：
 

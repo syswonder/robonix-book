@@ -56,10 +56,10 @@ MCP 工具的 Python 侧须使用 `robonix-codegen --lang mcp` 生成的 `roboni
 
 #### `mcp_contract` 装饰器
 
-共享包 `rust/examples/packages/robonix_mcp_contract`（import 名 `robonix_mcp_contract`）提供 `mcp_contract` 装饰器。**`input_cls` 和 `output_cls` 从 handler 的类型注解推断，无需显式传入**：
+共享包 `rust/crates/robonix-py`（import 名 `robonix_py`）提供 `mcp_contract` 装饰器。**`input_cls` 和 `output_cls` 从 handler 的类型注解推断，无需显式传入**：
 
 ```python
-from robonix_mcp_contract import mcp_contract
+from robonix_py import mcp_contract
 from std_msgs_mcp import Empty
 from sensor_msgs_mcp import Image
 
@@ -81,7 +81,7 @@ def camera_snapshot(msg: Empty) -> Image:
 | MCP 线格式 | `arguments` JSON = `input_cls.to_dict()` / `from_dict()`（顶层键 = ROS 消息字段） |
 | 返回值 | 返回 codegen 实例，装饰器自动 `to_dict()` 后发往客户端（`Image.data` 为 base64） |
 
-**依赖配置**：将 `packages/robonix_mcp_contract` 加入 `PYTHONPATH`，或在包内执行 `pip install -e ../robonix_mcp_contract`。
+**依赖配置**：将 `crates/robonix-py` 加入 `PYTHONPATH`，或在包内执行 `pip install -e ../robonix_py`。
 
 > **重要：MCP 接口声明的顺序**  
 > 须先完成 codegen（`robonix_mcp_types/` 和 `proto_gen/`），再声明 MCP 接口并启动进程。不要跳过 `rbnx build` 直接 `rbnx start`——常见故障为镜像构建时 `COPY .../proto_gen ... not found`，或运行时参数 schema 与契约不一致。
@@ -103,7 +103,7 @@ stub.DeclareInterface(pb.DeclareInterfaceRequest(
         PoseStamped.json_schema(),
     ),
     listen_port=mcp_port,
-    contract_id="robonix/prm/base/navigate",
+    contract_id="robonix/srv/navigation/navigate",
 ))
 ```
 
@@ -177,7 +177,7 @@ server.start()
 
 ```python
 from mcp.server.fastmcp import FastMCP
-from robonix_mcp_contract import mcp_contract
+from robonix_py import mcp_contract
 from std_msgs_mcp import Empty
 from sensor_msgs_mcp import Image
 import uvicorn

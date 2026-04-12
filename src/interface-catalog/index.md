@@ -21,26 +21,36 @@ rust/contracts/
 │   ├── base_move.v1.toml             # robonix/prm/base/move
 │   ├── base_odom.v1.toml             # robonix/prm/base/odom
 │   ├── base_twist_in.v1.toml         # robonix/prm/base/twist_in
-│   ├── base_navigate.v1.toml         # robonix/prm/base/navigate
-│   ├── base_nav_status.v1.toml       # robonix/prm/base/nav_status
-│   ├── base_nav_cancel.v1.toml       # robonix/prm/base/nav_cancel
 │   ├── camera_rgb.v1.toml            # robonix/prm/camera/rgb
 │   ├── camera_depth.v1.toml          # robonix/prm/camera/depth
 │   ├── camera_snapshot.v1.toml       # robonix/prm/camera/snapshot
 │   ├── camera_depth_snapshot.v1.toml # robonix/prm/camera/depth_snapshot
-│   ├── perception_detect.v1.toml    # robonix/prm/perception/detect
 │   ├── robot_state.v1.toml           # robonix/prm/robot/state
 │   ├── sensor_imu.v1.toml            # robonix/prm/sensor/imu
 │   ├── sensor_lidar.v1.toml          # robonix/prm/sensor/lidar
+│   ├── sensor_lidar3d.v1.toml        # robonix/prm/sensor/lidar3d
 │   └── sensor_lidar_snapshot.v1.toml # robonix/prm/sensor/lidar_snapshot
-└── sys/
+└── srv/
     ├── pilot.v1.toml                 # robonix/srv/runtime/pilot
     ├── executor.v1.toml              # robonix/srv/runtime/executor
+    ├── executor_list_tools.v1.toml   # robonix/srv/runtime/executor/list_tools
     ├── liaison.v1.toml               # robonix/srv/runtime/liaison
     ├── vlm_chat.v1.toml              # robonix/srv/cognition/reason
     ├── memory_search.v1.toml         # robonix/srv/memory/search
     ├── memory_save.v1.toml           # robonix/srv/memory/save
-    └── memory_compact.v1.toml        # robonix/srv/memory/compact
+    ├── memory_compact.v1.toml        # robonix/srv/memory/compact
+    ├── navigation_navigate.v1.toml   # robonix/srv/navigation/navigate
+    ├── navigation_status.v1.toml     # robonix/srv/navigation/status
+    ├── navigation_cancel.v1.toml     # robonix/srv/navigation/cancel
+    ├── perception_detect.v1.toml     # robonix/srv/perception/detect
+    ├── slam_status.v1.toml           # robonix/srv/slam/status
+    ├── slam_save_map.v1.toml         # robonix/srv/slam/save_map
+    ├── slam_load_map.v1.toml         # robonix/srv/slam/load_map
+    ├── slam_switch_mode.v1.toml      # robonix/srv/slam/switch_mode
+    ├── slam_set_initial_pose.v1.toml # robonix/srv/slam/set_initial_pose
+    ├── map_pointcloud.v1.toml        # robonix/srv/common/map/pointcloud
+    ├── map_occupancy_grid.v1.toml    # robonix/srv/common/map/occupancy_grid
+    └── map_scan_2d.v1.toml           # robonix/srv/common/map/scan_2d
 ```
 
 下文各页表格中的"契约源码"列：已入库则标注 `rust/contracts/...`；尚未单独建 TOML 的契约标为 —（仍以 IDL / 目录为准，后续可补 TOML）。
@@ -68,17 +78,21 @@ cargo run -p robonix-codegen -- --lang proto \
 
 若删除某个 IDL 包，需手动删除对应 `.proto` 后重新执行（robonix-codegen 不自动删除）。完全重生成可先清除 `rm -f crates/robonix-interfaces/robonix_proto/*.proto` 再执行上述命令。
 
-生成 Python 桩（建议输出到目标 package 内的 `proto_gen/`）：
+生成 Python 桩（proto + grpc_tools.protoc 一条龙，写入目标 package 内的 `proto_gen/`）：
 
 ```bash
-cd rust && ./examples/scripts/gen_proto_python.sh
+rbnx codegen -p /path/to/package            # proto + Python stubs
+rbnx codegen -p /path/to/package --mcp      # 同时生成 robonix_mcp_types/（MCP 包需要）
 ```
+
+首次使用须在 robonix 源码根目录跑一次 `rbnx setup`（`make install` 已自动完成），
+详见[Build 与 Codegen](../integration-guide/build-and-codegen.md)。
 
 ## MCP 与 Python 工具线格式（`--lang mcp`）
 
 若 provider 在 `DeclareInterface` 中声明 `supported_transports` 含 `"mcp"`，除 proto / gRPC 外，还需用 `robonix-codegen --lang mcp` 生成 `robonix_mcp_types/`（各 ROS 消息的 `*_mcp.py` dataclass），并与契约 `[io]` 保持一致。
 
-- 共享装饰器位于 `rust/examples/packages/robonix_mcp_contract`，通过 `from robonix_mcp_contract import mcp_contract` 引入，以 `@mcp_contract(mcp, contract_id=…, input_cls=…, output_cls=…)` 注册 MCP 工具。MCP `arguments` 的 JSON 与 `input_cls.to_dict()` / `from_dict()` 一致（顶层键 = ROS 字段；如 `std_msgs/String` 为 `{"data": "..."}`；`sensor_msgs/Image.data` 在 JSON 中为 base64）。
+- 共享装饰器位于 `rust/crates/robonix-py`，通过 `from robonix_py import mcp_contract` 引入，以 `@mcp_contract(mcp, contract_id=…, input_cls=…, output_cls=…)` 注册 MCP 工具。MCP `arguments` 的 JSON 与 `input_cls.to_dict()` / `from_dict()` 一致（顶层键 = ROS 字段；如 `std_msgs/String` 为 `{"data": "..."}`；`sensor_msgs/Image.data` 在 JSON 中为 base64）。
 - `metadata_json.tools[].input_schema` 应使用 `InputCls.json_schema()` 整表，与线格式对齐。
 - 详细步骤见[接入指南 · Provider 注册](../integration-guide/provider-registration.md)与[快速上手 · MCP 与 codegen](../getting-started/quickstart.md)。
 

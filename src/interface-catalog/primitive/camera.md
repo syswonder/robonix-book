@@ -13,7 +13,7 @@
 | `robonix/prm/camera/rgbd` | `pub-sub (out)` | `robonix_msg/RGBD` | — |
 | `robonix/prm/camera/snapshot` | `rpc` | `std_msgs/Empty` → `sensor_msgs/Image` | `prm/camera_snapshot.v1.toml` |
 | `robonix/prm/camera/depth_snapshot` | `rpc` | `std_msgs/Empty` → `sensor_msgs/Image` | `prm/camera_depth_snapshot.v1.toml` |
-| `robonix/prm/perception/detect` | `rpc` | `sensor_msgs/Image` → `std_msgs/String` | `prm/perception_detect.v1.toml` |
+| `robonix/srv/perception/detect` | `rpc` | `sensor_msgs/Image` → `std_msgs/String` | `prm/perception_detect.v1.toml` |
 
 > 契约 TOML 路径省略 `rust/contracts/` 前缀。`rgb`/`depth` 同时支持 ROS 2 topic（`pub-sub`）和 gRPC server-stream 两种传输，可在 `DeclareInterface` 时分别声明。
 
