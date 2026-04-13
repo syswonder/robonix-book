@@ -83,7 +83,7 @@ SLAM 服务作为 consumer 需要两个 primitive：
 
 | Contract | 载荷 | 谁来 provide |
 |---|---|---|
-| `robonix/prm/sensor/lidar3d` | `sensor_msgs/PointCloud2` 或 `livox_ros_driver2/CustomMsg` | MID-360、Velodyne、Ouster 等 3D LiDAR 驱动包 |
+| `robonix/prm/sensor/lidar3d` | `sensor_msgs/PointCloud2` | MID-360、Velodyne、Ouster 等 3D LiDAR 驱动包（Livox 用户在驱动侧把 `CustomMsg` 转成 `PointCloud2` 再发布） |
 | `robonix/prm/sensor/imu` | `sensor_msgs/Imu` | LiDAR 内置 IMU 或独立 IMU |
 
 注意：`robonix/prm/sensor/lidar` 是 2D `LaserScan`，3D LiDAR 用 `lidar3d`。

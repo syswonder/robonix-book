@@ -17,6 +17,7 @@
 - [Crate 索引](architecture/crates.md)
 - [命名空间与接口模型](architecture/namespace-and-interfaces.md)
 - [多 Transport 并发模型](architecture/multi-transport.md)
+- [`model` Transport（草稿设计 / TODO）](architecture/model-transport.md)
 
 ---
 
@@ -46,7 +47,7 @@
 - [接入指南](integration-guide/index.md)
   - [Manifest 与包管理](integration-guide/package-and-manifest.md)
   - [Provider 注册](integration-guide/provider-registration.md)
-  - [Build 与 Codegen（全局 source path）](integration-guide/build-and-codegen.md)
+  - [Package 构建与代码生成](integration-guide/build-and-codegen.md)
   - [端到端验收](integration-guide/end-to-end-checklist.md)
 
 ---

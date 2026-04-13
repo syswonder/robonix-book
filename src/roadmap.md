@@ -58,7 +58,7 @@ Robonix 处于快速迭代的早期阶段。这里把**已经跑通**、**短期
 - **TaskGraph / RTDL 结构化输出**：目前 VLM 是 OpenAI `tool_calls` list，拿不到顺序、分支、循环。目标：VLM 按 Robonix 定义的 `TaskGraph` / RTDL schema 返回（支持序列、并行、条件分支、BT 子结构），Executor 按图语义执行。
 - **VLM 失败重试 / 退避**：目前 vlm 出错会把错误文本当成 assistant reply 进 history，下一轮照样发。有时需要智能的退避（例如同样的 pipe 连错 N 次就停）。
 - **turn-level 超时**：长 tool call 卡住时用户只能按 Esc。目标：Executor 级超时 + `abort_goal` 自动派发。
-- **认知层多模型拆分**：目前全靠一个 `reason`；目标按 role 拆出 `world`（世界模型）和 `code`（RTDL 生成）contract。
+- **Pilot 内部 model router**：按 intent 类型 / capability 需求从 Atlas 候选中选不同 provider（例如视觉走本地 VL 模型、代码生成走远端大模型），目前全靠 `vlm_service` 硬编码单后端。配合 `model` transport 落地。
 
 ### 部署 / 运维
 - **系统服务 lifecycle**：VLM、memsearch、SLAM 这些"每次部署都该起来"的服务目前靠 run.sh 启动，没有 systemd unit / 声明式 orchestrator。目标：`rbnx deploy`（或 systemd generator）按 manifest 启动并监控。
@@ -72,7 +72,13 @@ Robonix 处于快速迭代的早期阶段。这里把**已经跑通**、**短期
 
 ## 🔭 更长期 / 未排期
 
-- **`srv/cognition/world` 与 `srv/cognition/code`**：世界模型预测与结构化代码生成模型。依赖模型本身的可用性，不是 OS 层能独立推动。
+- **`model` transport（草稿设计见 [architecture/model-transport.md](architecture/model-transport.md)）**：
+  - Atlas `DeclareInterface` 扩展 `metadata_json`（flavor / url / model / auth / capabilities / context_len / cost / latency_ms）
+  - Pilot 增加 flavor-specific HTTP 客户端适配器：`openai` / `anthropic` / `gemini` / `ollama`
+  - Pilot 路由器：capability filter + 策略插件（explicit / round_robin / cheapest_first / fastest_first）
+  - 拆分 cognition 契约：`reason` / `world` / `code` / `embed` / `rerank` / `tts` / `asr`
+  - `vlm_service` 退路：保留作为"把裸 OpenAI endpoint 伪装成 model provider"的适配器，不再强制经过 gRPC
+- **`srv/common/data_collection`（LeRobot 集成）**：Pilot/Executor 运行期观测（obs / action / reward）落盘为 [LeRobot dataset](https://github.com/huggingface/lerobot) 格式；支持推送到 Hugging Face Hub；与现有训练 pipeline 无缝对接——把机器人变成数据源。
 - **`srv/common/map/semantic`**：语义地图 —— 物体级、房间级标注。SLAM 输出几何，加 `perception/detect` 结果 + 持久化 → 语义。
 - **`srv/common/data_collection`**：运行时观测沉淀到 [LeRobot](https://github.com/huggingface/lerobot) 格式；机器人变成数据源。
 - **`srv/common/monitor`**：全局运行监控面板（Pilot / Executor / 所有 provider 的资源、吞吐、错误率）。
@@ -80,6 +86,7 @@ Robonix 处于快速迭代的早期阶段。这里把**已经跑通**、**短期
 - **多机 SLAM / 多机协作**：mapping_rbnx 只管单机；多机融合、多机任务分发是独立课题。
 - **安全与权限**：当前 Atlas 是 trust-on-first-use。tool call 的 ACL、资源配额、多租户均未设计。
 - **持久化 Skill Graph**：把经过验证的 TaskGraph 固化成命名 skill，Pilot 直接下发而无需再走 VLM 推理一次。
+- **Skill 运行时**：把 skill 从"喂给 VLM 的文本"提升成可缓存、可调度、可隔离、可审计的 OS 资源——执行结果复用、运行前依赖检查、故障恢复、访问控制、并发保护等方向待探索。具体问题列表见 [skill-library.md](skill-library.md#未来设想把-skill-当成-os-对象管理)。
 - **Nav2 以外的 navigation 后端**：导航契约是后端无关的，目前只验证了 Nav2；可以接 Isaac / Tesseract / 自研规划器。
 - **Liaison 产品化**：语音/多模态输入、用户管理、会话持久化、多会话并发。
 

@@ -117,10 +117,12 @@ sequenceDiagram
 
 ## 包管理
 
-`rbnx` CLI 负责包的生命周期管理。每个包通过 `robonix_manifest.yaml` 描述其构建与启动方式。`rbnx validate` 检查 manifest 合法性，`rbnx build` 执行构建脚本，`rbnx start` 启动指定节点并按需向 Atlas 注册技能信息。
+`rbnx` CLI 负责包的生命周期管理。每个包通过 `robonix_manifest.yaml` 描述其构建与启动方式，并在根目录用 [`DESCRIPTION.md`](../integration-guide/package-and-manifest.md#descriptionmd包说明文件) 说明自身接口 / 源码 / 用法。`rbnx validate` 检查 manifest 合法性，`rbnx build` 执行构建脚本，`rbnx start` 启动指定节点。
 
 ## SKILL.md 与技能库
 
-SKILL.md 是面向 LLM 的行为描述文件。每个技能（如 `object_search_wander`）以 Markdown 编写，包含技能名称、适用场景、可用工具与行为规范。Pilot 启动时通过 `QueryAllSkills` RPC 获取所有已注册的技能描述并注入系统 prompt，VLM 据此决定在何种场景下使用哪些工具，以及感知与行动的交替节奏。
+`SKILL.md` 是面向 LLM 的**行为描述文件**，与包是两个独立概念——包管进程 / 接口，Skill 管 Agent 能力。`SKILL.md` 由用户或部署方显式放到 skill 注册路径（`~/.robonix/skills/` 或 `ROBONIX_SKILLS_EXTRA_DIRS` 指定目录），或由 Skill Node 进程在 `RegisterNode` 时主动附带；**不再从包内 `skills/` 自动扫描**（详见 [技能库](../skill-library.md)）。
+
+Pilot 启动时通过 `QueryAllSkills` RPC 获取所有已注册的技能描述并注入系统 prompt，VLM 据此决定在何种场景下使用哪些工具、以及感知与行动的交替节奏。
 
 除自然语言形式的 SKILL.md 外，Atlas 预留了结构化技能图（Skill Graph）扩展点——将 `TaskGraph` / BT 持久化为具名、机器可执行的技能，供 Pilot 直接下发而无需额外 VLM 推理（TODO）。

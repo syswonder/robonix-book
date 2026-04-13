@@ -1,11 +1,14 @@
-# 全局 source path 与 `rbnx codegen`
+# Package 构建与代码生成
+
+本页讲**怎么用 `rbnx` 命令把一个 package 从源码构建成可运行状态**——包括定位 Robonix
+主仓源码、生成 proto/MCP stubs、以及 package 自己的 build.sh 模板。
 
 Robonix 的 contract TOML、ROS IDL 和 runtime proto 都在主仓里。下游 package（无论
 在主仓 `examples/packages/` 下，还是完全独立的另一个 git 仓库里，甚至在另一台小车
 上）做 codegen 时都要引用这些路径 —— 但每个 package 不应该硬编码"我在 rust/examples/packages/foo
-下所以 rust root 在 ../../.."。
+下所以 rust root 在 ../../.."。`rbnx setup` + `rbnx codegen` 把这两件事拆开解决。
 
-## 一次性 `rbnx setup`
+## 第一步：登记 Robonix 源码根（`rbnx setup`）
 
 把当前 clone 登记为 robonix 源码根目录，写入 `~/.robonix/config.yaml`：
 
@@ -27,7 +30,7 @@ rbnx setup
   /home/xxx/dev/robonix
 ```
 
-### 旧 config 迁移
+### 旧配置文件迁移
 
 如果 `~/.robonix/config.yaml` 没有 `robonix_source_path` 字段（老版本留下的），
 任何 `rbnx build/start/validate/install/codegen` 会立即停止并提示：
@@ -40,7 +43,7 @@ Fix:  cd /path/to/robonix
 
 按提示跑一次即可。
 
-## `rbnx codegen` — package 生成
+## 第二步：生成 package 的 stubs（`rbnx codegen`）
 
 **一条命令代替整个 build.sh 模板**：
 
@@ -58,7 +61,7 @@ rbnx codegen -p /path/to/my_package --mcp --out-dir bridge   # 生成物放到 b
 3. 调 `grpc_tools.protoc` 把所有 proto 翻成 Python stubs，落到 `<pkg>/proto_gen/`
 4. 写 `<pkg>/rbnx-build/ws/install/setup.bash`，导出 `PYTHONPATH`，`rbnx start` 会自动 source
 
-## package 的 build.sh 模板
+## 第三步：package 的 build.sh 模板
 
 绝大多数 package 只需要这几行：
 
@@ -79,7 +82,7 @@ echo "[build] done."
 如果 package 还需要额外构建步骤（cargo build rust 库、docker compose build、
 `pip install -e`），加在 `rbnx codegen` 之后即可。
 
-### 参考实现
+### 参考：现有 package 的 build.sh
 
 改造后的 build.sh 基本都在 10 行左右：
 
@@ -91,7 +94,7 @@ echo "[build] done."
 | `examples/packages/maniskill_vla_demo` | 多一步编 demo-local 的 `maniskill_env.proto` |
 | `examples/packages/zero_copy_demo` | `cargo build -p robonix-buffer` + `pip install -e` |
 
-## package 自定义 contract / 自定义 IDL
+## 进阶：package 自带 contract / IDL
 
 按照约定，package 自己声明的 contract 放在：
 
@@ -115,7 +118,7 @@ Atlas 不会在 `ROBO_SYSTEM_INTERFACE_CATALOG` 里强制限制 package-local co
 —— 它们出场时 atlas 只会打一条 "unknown contract (not in catalog) — allowing anyway"
 warning，不影响功能。
 
-## 快速参考
+## 常用命令速查
 
 ```bash
 # 一次性初始化
