@@ -42,7 +42,7 @@ stub.RegisterNode(pb.RegisterNodeRequest(
 | `node_id` | reverse-DNS 格式，至少三段（如 `com.robonix.prm.tiago`） |
 | `namespace` | 仅在 `DeclareInterface` 未填 `contract_id` 时用于推导契约路径 |
 | `kind` | `primitive`、`service` 或 `skill` |
-| `skill_md` | 内嵌 SKILL.md 内容（供 VLM 使用）；Skill Node 可在此字段或 `skills[]` 列表里显式提交。`rbnx start` **不再扫描包内 `skills/` 目录**——参见 [技能库](../skill-library.md) |
+| `skill_md` | 可选；Skill Node 可在 `RegisterNode` 时附带技能描述文档供 VLM 使用，或在 `skills[]` 列表里显式提交多个 `SkillInfo`。包级别的接口/源码说明放包根目录的 `DESCRIPTION.md`，与 skill 注册解耦——参见 [技能库](../skill-library.md) |
 
 ## DeclareInterface
 

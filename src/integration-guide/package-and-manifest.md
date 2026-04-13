@@ -111,13 +111,13 @@ my_package/
 
 ### 与 Skill 的区别
 
-`DESCRIPTION.md` 和 `SKILL.md` 是**两回事**：
+`DESCRIPTION.md` 描述的是**包**（部署单元），与 Robonix 的 [Skill](../skill-library.md) 概念是两回事：
 
-| | `DESCRIPTION.md` | Skill / `SKILL.md`（见 [技能库](../skill-library.md)） |
+| | `DESCRIPTION.md` | Skill |
 |---|---|---|
-| 位置 | 每个包的根目录 | 独立的 skill 注册路径（不从包内自动导入） |
+| 位置 | 每个包的根目录 | 独立注册到 Atlas（Skill Node 主动提交 / `~/.robonix/skills/` / `ROBONIX_SKILLS_EXTRA_DIRS`） |
 | 面向 | 开发者、集成方、读源码的 Agent | 运行时 VLM（system prompt 注入） |
-| 内容 | 包的说明书：接口 / 源码 / 函数 / 用法 | 行为规范 playbook：场景 / 工具顺序 / 约束 |
-| 是否自动注册到 Atlas | 否 | 是（通过独立机制，不走"扫包内 `skills/`"） |
+| 内容 | 包的说明书：接口 / 源码 / 函数 / 用法 | Agent 行为单元：基本技能（Skill Node 进程）或 RTDL 结构化技能图 |
+| 是否自动注册到 Atlas | 否 | 由专门的 skill 注册路径管理 |
 
-> **历史变化**：早期 `rbnx start` 会自动扫描包内 `skills/<name>/SKILL.md` 并注册到 Atlas。这一机制已取消——它让"包"与"Skill"这两个独立概念产生耦合，且让 `SKILL.md` 这类面向 VLM 的文档错误地承担了"包文档"职责。现在 Skill 通过独立路径注册（详见技能库文档），包自身的描述统一放 `DESCRIPTION.md`。
+> **历史变化**：早期 `rbnx start` 会自动扫描包内 `skills/<name>/` 目录并向 Atlas 注册。这一机制已取消——它让"包"与"Skill"这两个独立概念产生耦合（包是部署单元，Skill 是 Agent 能力库）。现在两者完全解耦：包根目录的描述统一放 `DESCRIPTION.md`，Skill 通过独立路径注册（详见技能库文档）。

@@ -58,7 +58,7 @@ sequenceDiagram
 
 1. 用户在 `robonix-liaison`（或 `rbnx chat`）中输入指令。
 2. Liaison 构造 `Intent` 消息，经 gRPC 发送至 Pilot 的 `PilotService.HandleIntent`。
-3. Pilot 调用 `executor.ListTools` 获取所有可用工具，并从 Atlas 拉取 `SKILL.md` 注入系统 prompt。
+3. Pilot 调用 `executor.ListTools` 获取所有可用工具，并从 Atlas 拉取已注册的技能描述注入系统 prompt。
 4. Pilot 将用户消息、历史记录与工具列表发送至认知大模型（`CognitionService.Reason`，即 VLM）。
 5. VLM 返回 `tool_calls`（例如 `get_camera_image`）。
 6. Pilot 将 tool_calls 打包为 RTDL/`TaskGraph`——确定性结构，不含自然语言——经 gRPC 发送至 Executor。
@@ -119,10 +119,11 @@ sequenceDiagram
 
 `rbnx` CLI 负责包的生命周期管理。每个包通过 `robonix_manifest.yaml` 描述其构建与启动方式，并在根目录用 [`DESCRIPTION.md`](../integration-guide/package-and-manifest.md#descriptionmd包说明文件) 说明自身接口 / 源码 / 用法。`rbnx validate` 检查 manifest 合法性，`rbnx build` 执行构建脚本，`rbnx start` 启动指定节点。
 
-## SKILL.md 与技能库
+## 技能库
 
-`SKILL.md` 是面向 LLM 的**行为描述文件**，与包是两个独立概念——包管进程 / 接口，Skill 管 Agent 能力。`SKILL.md` 由用户或部署方显式放到 skill 注册路径（`~/.robonix/skills/` 或 `ROBONIX_SKILLS_EXTRA_DIRS` 指定目录），或由 Skill Node 进程在 `RegisterNode` 时主动附带；**不再从包内 `skills/` 自动扫描**（详见 [技能库](../skill-library.md)）。
+Robonix 的"技能"层（详见 [技能库](../skill-library.md)）有两类：
 
-Pilot 启动时通过 `QueryAllSkills` RPC 获取所有已注册的技能描述并注入系统 prompt，VLM 据此决定在何种场景下使用哪些工具、以及感知与行动的交替节奏。
+- **基本技能（Skill Node）**：进程形态，注册到 Atlas 并通过 MCP 暴露执行入口。最常见是预训练 RL / VLA 模型封装。
+- **RTDL 技能**：Pilot 运行时按 schema 输出的结构化技能图（`TaskGraph` / BT），验证后可固化到 Atlas Skill Library 直接复用——跳过 VLM 推理（规划中）。
 
-除自然语言形式的 SKILL.md 外，Atlas 预留了结构化技能图（Skill Graph）扩展点——将 `TaskGraph` / BT 持久化为具名、机器可执行的技能，供 Pilot 直接下发而无需额外 VLM 推理（TODO）。
+技能与"包"是两个独立概念：包管进程 / 接口，技能管 Agent 行为。Pilot 启动时通过 `QueryAllSkills` 拉取已注册技能信息并注入系统 prompt，VLM 据此选择合适技能。

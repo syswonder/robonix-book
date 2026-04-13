@@ -7,7 +7,7 @@
 接口边界约定：
 
 - `robonix/prm/...` 仅用于可标准化、可替换的基础能力，如底盘、相机、传感器、机械臂、夹爪、力/力矩等设备或仿真邻近能力。
-- 任务级、策略级、自然语言驱动的执行接口不属于 `prm`。此类开放语义应置于[技能库（Skill Library）](../skill-library.md)中的 Skill Node / SKILL.md，或在确属平台运行时组件时归入 `robonix/srv/...`。
+- 任务级、策略级、自然语言驱动的执行接口不属于 `prm`。此类开放语义应置于[技能库（Skill Library）](../skill-library.md)中的 Skill Node，或在确属平台运行时组件时归入 `robonix/srv/...`。
 
 ### 契约源码路径（仓库内） {#contract-toml-sources}
 
