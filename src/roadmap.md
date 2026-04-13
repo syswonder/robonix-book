@@ -87,8 +87,6 @@ Robonix 处于快速迭代的早期阶段。这里把**已经跑通**、**短期
 - **安全与权限**：当前 Atlas 是 trust-on-first-use。tool call 的 ACL、资源配额、多租户均未设计。
 - **持久化 Skill Graph**：把经过验证的 TaskGraph 固化成命名 skill，Pilot 直接下发而无需再走 VLM 推理一次。
 - **Skill 运行时**：把 skill 从"喂给 VLM 的文本"提升成可缓存、可调度、可隔离、可审计的 OS 资源——执行结果复用、运行前依赖检查、故障恢复、访问控制、并发保护等方向待探索。具体问题列表见 [skill-library.md](skill-library.md#未来设想把-skill-当成-os-对象管理)。
-- **Nav2 以外的 navigation 后端**：导航契约是后端无关的，目前只验证了 Nav2；可以接 Isaac / Tesseract / 自研规划器。
-- **Liaison 产品化**：语音/多模态输入、用户管理、会话持久化、多会话并发。
 
 ## 贡献方式
 
