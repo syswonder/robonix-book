@@ -1,0 +1,67 @@
+direction: down
+
+user: 用户 { shape: person }
+tui: rbnx chat (TUI)
+
+pilot: robonix-pilot {
+  style.fill: "#E8F0FE"
+  style.stroke: "#4285F4"
+}
+vlm: vlm_service (gRPC) {
+  style.fill: "#E8F0FE"
+  style.stroke: "#4285F4"
+}
+atlas: robonix-atlas {
+  style.fill: "#FCE4EC"
+  style.stroke: "#E91E63"
+}
+
+env: env_node · ManiSkill3 (gRPC) {
+  style.fill: "#F3E5F5"
+  style.stroke: "#9C27B0"
+}
+perception: perception_node · GroundingDINO (MCP) {
+  style.fill: "#F3E5F5"
+  style.stroke: "#9C27B0"
+}
+policy: policy_node · Octo/Scripted (MCP) {
+  style.fill: "#F3E5F5"
+  style.stroke: "#9C27B0"
+}
+viz: viz_node · Rerun (gRPC) {
+  style.fill: "#F3E5F5"
+  style.stroke: "#9C27B0"
+}
+
+user -> tui: 指令
+tui -> pilot: SubmitTask
+pilot -> vlm: CognitionService.Reason
+
+pilot -> perception: MCP
+pilot -> policy: MCP
+policy -> env: gRPC
+perception -> env: gRPC
+viz -> env: gRPC
+viz -> perception: MCP
+
+# Atlas 控制面
+pilot -> atlas: 查询 {
+  style.stroke-dash: 5
+  style.stroke: "#E91E63"
+}
+vlm -> atlas: 注册 {
+  style.stroke-dash: 5
+  style.stroke: "#E91E63"
+}
+env -> atlas: 注册 {
+  style.stroke-dash: 5
+  style.stroke: "#E91E63"
+}
+perception -> atlas: 注册 {
+  style.stroke-dash: 5
+  style.stroke: "#E91E63"
+}
+policy -> atlas: 注册 {
+  style.stroke-dash: 5
+  style.stroke: "#E91E63"
+}
