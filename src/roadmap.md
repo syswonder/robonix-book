@@ -23,7 +23,7 @@ Robonix 处于快速迭代的早期阶段。这里把**已经跑通**、**短期
 | Pilot：OpenAI 兼容 `tool_calls` → `TaskGraph`（每轮独立，非跨轮连接） | OK |
 | Pilot：vlm 后端错误 graceful 处理（text_delta + finish=error，session 不死） | OK |
 | Executor：Built-in / MCP / gRPC 工具路由 | OK |
-| Liaison：文本 `Intent → PilotEvent` 流 | OK |
+| Liaison：文本 `Task → PilotEvent` 流 | OK |
 | `rbnx chat` TUI（Esc 中断当前 turn） | OK |
 
 ### 契约目录

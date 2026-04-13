@@ -8,7 +8,7 @@
 
 四类客户端（CLI / GUI / 语音 / 机器人）均经由 Liaison 进入系统，Liaison 负责会话管理与界面适配。
 
-- `rbnx chat` 当前直连 Pilot（`PilotService.HandleIntent`），属于调试过渡形态；长期目标是所有用户交互统一经由 Liaison。
+- `rbnx chat` 当前直连 Pilot（`PilotService.SubmitTask`），属于调试过渡形态；长期目标是所有用户交互统一经由 Liaison。
 - `rbnx` 其余只读子命令（`nodes` / `describe` / `tools` / `inspect` 等）永久直连 Atlas。Atlas 定位为注册中心与状态目录，CLI 作为状态监控工具直接查询 Atlas 是合理的。
 
 ## ReAct 推理循环
@@ -24,12 +24,12 @@ sequenceDiagram
     participant T as 工具 (MCP/gRPC)
 
     U->>L: 自然语言指令
-    L->>P: Intent
+    L->>P: Task
     P->>V: 消息历史 + 工具列表
 
     loop VLM ReAct 循环
         V-->>P: tool_calls
-        P->>E: TaskGraph
+        P->>E: RTDL Plan（方案）
         E->>T: 工具调用（按路由分发）
         T-->>E: 结果
         E-->>P: TaskCallEvent stream
@@ -49,9 +49,9 @@ sequenceDiagram
 
 | 子系统 | crate | 职责 |
 |---|---|---|
-| Liaison | `robonix-liaison` | 接收用户输入（文本/语音），构造 `Intent`，流式返回 `PilotEvent`；内含会话管理与界面适配器（规划中） |
-| Pilot | `robonix-pilot` | VLM 驱动的 ReAct 推理循环：将意图分解为 RTDL/`TaskGraph` 片段，向认知大模型发送意图并处理规划结果 |
-| Executor | `robonix-executor` | 接收 RTDL/`TaskGraph`，按工具路由（Built-in / MCP / gRPC）分发调用，流式返回结果；包含 Skill Engine 与异常上报 |
+| Liaison | `robonix-liaison` | 接收用户输入（文本/语音），构造**任务**（`Task`），流式返回 `PilotEvent`；内含会话管理与界面适配器（规划中） |
+| Pilot | `robonix-pilot` | VLM 驱动的 ReAct 推理循环：把任务分解为 RTDL **方案**（`Plan`）逐轮发给 Executor，将工具结果回流给 VLM 继续推理 |
+| Executor | `robonix-executor` | 接收 RTDL 方案，按工具路由（Built-in / MCP / gRPC）分发调用，流式返回结果；包含 Skill Engine 与异常上报 |
 | Atlas | `robonix-atlas` | 控制平面：注册、接口声明、通道协商、技能库 |
 
 **用户服务 / 原语 / 技能**（部署到 Robonix 之上，用 contract 暴露能力）：
@@ -67,31 +67,31 @@ sequenceDiagram
 以用户输入 "find the door" 为例：
 
 1. 用户在 `robonix-liaison`（或 `rbnx chat`）中输入指令。
-2. Liaison 构造 `Intent` 消息，经 gRPC 发送至 Pilot 的 `PilotService.HandleIntent`。
+2. Liaison 把指令构造成**任务**（`Task`，含 `user_id` / `session_id`），经 gRPC 发送至 Pilot 的 `PilotService.SubmitTask`。
 3. Pilot 调用 `executor.ListTools` 获取所有可用工具，并从 Atlas 拉取已注册的技能描述注入系统 prompt。
 4. Pilot 将用户消息、历史记录与工具列表发送至认知大模型（`CognitionService.Reason`，即 VLM）。
 5. VLM 返回 `tool_calls`（例如 `get_camera_image`）。
-6. Pilot 将 tool_calls 打包为 RTDL/`TaskGraph`——确定性结构，不含自然语言——经 gRPC 发送至 Executor。
+6. Pilot 把 tool_calls 整理成 RTDL **方案**（`Plan`，确定性结构，不含自然语言）——经 gRPC 发送至 Executor。
 7. Executor 按工具路由（Built-in / MCP / gRPC）分发调用，流式返回 `TaskCallEvent`。
 8. Pilot 收到全部结果后将其追加至对话历史，再次调用 VLM 进行分析。
 9. VLM 决定下一步行动；循环持续至任务完成（无 tool_calls 时终止）。
 10. Pilot 向 Liaison 推送 `FinalText` 事件，Liaison 将结果展示给用户。
 
-每一轮 VLM 推理对应一个独立的 `TaskGraph`，只包含 **这一轮 VLM 当下决定要执行的工具调用**。这些一次次的 `TaskGraph` 之间**互相独立**、没有任何边或依赖关系——Executor 执行完本轮的图就结束这一轮，VLM 重新拿到结果、重新推理，再生成新的一张图。举例：
+每一轮 VLM 推理对应一个独立的 RTDL 方案，只包含 **这一轮 VLM 当下决定要执行的工具调用**。这些一次次的方案之间**互相独立**、没有任何边或依赖关系——Executor 执行完本轮的方案就结束这一轮，VLM 重新拿到结果、重新推理，再生成新方案。举例：
 
-- 用户说"打开门"。VLM 第一轮判断"我不知道怎么开门，先查技能库"，生成的 TaskGraph 只有 `read_skill("open_door")` 一个节点。
-- 执行完、结果回到 VLM。第二轮 VLM 结合文档重新推理，生成的新 TaskGraph 里才有 `camera_snapshot`、`base_cmd`、`grasp` 等节点。
-- 第二轮的图和第一轮的图没有任何连接——ReAct 状态完全存在于对话历史里，图本身每轮独立生成、独立执行。
+- 用户说"打开门"。VLM 第一轮判断"我不知道怎么开门，先查技能库"，生成的方案只有 `read_skill("open_door")` 一个节点。
+- 执行完、结果回到 VLM。第二轮 VLM 结合文档重新推理，新方案里才有 `camera_snapshot`、`base_cmd`、`grasp` 等节点。
+- 第二轮和第一轮的方案没有任何连接——ReAct 状态完全存在于对话历史里，方案每轮独立生成、独立执行。
 
-> **TODO**：目前 VLM 通过 OpenAI chat-completions 的 `tool_calls` 列表返回当轮调用。这把每一轮的 TaskGraph 压扁成了一个**并列 tool call 列表**——没有顺序、分支、循环、条件等图结构。后续工作是让 VLM 按 Robonix 定义的 `TaskGraph` / RTDL 结构（支持顺序、并行、条件分支、行为树子结构等）返回当轮计划，Executor 按图语义执行，而不是按列表顺序串行调一遍。
+> **TODO**：目前 VLM 通过 OpenAI chat-completions 的 `tool_calls` 列表返回当轮调用。这把每一轮的方案压扁成了一个**并列 tool call 列表**——没有顺序、分支、循环、条件等图结构。后续工作是让 VLM 按 Robonix 定义的 RTDL 方案结构（支持顺序、并行、条件分支、行为树子结构等）返回当轮计划，Executor 按方案语义执行，而不是按列表顺序串行调一遍。
 
 ### 认知层多角色展望
 
 当前 Pilot 调用单一 VLM 服务（`robonix/srv/cognition/reason`）承担全部推理工作。长期设计目标是多模型分工的认知层：
 
-- 推理模型（reason）：接收感知数据与用户意图，执行 CoT 推理与逻辑分析
+- 推理模型（reason）：接收感知数据与用户任务，执行 CoT 推理与逻辑分析
 - 世界模型（world，规划中）：预测环境状态变化，辅助规划决策
-- 代码模型（code，规划中）：生成结构化 RTDL/TaskGraph 执行计划
+- 代码模型（code，规划中）：生成结构化 RTDL 方案
 
 各角色对应独立的 `robonix/srv/cognition/*` 契约，Pilot 依据场景调用不同后端。
 

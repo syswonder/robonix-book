@@ -17,7 +17,7 @@ Robonix 采用树形命名空间统一管理硬件能力与系统服务。每个
 
 ## 契约 ID（`contract_id`）
 
-契约 ID 是发现与校验时使用的稳定路径字符串，与 `rust/contracts/**/*.toml` 中 `[contract]` 节的 `id` 字段一致（例如 `robonix/srv/runtime/pilot`、`robonix/prm/camera/rgb`）。版本仅在 TOML 文件名及文件内容中维护，不拼入 `contract_id`。
+契约 ID 是发现与校验时使用的稳定路径字符串，与 `rust/contracts/**/*.toml` 中 `[contract]` 节的 `id` 字段一致（例如 `robonix/srv/pilot`、`robonix/prm/camera/rgb`）。版本仅在 TOML 文件名及文件内容中维护，不拼入 `contract_id`。
 
 在控制平面上：
 
@@ -72,7 +72,7 @@ cargo run -p robonix-codegen -- --lang proto \
   -o crates/robonix-interfaces/robonix_proto
 ```
 
-具体命名 RPC（如 `PilotService.HandleIntent`、`ExecutorService.Execute`）由 `lib/<pkg>/srv` 生成；`robonix_contracts.proto` 中同一契约可能表现为泛型 `Stream(...)`，详见 `rust/contracts/README.md` 中"门面 vs 具体服务"一节。
+具体命名 RPC（如 `PilotService.SubmitTask`、`ExecutorService.Execute`）由 `lib/<pkg>/srv` 生成；`robonix_contracts.proto` 中同一契约可能表现为泛型 `Stream(...)`，详见 `rust/contracts/README.md` 中"门面 vs 具体服务"一节。
 
 ## 多传输
 
@@ -113,7 +113,7 @@ robonix/prm/camera/rgb, … /depth, …
 robonix/prm/sensor/imu, … /lidar, …
 robonix/srv/cognition/reason, …
 robonix/srv/memory/search, …
-robonix/srv/runtime/pilot, executor, liaison, …
+robonix/srv/pilot, executor, liaison, …
 ```
 
 （完整列表以 Atlas 内嵌目录为准。）

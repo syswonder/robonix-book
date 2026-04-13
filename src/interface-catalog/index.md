@@ -31,10 +31,10 @@ rust/contracts/
 │   ├── sensor_lidar3d.v1.toml        # robonix/prm/sensor/lidar3d
 │   └── sensor_lidar_snapshot.v1.toml # robonix/prm/sensor/lidar_snapshot
 └── srv/
-    ├── pilot.v1.toml                 # robonix/srv/runtime/pilot
-    ├── executor.v1.toml              # robonix/srv/runtime/executor
-    ├── executor_list_tools.v1.toml   # robonix/srv/runtime/executor/list_tools
-    ├── liaison.v1.toml               # robonix/srv/runtime/liaison
+    ├── pilot.v1.toml                 # robonix/srv/pilot
+    ├── executor.v1.toml              # robonix/srv/executor
+    ├── executor_list_tools.v1.toml   # robonix/srv/executor/list_tools
+    ├── liaison.v1.toml               # robonix/srv/liaison
     ├── vlm_chat.v1.toml              # robonix/srv/cognition/reason
     ├── memory_search.v1.toml         # robonix/srv/memory/search
     ├── memory_save.v1.toml           # robonix/srv/memory/save

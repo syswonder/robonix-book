@@ -1,5 +1,16 @@
 # 技能库（Skill Library）
 
+> ⚠️ **概念区分（同名不同物）**
+>
+> "Skill" 这个词在两个不同语境下被使用，本页用的是其中一个：
+>
+> | 语境 | 指什么 | 哪里见到 |
+> |---|---|---|
+> | **Robonix 白皮书的"技能层"**（**本页讨论**）| 系统四层之一（原语 / 服务 / **技能** / 任务），是部署到机器人上的**可执行行为单元**——基本技能（预训练 VLA / RL 进程）或 RTDL 技能（运行时生成的结构化方案） | 本页 + EAIOS 架构 |
+> | **Agent Skills**（agentskills.io）| Agent 上下文里的**说明书**——一份 `SKILL.md` Markdown 文件，告诉 LLM 在某种场景下"怎么用一组工具" | Claude Code / Cursor / Copilot / OpenCode 等生态共用的格式 |
+>
+> 两者只是**同名**，不在同一抽象层。Robonix 兼容 Agent Skills 格式（详见下方 [Atlas Skill Library](#atlas-skill-library) 中"Skill 信息从哪来"），但**这不是本页讨论的"技能"概念**。
+
 ## Skill 在 Robonix 里的定位
 
 Robonix 把系统分四层（详见 [EAIOS 架构背景](background/eaios.md)）：
@@ -8,7 +19,7 @@ Robonix 把系统分四层（详见 [EAIOS 架构背景](background/eaios.md)）
 原语（prm）  ←  硬件/仿真
 服务（srv）  ←  框架中间件
 技能（skill）←  Agent 可调用的行为应用 ← 本页
-任务（task） ←  运行时 TaskGraph 实例
+任务（task） ←  运行时方案实例
 ```
 
 **Skill = 可复用的 Agent 行为单元**。粒度比单次 tool call 大，比一次完整任务小。一个 skill 把"在某个场景下要怎么做事"封装成 Agent 看得见、能在合适时机选择性调用的能力。
@@ -16,7 +27,7 @@ Robonix 把系统分四层（详见 [EAIOS 架构背景](background/eaios.md)）
 Robonix 区分两类 skill：
 
 - **基本技能（basic skill）**：已经训好、固化下来的能力。最常见形态是预训练 RL / VLA 模型，封装成进程对外提供执行入口。
-- **RTDL 技能（runtime-defined skill）**：运行期由 Pilot/规划器**动态生成**的结构化技能图（`TaskGraph` / Behavior Tree）——根据当前世界模型和任务目标拼出来的一次性 plan，验证后可固化。
+- **RTDL 技能（runtime-defined skill）**：运行期由 Pilot/规划器**动态生成**的结构化方案（`Plan`，含顺序 / 并行 / 条件分支 / 行为树子结构）——根据当前世界模型和任务目标拼出来的一次性方案，验证后可固化。
 
 ## 基本技能
 

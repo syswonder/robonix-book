@@ -14,7 +14,7 @@
 
 Robonix 对认知层的长期设想为多模型分工：
 
-- 推理模型（reason）：接收感知数据与用户意图，进行 CoT 推理与逻辑分析，即本契约。
+- 推理模型（reason）：接收感知数据与用户任务，进行 CoT 推理与逻辑分析，即本契约。
 - 世界模型（world，`robonix/srv/cognition/world`，规划中）：预测环境状态变化，辅助规划。
 - 代码模型（code，`robonix/srv/cognition/code`，规划中）：生成结构化的 RTDL / TaskGraph 执行计划。
 

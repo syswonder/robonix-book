@@ -167,7 +167,7 @@ rbnx graph -o topology.svg --format svg   # 矢量 SVG
 | 策略节点 | `com.robonix.demo.vla` | `robonix/prm/manipulation` | `mcp_tools` | MCP |
 | VLM 服务 | `com.robonix.services.vlm` | `robonix/srv/cognition` | `reason` | gRPC |
 | 可视化 | `com.robonix.demo.viz` | `robonix/viz` | — | — |
-| Pilot | `com.robonix.runtime.pilot` | `robonix/srv/runtime/pilot` | `pilot` | gRPC |
+| Pilot | `com.robonix.runtime.pilot` | `robonix/srv/pilot` | `pilot` | gRPC |
 
 ## MCP 工具
 
