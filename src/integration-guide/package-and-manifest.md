@@ -115,9 +115,9 @@ my_package/
 
 | | `DESCRIPTION.md` | Skill |
 |---|---|---|
-| 位置 | 每个包的根目录 | 独立注册到 Atlas（Skill Node 主动提交 / `~/.robonix/skills/` / `ROBONIX_SKILLS_EXTRA_DIRS`） |
+| 位置 | 每个包的根目录 | 独立注册到 Atlas（技能 主动提交 / `~/.robonix/skills/` / `ROBONIX_SKILLS_EXTRA_DIRS`） |
 | 面向 | 开发者、集成方、读源码的 Agent | 运行时 VLM（system prompt 注入） |
-| 内容 | 包的说明书：接口 / 源码 / 函数 / 用法 | Agent 行为单元：基本技能（Skill Node 进程）或 RTDL 结构化技能图 |
+| 内容 | 包的说明书：接口 / 源码 / 函数 / 用法 | Agent 行为单元：基本技能（技能 进程）或 RTDL 结构化技能图 |
 | 是否自动注册到 Atlas | 否 | 由专门的 skill 注册路径管理 |
 
 > **历史变化**：早期 `rbnx start` 会自动扫描包内 `skills/<name>/` 目录并向 Atlas 注册。这一机制已取消——它让"包"与"Skill"这两个独立概念产生耦合（包是部署单元，Skill 是 Agent 能力库）。现在两者完全解耦：包根目录的描述统一放 `DESCRIPTION.md`，Skill 通过独立路径注册（详见技能库文档）。

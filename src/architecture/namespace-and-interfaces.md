@@ -11,9 +11,9 @@ Robonix 采用树形命名空间统一管理硬件能力与系统服务。每个
 | 域 | 用途 |
 |----|------|
 | `prm` | 物理机器人、仿真及虚拟硬件的能力抽象（底盘、相机、机械臂等） |
-| `srv` | 系统组件（Liaison / Pilot / Executor，不可替换）与默认服务（认知、记忆、地图、数据采集、系统监控等，可替换实现） |
+| `srv` | 系统服务（Liaison / Pilot / Executor，Robonix OS 本身的一部分，不可替换）与用户服务（认知、记忆、地图、数据采集、系统监控等，部署到系统之上；常用能力 Robonix 提供默认实现，用户可替换或扩展） |
 
-`prm` 下按硬件类别细分为 `base`、`camera`、`sensor`、`arm`、`gripper`、`force_torque`。`srv` 下分两层：系统组件（Liaison / Pilot / Executor）构成 Robonix 的编排骨架，不可替换；默认服务（`cognition`、`memory`、`planning` 等）为框架提供的可替换能力。
+`prm` 下按硬件类别细分为 `base`、`camera`、`sensor`、`arm`、`gripper`、`force_torque`。`srv` 下分两层：**系统服务**（Liaison / Pilot / Executor）构成 Robonix 的编排骨架，不可替换；**用户服务**（`cognition`、`memory`、`planning` 等）部署到系统之上，Robonix 对常用能力提供默认实现，用户可替换或新增。
 
 ## 契约 ID（`contract_id`）
 

@@ -1,25 +1,36 @@
 # 服务（`robonix/srv`）
 
-`robonix/srv/` 命名空间下注册的是 Robonix 提供的各类服务，与用户部署的原语（`robonix/prm`）和技能（`robonix/skill`）区分。已入库契约均在 `rust/contracts/srv/*.v1.toml`（完整树见 [接口目录首页 · 契约源码路径](../index.md#contract-toml-sources)）。
+Robonix 的"服务"分两类：
 
-## 系统组件
+| 类别 | 是什么 | 谁实现 |
+|---|---|---|
+| **系统服务** | Robonix 操作系统本体的一部分，构成"用户意图 → 工具执行"的核心管线 | Robonix 项目本身，不可替换 |
+| **用户服务** | 部署到 Robonix 之上、用 contract 暴露给 Agent 的能力 | 由用户部署。其中 VLM、memory、SLAM、navigation、perception 等通用能力 Robonix 提供**默认实现**；其它用户场景自行实现（可复用现有 contract，或自定义新 contract 后实现） |
 
-Liaison、Pilot、Executor 是 Robonix 系统自身的组成部分，不可替换，共同构成从用户意图到工具执行的完整编排管线。这三个进程同样通过 Atlas 注册与发现彼此，使用与其他节点相同的 RegisterNode / DeclareInterface 机制，但其身份为系统骨架而非可替换服务。
+已入库契约均在 `rust/contracts/srv/*.v1.toml`（完整树见 [接口目录首页 · 契约源码路径](../index.md#contract-toml-sources)）。
 
-| 组件 | 职责 | 文档 |
+## 系统服务
+
+Liaison、Pilot、Executor 是 Robonix 操作系统骨架。它们通过 Atlas 互相发现，但其身份是系统组成部分而非可替换组件。
+
+| 系统服务 | 职责 | 文档 |
 |------|------|------|
 | Liaison | 交互入口：界面适配、语音服务调用、用户区分 | [Liaison](liaison.md) |
 | Pilot | 推理引擎：意图理解、ReAct 推理循环、会话管理 | [Pilot](pilot.md) |
 | Executor | 执行引擎：Skill Engine（工具调用 / RTDL 分发）、异常上报 | [Executor](executor.md) |
 
-## 默认服务 vs 场景服务
+> 系统服务本身**强制依赖**部分用户服务才能完成功能——例如 Pilot 必须有可用的 `srv/cognition/reason`（VLM）才能推理，Liaison 通常依赖 ASR/TTS。Robonix 默认实现这部分依赖（默认 VLM provider、默认 memsearch 等），但允许用户替换。
 
-Robonix 的可替换服务分为两类：
+## 用户服务
 
-- 默认服务：每个 Robonix 部署均应具备的基础服务，提供跨场景通用能力，涵盖认知（Cognition）、ASR、TTS、记忆、SLAM 与地图、导航、感知、数据采集、系统监控等。
-- 场景服务节点：面向具体部署的垂直能力（如工厂条码识别、家庭物品识别等），按部署私域命名空间组织，不占用 `robonix/srv/` 路径。
+下面列出的契约都是**用户服务**——Robonix 提供契约定义和 / 或默认实现，但实际是部署到系统之上的，可以替换或扩展。
 
-## 默认服务契约目录
+### 命名约定
+
+- **通用基础能力**：Robonix 出默认实现，命名固定（如 `robonix/srv/cognition/reason`、`robonix/srv/memory/search`、`robonix/srv/slam/*`）
+- **特定场景服务**：面向具体部署的垂直能力（如工厂条码识别、家庭物品识别），按部署私域命名空间组织，**不占用** `robonix/srv/` 路径
+
+## 用户服务契约目录
 
 ### Cognition（认知）
 

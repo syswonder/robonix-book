@@ -45,12 +45,22 @@ sequenceDiagram
 
 | 子系统 | crate | 职责 |
 |---|---|---|
+**系统服务**（Robonix OS 本身的一部分，不可替换）：
+
+| 子系统 | crate | 职责 |
+|---|---|---|
 | Liaison | `robonix-liaison` | 接收用户输入（文本/语音），构造 `Intent`，流式返回 `PilotEvent`；内含会话管理与界面适配器（规划中） |
 | Pilot | `robonix-pilot` | VLM 驱动的 ReAct 推理循环：将意图分解为 RTDL/`TaskGraph` 片段，向认知大模型发送意图并处理规划结果 |
 | Executor | `robonix-executor` | 接收 RTDL/`TaskGraph`，按工具路由（Built-in / MCP / gRPC）分发调用，流式返回结果；包含 Skill Engine 与异常上报 |
-| Atlas | `robonix-atlas` | 控制平面：节点注册、接口声明、通道协商、技能库 |
-| 默认框架服务 | VLM Service、ASR、TTS、MemSearch 等 | 每个 Robonix 部署均应具备的基础服务（详见[框架服务](../interface-catalog/service/index.md)） |
-| 场景工具 | Skill Nodes、Service Nodes、Primitive Nodes | 面向具体部署场景的技能、服务与硬件驱动节点，向 Atlas 注册并暴露工具接口 |
+| Atlas | `robonix-atlas` | 控制平面：注册、接口声明、通道协商、技能库 |
+
+**用户服务 / 原语 / 技能**（部署到 Robonix 之上，用 contract 暴露能力）：
+
+| 类型 | 例子 | 谁实现 |
+|---|---|---|
+| 用户服务 | `srv/cognition/reason`（VLM）、`srv/memory/*`、`srv/slam/*`、`srv/navigation/*`、`srv/perception/*` | Robonix 提供默认实现；具体场景按需替换或扩展 |
+| 原语 | `prm/base/*`、`prm/camera/*`、`prm/sensor/*` 等 | 设备驱动 / 仿真适配，由用户根据本体提供 |
+| 技能 | 预训练 VLA、RL 策略、用户自定义动作能力 | 用户实现，注册到 Atlas |
 
 ## 一次任务的完整链路
 
@@ -123,7 +133,7 @@ sequenceDiagram
 
 Robonix 的"技能"层（详见 [技能库](../skill-library.md)）有两类：
 
-- **基本技能（Skill Node）**：进程形态，注册到 Atlas 并通过 MCP 暴露执行入口。最常见是预训练 RL / VLA 模型封装。
+- **基本技能（技能）**：进程形态，注册到 Atlas 并通过 MCP 暴露执行入口。最常见是预训练 RL / VLA 模型封装。
 - **RTDL 技能**：Pilot 运行时按 schema 输出的结构化技能图（`TaskGraph` / BT），验证后可固化到 Atlas Skill Library 直接复用——跳过 VLM 推理（规划中）。
 
 技能与"包"是两个独立概念：包管进程 / 接口，技能管 Agent 行为。Pilot 启动时通过 `QueryAllSkills` 拉取已注册技能信息并注入系统 prompt，VLM 据此选择合适技能。

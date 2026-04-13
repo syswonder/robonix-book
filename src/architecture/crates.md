@@ -67,7 +67,7 @@ Executor 进程内置一组无需注册的基础工具，供 VLM 直接调用：
 | `exec` | 执行 shell 命令 |
 | `patch` | 对文件做文本替换 |
 
-Built-in Tools 不经过 Atlas 注册，不占用契约命名空间，但出现在 `rbnx tools` 列表中，对 VLM 可见。无需为这些基础功能单独部署 Skill Node。
+Built-in Tools 不经过 Atlas 注册，不占用契约命名空间，但出现在 `rbnx tools` 列表中，对 VLM 可见。无需为这些基础功能单独写技能。
 
 主要环境变量：
 

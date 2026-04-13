@@ -18,11 +18,11 @@ Robonix 区分两类 skill：
 - **基本技能（basic skill）**：已经训好、固化下来的能力。最常见形态是预训练 RL / VLA 模型，封装成进程对外提供执行入口。
 - **RTDL 技能（runtime-defined skill）**：运行期由 Pilot/规划器**动态生成**的结构化技能图（`TaskGraph` / Behavior Tree）——根据当前世界模型和任务目标拼出来的一次性 plan，验证后可固化。
 
-## 基本技能：Skill Node
+## 基本技能
 
-一个 Skill Node 就是一个**进程**。它向 Atlas `RegisterNode`，通过 MCP 暴露一组工具，Executor 发现后路由到 VLM 可见的工具集。
+一个基本技能就是一个**进程**。它向 Atlas `RegisterNode`，通过 MCP 暴露一组工具，Executor 发现后路由到 VLM 可见的工具集。
 
-与 primitive / service 不同，Skill Node 暴露的接口**不受统一 contract 约束**——技能本质上语义多样、签名自由（`pick(object_name)`、`go_through(door_id)`、`execute_instruction(prompt)` 各自不同），强加单一 schema 反而限制表达。
+与 primitive / service 不同，技能暴露的接口**不受统一 contract 约束**——技能本质上语义多样、签名自由（`pick(object_name)`、`go_through(door_id)`、`execute_instruction(prompt)` 各自不同），强加单一 schema 反而限制表达。
 
 ### 注册
 
@@ -41,9 +41,9 @@ stub.DeclareInterface(pb.DeclareInterfaceRequest(
 ))
 ```
 
-### 典型形态：预训练模型即 Skill Node
+### 典型形态：预训练模型即技能
 
-把训好的 RL 或 VLA 模型封装成独立进程，通过 MCP 暴露执行入口（如 `execute_instruction(instruction)`），运行时该 Skill Node 可以：
+把训好的 RL 或 VLA 模型封装成独立进程，通过 MCP 暴露执行入口（如 `execute_instruction(instruction)`），运行时该技能可以：
 
 - 调用系统服务获取上下文（位姿、地图）
 - 调用硬件原语驱动物理执行（关节角、底盘速度）
@@ -53,7 +53,7 @@ stub.DeclareInterface(pb.DeclareInterfaceRequest(
 
 ### 相似能力的动态选择
 
-语义相近的 Skill Node（比如室内 vs 室外的视觉导航各一个）应在自身**描述文本**中讲清各自适用条件。Pilot 把所有已注册的描述以 `<skills>` 索引注入 system prompt，VLM 在推理时按当前任务上下文自主选择，无需额外路由机制。
+语义相近的技能（比如室内 vs 室外的视觉导航各一个）应在自身**描述文本**中讲清各自适用条件。Pilot 把所有已注册的描述以 `<skills>` 索引注入 system prompt，VLM 在推理时按当前任务上下文自主选择，无需额外路由机制。
 
 ## RTDL 技能（结构化技能图，规划中）
 
@@ -90,7 +90,7 @@ message SkillInfo {
 
 注册到 Atlas 的 SkillInfo 有几个来源：
 
-1. **Skill Node 进程主动提交**：在 `RegisterNode` 时把自身的 `SkillInfo` 一并发上去（最直接）
+1. **技能进程主动提交**：在 `RegisterNode` 时把自身的 `SkillInfo` 一并发上去（最直接）
 2. **用户本地目录**：`~/.robonix/skills/<name>/` 下放 Markdown / 资源文件，Pilot 启动时扫描并注入
 3. **CI / 工作目录注入**：`ROBONIX_SKILLS_EXTRA_DIRS` 环境变量指定额外目录
 
@@ -146,7 +146,7 @@ Pilot 在每个推理轮次开始时调用 `QueryAllSkills`，并与本地来源
 
 ## 未来设想：把 Skill 当成 OS 对象管理
 
-Skill Node 和 RTDL 解决了"skill 怎么写、怎么注册、怎么被 VLM 选中"，但 skill 作为**一等操作系统对象**还有更大空间。以下是一些长期方向，具体方案都未定，先把问题列在这里：
+技能和 RTDL 解决了"skill 怎么写、怎么注册、怎么被 VLM 选中"，但 skill 作为**一等操作系统对象**还有更大空间。以下是一些长期方向，具体方案都未定，先把问题列在这里：
 
 - **复用**：同一个 skill 在不同 agent / 不同机器人上反复执行，中间产物（子查询结果、轨迹、嵌入向量）有没有办法缓存复用，而不是每次从零跑？
 - **运行前检查**：skill 依赖的 service、硬件、外部 API 是否就绪，能否在 VLM 真正调用前就判断清楚，而不是让模型在失败里反复试探？
