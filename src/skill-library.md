@@ -105,7 +105,7 @@ message SkillInfo {
 2. **用户本地目录**：`~/.robonix/skills/<name>/` 下放 Markdown / 资源文件，Pilot 启动时扫描并注入
 3. **CI / 工作目录注入**：`ROBONIX_SKILLS_EXTRA_DIRS` 环境变量指定额外目录
 
-> Skill 的注册路径**与包（`robonix_manifest.yaml`）解耦**。早期 `rbnx start` 会扫描 `<package>/skills/` 自动注册，现已取消——包是部署单元（管进程 / 接口），Skill 是 Agent 能力库（管行为），两者正交。包的自身说明放包根目录的 [`DESCRIPTION.md`](integration-guide/package-and-manifest.md#descriptionmd包说明文件)。
+> Skill 的注册路径**与包（`robonix_manifest.yaml`）解耦**。早期 `rbnx start` 会扫描 `<package>/skills/` 自动注册，现已取消——包是部署单元（管进程 / 接口），Skill 是 Agent 能力库（管行为），两者正交。包的自身说明放包根目录的 [`CAPABILITY.md`](integration-guide/package-and-manifest.md#capabilitymd包说明文件)。
 
 ### 查看已注册 skills
 

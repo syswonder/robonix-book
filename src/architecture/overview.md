@@ -127,7 +127,7 @@ sequenceDiagram
 
 ## 包管理
 
-`rbnx` CLI 负责包的生命周期管理。每个包通过 `robonix_manifest.yaml` 描述其构建与启动方式，并在根目录用 [`DESCRIPTION.md`](../integration-guide/package-and-manifest.md#descriptionmd包说明文件) 说明自身接口 / 源码 / 用法。`rbnx validate` 检查 manifest 合法性，`rbnx build` 执行构建脚本，`rbnx start` 启动指定节点。
+`rbnx` CLI 负责包的生命周期管理。每个包通过 `robonix_manifest.yaml` 描述其构建与启动方式，并在根目录用 [`CAPABILITY.md`](../integration-guide/package-and-manifest.md#capabilitymd包说明文件) 说明自身接口 / 源码 / 用法。`rbnx validate` 检查 manifest 合法性，`rbnx build` 执行构建脚本，`rbnx start` 启动指定节点。
 
 ## 技能库
 

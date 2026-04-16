@@ -87,20 +87,20 @@ export PYTHONPATH="${SCRIPT_DIR}${PYTHONPATH:+:$PYTHONPATH}"
 
 声明 MCP 接口的包须在构建阶段完成 `robonix-codegen --lang mcp`，确保 `robonix_mcp_types/` 已生成再启动进程（详见 [Provider 注册](provider-registration.md)）。
 
-## `DESCRIPTION.md`（包说明文件）
+## `CAPABILITY.md`（包能力描述文件）
 
-每个包的根目录**应**提供一份 `DESCRIPTION.md`，用于描述这个包本身——接口清单、源码组织、关键函数、使用方式、依赖约束等。它面向的是**想用这个包的开发者 / Agent**，不是 LLM 行为规范：
+每个包的根目录**应**提供一份 `CAPABILITY.md`，用于描述这个包本身——接口清单、源码组织、关键函数、使用方式、依赖约束等。它面向的是**想用这个包的开发者 / Agent**，不是 LLM 行为规范：
 
 ```
 my_package/
 ├── robonix_manifest.yaml
-├── DESCRIPTION.md         ← 包的说明（本节讨论的东西）
+├── CAPABILITY.md         ← 包的说明（本节讨论的东西）
 ├── scripts/
 ├── src/
 └── ...
 ```
 
-`DESCRIPTION.md` 没有强制格式，但建议包含：
+`CAPABILITY.md` 没有强制格式，但建议包含：
 
 - **概述**：这个包做什么，典型使用场景
 - **提供的接口**：列出 `robonix_manifest.yaml` 里 `interfaces.provides` 中的每个契约，说明语义 / 数据速率 / 典型消费者
@@ -111,13 +111,13 @@ my_package/
 
 ### 与 Skill 的区别
 
-`DESCRIPTION.md` 描述的是**包**（部署单元），与 Robonix 的 [Skill](../skill-library.md) 概念是两回事：
+`CAPABILITY.md` 描述的是**包**（部署单元），与 Robonix 的 [Skill](../skill-library.md) 概念是两回事：
 
-| | `DESCRIPTION.md` | Skill |
+| | `CAPABILITY.md` | Skill |
 |---|---|---|
 | 位置 | 每个包的根目录 | 独立注册到 Atlas（技能 主动提交 / `~/.robonix/skills/` / `ROBONIX_SKILLS_EXTRA_DIRS`） |
 | 面向 | 开发者、集成方、读源码的 Agent | 运行时 VLM（system prompt 注入） |
 | 内容 | 包的说明书：接口 / 源码 / 函数 / 用法 | Agent 行为单元：基本技能（技能 进程）或 RTDL 结构化技能图 |
 | 是否自动注册到 Atlas | 否 | 由专门的 skill 注册路径管理 |
 
-> **历史变化**：早期 `rbnx start` 会自动扫描包内 `skills/<name>/` 目录并向 Atlas 注册。这一机制已取消——它让"包"与"Skill"这两个独立概念产生耦合（包是部署单元，Skill 是 Agent 能力库）。现在两者完全解耦：包根目录的描述统一放 `DESCRIPTION.md`，Skill 通过独立路径注册（详见技能库文档）。
+> **历史变化**：早期 `rbnx start` 会自动扫描包内 `skills/<name>/` 目录并向 Atlas 注册。这一机制已取消——它让"包"与"Skill"这两个独立概念产生耦合（包是部署单元，Skill 是 Agent 能力库）。现在两者完全解耦：包根目录的描述统一放 `CAPABILITY.md`，Skill 通过独立路径注册（详见技能库文档）。
