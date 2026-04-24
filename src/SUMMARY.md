@@ -43,7 +43,7 @@
 ---
 
 - [接入指南](integration-guide/index.md)
-  - [Manifest 与包管理](integration-guide/package-and-manifest.md)
+  - [Package 与部署规范](integration-guide/packaging-spec.md)
   - [Provider 注册](integration-guide/provider-registration.md)
   - [Package 构建与代码生成](integration-guide/build-and-codegen.md)
   - [端到端验收](integration-guide/end-to-end-checklist.md)
