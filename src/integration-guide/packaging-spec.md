@@ -20,9 +20,11 @@ rbnx start -p ./service/slam_fastlio2
 `rbnx deploy` 的流程：
 1. 展开 `${VAR}` 环境变量
 2. 起 `system:` 服务（atlas / executor / pilot / liaison / memory / vlm 等 cargo 二进制）
-3. 对每个 `primitive` / `service` / `skill` 条目，把 `config` 块 JSON 化塞进 `RBNX_CAP_CONFIG_JSON`，然后 `rbnx start -p <path>`
+3. 对每个 `primitive` / `service` / `skill` 条目：把它的 `config` 块写到 `rbnx-deploy/instances/<name>.json`，然后 `rbnx start -p <path>`，env 里带两个变量：`RBNX_CONFIG_FILE=<json-path>` 和 `RBNX_INSTANCE_NAME=<name>`
 4. 日志落到 `rbnx-deploy/logs/<component>.log`
 5. Ctrl-C 统一 kill
+
+> config 用文件传递（不是 env 里直接塞 JSON）——避开 bash 对引号/换行的 escape、`ARG_MAX` 限制、以及 `printenv | jq` 这种不直观的 debug 路径。包里一行 `jq` 就能读配置，同一个包的多个 instance（name 不同）各有自己的 json 文件，互不干扰。
 
 ## Deploy manifest 示例
 
@@ -111,17 +113,25 @@ depends:
 
 ### 包里读 config
 
+rbnx 传两个 env 变量：
+- `RBNX_CONFIG_FILE`：本 instance 的配置 json 绝对路径
+- `RBNX_INSTANCE_NAME`：本 instance 名字（同包多实例时用来区分）
+
 ```bash
 # bin/start.sh
-CFG="${RBNX_CAP_CONFIG_JSON:-{}}"
-eval "$(python3 - <<PY
+set -eo pipefail
+: "${RBNX_CONFIG_FILE:=/dev/null}"      # 单独 rbnx start 的 fallback
+MODE=$(jq -r '.mode // "mapping"' < "$RBNX_CONFIG_FILE")
+CUBE=$(jq -r '.cube_len // 100'  < "$RBNX_CONFIG_FILE")
+echo "[start] instance=$RBNX_INSTANCE_NAME mode=$MODE cube=$CUBE"
+exec ros2 launch my_pkg.launch.py mode:="$MODE" cube_len:="$CUBE"
+```
+
+或者 Python：
+```python
 import json, os
-c = json.loads(os.environ['CFG'])
-for k, v in c.items():
-    print(f'export CFG_{k.upper()}={v}')
-PY
-)"
-# 之后 $CFG_MODE / $CFG_CUBE_LEN 都可用
+cfg = json.load(open(os.environ["RBNX_CONFIG_FILE"]))
+mode = cfg.get("mode", "mapping")
 ```
 
 ## 设计说明
@@ -279,8 +289,8 @@ capabilities:
 ```bash
 #!/usr/bin/env bash
 set -eo pipefail
-CFG="${RBNX_CAP_CONFIG_JSON:-{}}"
-IP=$(python3 -c "import json,os;print(json.loads(os.environ['CFG']).get('ip','192.168.1.100'))")
+: "${RBNX_CONFIG_FILE:=/dev/null}"
+IP=$(jq -r '.ip // "192.168.1.100"' < "$RBNX_CONFIG_FILE")
 ros2 run acme_xyz_driver driver_node --ros-args -p ip:="$IP" &   # 驱动
 python3 src/driver.py --register                                  # 注册 + 响应 driver RPC
 wait
