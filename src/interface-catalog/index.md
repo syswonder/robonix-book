@@ -101,7 +101,7 @@ rbnx codegen -p /path/to/package --mcp      # 同时生成 robonix_mcp_types/（
 - Pub-sub 用 `.msg`；带 RPC 的用 `.srv`。
 - `robonix_contracts.proto` 中服务的形状完全由契约 TOML 的 `[mode].type` 决定：`rpc`（一元 `.srv`）、`rpc_server_stream`（`.srv` response 段仅一个字段 = 流元素）、`rpc_client_stream`（request 段仅一个字段 = 流元素）、`topic_out` / `topic_in`（单条 `[io.msg].msg`）。详见 `rust/contracts/README.md`。
 - per-package `*Service`（如 `vlm.proto` 中的 `VlmService`）当前由 codegen 为每个 `.srv` 生成 unary `rpc`。带 stream 的 gRPC 门面仅在 `robonix_contracts.proto` 中，由 `[mode].type` 与对应 `.srv` 的 request/response 单字段约定共同决定（见 `rust/contracts/README.md`）。
-- 不要在 `robonix_proto/` 中添加手写 `.proto`；控制面专用定义位于 `rust/proto/`（如 `robonix_runtime.proto`）。
+- 不要在 `robonix_proto/` 中添加手写 `.proto`；控制面专用定义位于 `rust/proto/`（如 `atlas.proto`）。
 
 ## Proto 命名规则
 

@@ -97,7 +97,7 @@ sequenceDiagram
 
 ## 控制平面（Atlas）
 
-`robonix-atlas` 是控制平面的唯一入口，提供 `RobonixRuntime` gRPC 服务（定义于 `rust/proto/robonix_runtime.proto`）。Provider 进程启动后通过 `RegisterNode` 注册自身，再通过 `DeclareInterface` 声明所提供的接口及支持的传输方式；控制平面为每个接口分配数据面端点（端口、topic 名等）。
+`robonix-atlas` 是控制平面的唯一入口，提供 `Atlas` gRPC 服务（定义于 `rust/proto/atlas.proto`）。Provider 进程启动后通过 `RegisterNode` 注册自身，再通过 `DeclareInterface` 声明所提供的接口及支持的传输方式；控制平面为每个接口分配数据面端点（端口、topic 名等）。
 
 消费者（通常为 `robonix-executor`）通过 `QueryNodes` 发现符合条件的 Provider，再通过 `NegotiateChannel` 获取数据面端点，随后直接与 Provider 通信。控制平面不转发数据。
 

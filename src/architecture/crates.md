@@ -4,9 +4,9 @@ Robonix 的 Rust workspace（`rust/`）包含 atlas、sdk、pilot、executor、l
 
 ## robonix-atlas
 
-控制平面核心进程。启动后在 `ROBONIX_META_GRPC_ADDR`（默认 `0.0.0.0:50051`）上提供 `RobonixRuntime` gRPC 服务。
+控制平面核心进程。启动后在 `ROBONIX_META_GRPC_ADDR`（默认 `0.0.0.0:50051`）上提供 `Atlas` gRPC 服务。
 
-内部维护 `MetaRuntimeRegistry`，存储所有已注册节点、接口和通道的状态。注册时服务端校验 `node_id` 的 reverse-DNS 格式（至少三段，如以 `com.`、`org.`、`cn.` 开头）；对 gRPC / ROS 2 传输的接口声明，还会检查 `contract_id`（`DeclareInterfaceRequest` 显式字段或由其推导）是否在系统接口目录（`ROBO_SYSTEM_INTERFACE_CATALOG`）中，不在目录中的路径将被拒绝。MCP 传输不受此约束，允许自由注册。
+内部维护 `AtlasRegistry`，存储所有已注册节点、接口和通道的状态。注册时服务端校验 `node_id` 的 reverse-DNS 格式（至少三段，如以 `com.`、`org.`、`cn.` 开头）；对 gRPC / ROS 2 传输的接口声明，还会检查 `contract_id`（`DeclareInterfaceRequest` 显式字段或由其推导）是否在系统接口目录（`ROBO_SYSTEM_INTERFACE_CATALOG`）中，不在目录中的路径将被拒绝。MCP 传输不受此约束，允许自由注册。
 
 端口分配逻辑：对 gRPC/MCP 传输，若 provider 指定了 `listen_port` 则直接使用，否则服务端从 50100 开始递增分配。同一节点上同类传输的多个接口复用同一端口。ROS 2 和共享内存传输生成基于 UUID 的唯一端点名。
 
@@ -26,13 +26,13 @@ robonix-atlas
 | `ROBONIX_DATA_PLANE_HOST` | 数据面端点的 host 部分，默认 `localhost` |
 | `RUST_LOG` | 日志级别，如 `robonix_server=info` |
 
-日志中出现 `starting robonix runtime meta API (gRPC)` 表示服务就绪。运行时状态可通过 `InspectRuntime` RPC 或 `rbnx inspect` 命令查看。
+日志中出现 `starting robonix runtime meta API (gRPC)` 表示服务就绪。运行时状态可通过 `InspectAtlas` RPC 或 `rbnx inspect` 命令查看。
 
 ## robonix-sdk
 
-Rust 异步 gRPC 客户端库，封装对 `RobonixRuntime` 服务的调用。核心类型是 `RobonixClient`，提供 `connect`、`connect_with_retry`、`register_node`、`declare_interface`、`query_nodes`、`negotiate_channel`、`query_all_skills` 等方法。
+Rust 异步 gRPC 客户端库，封装对 `Atlas` 服务的调用。核心类型是 `RobonixClient`，提供 `connect`、`connect_with_retry`、`register_node`、`declare_interface`、`query_nodes`、`negotiate_channel`、`query_all_skills` 等方法。
 
-其他 Rust crate（如 `robonix-cli`、`robonix-pilot`）通过 `robonix-sdk` 与控制平面通信。Proto 类型由 `tonic-build` 在编译期从 `rust/proto/robonix_runtime.proto` 生成。
+其他 Rust crate（如 `robonix-cli`、`robonix-pilot`）通过 `robonix-sdk` 与控制平面通信。Proto 类型由 `tonic-build` 在编译期从 `rust/proto/atlas.proto` 生成。
 
 此 crate 仅为 library，不含可执行文件。
 
