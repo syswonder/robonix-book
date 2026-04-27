@@ -8,9 +8,9 @@
 
 - Linux x86_64 + Rust stable + Python ≥ 3.10
 - Docker + Compose v2（仿真容器）
-- 一个 OpenAI 兼容的 VLM API key（Qwen / GPT-4o / Gemini 都行）
+- 一个 OpenAI 兼容的 VLM API key（Qwen / GPT-4o / Gemini / Claude via 兼容网关 都行）
 
-推荐：NVIDIA GPU + `nvidia-container-toolkit`（Webots 3D 渲染）；若只跑对话不跑仿真可跳过 Docker。
+推荐：NVIDIA GPU + `nvidia-container-toolkit`（Webots 3D 渲染）；只跑对话不跑仿真可跳过 Docker。
 
 ## 2. 构建
 
@@ -18,52 +18,65 @@
 git clone --recursive https://github.com/syswonder/robonix
 cd robonix/rust
 make install
-pip install -r examples/requirements.txt
 ```
 
 `make install` 会：
 - 编译并把 `rbnx`、`robonix-atlas`、`robonix-pilot`、`robonix-executor`、`robonix-liaison`、`robonix-codegen` 装到 `~/.cargo/bin/`
-- 自动登记当前 clone 为 robonix 源码根目录，让包的 codegen 无论在哪都能找到 contracts/IDL（见[Build 与 Codegen](../integration-guide/build-and-codegen.md)）
+- 自动登记当前 clone 为 robonix 源码根目录，让其他位置的包做 codegen 时能找到 contracts/IDL（见 [Build 与 Codegen](../integration-guide/build-and-codegen.md)）
+
+> Python 依赖按包内的 `package_manifest.yaml` 自行管理；`rbnx start` 在 spawn driver 子进程前会把包的 `rbnx-build/codegen/proto_gen` 加进 `PYTHONPATH`。
 
 ## 3. 配 VLM
 
-```bash
-cp examples/.env.example examples/.env
-$EDITOR examples/.env     # 任选一个 OpenAI 兼容的 endpoint
-```
-
-当前 `vlm_service` 只对接 OpenAI 兼容接口（`/v1/chat/completions`）。下面两个示例都适用：
+`rbnx boot` 通过环境变量读取 VLM endpoint（manifest 里以 `${VLM_*}` 形式引用）：
 
 ```bash
-# OpenAI（或其他 OpenAI 兼容商）
-VLM_API_KEY=sk-xxx
-VLM_BASE_URL=https://api.openai.com/v1
-VLM_MODEL=gpt-4o
+# OpenAI（或任意 OpenAI 兼容网关）
+export VLM_API_KEY=sk-xxx
+export VLM_BASE_URL=https://api.openai.com/v1
+export VLM_MODEL=gpt-5.4-mini
 
 # Qwen（阿里 DashScope 提供 OpenAI 兼容网关）
-VLM_API_KEY=sk-xxx
-VLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
-VLM_MODEL=qwen3-vl-plus
+export VLM_API_KEY=sk-xxx
+export VLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+export VLM_MODEL=qwen3-vl-plus
 ```
+
+把这几行写进 `~/.bashrc` / `~/.zshrc` 或部署目录的 `.env` 都可以。
 
 ## 4. 跑起来
 
+整个栈分两个终端，仿真和 Robonix 系统服务/驱动各占一个：
+
 ```bash
-./examples/run.sh
+# T1：仿真容器（Webots + ROS 2 + Nav2，docker compose 栈，Ctrl-C 停）
+bash examples/webots/sim/start.sh
+
+# T2：Robonix 系统服务 + Tiago 驱动 + Nav2 wrapper
+export VLM_BASE_URL=https://api.openai.com/v1
+export VLM_API_KEY=sk-...
+export VLM_MODEL=gpt-5.4-mini
+cd examples/webots
+rbnx boot        # atlas + executor + pilot + 4 个 driver + nav2
 ```
 
-脚本会启动 atlas → vlm_service → tiago_sim_stack（docker，含 Webots + Nav2）→ memsearch_service → executor → pilot → liaison，并自动做各包的 codegen。首次启动因为要拉 docker 镜像 + 编译会慢一些；后续秒起。
+T1 不是 Robonix 包——它就是个 docker compose 栈。Robonix 不管它的生命周期。
+
+T2 的 `rbnx boot` 读 `examples/webots/robonix_manifest.yaml`，按声明顺序起 system 块（atlas / executor / pilot）和所有 primitive / service 包。driver 进程跑在仿真容器里（通过 `docker exec`），与 Webots 共享同一份 DDS graph，host 上不需要 ROS 2 环境。
+
+`rbnx boot` 报告 `✓ 7 component(s) up` 后即可进入下一步。具体启动时序见 [系统部署与启动流程](../architecture/deployment-and-startup.md)。
 
 ## 5. 跟机器人对话
 
-**在 Webots / rviz2 完全起来之后**另开一个终端连 Pilot——tiago 容器里 Webots + Nav2
-启动约需 40 秒，期间机器人相关的 MCP 接口还没有注册完，提前连会看不到相关工具：
+第三个终端：
 
 ```bash
-rbnx chat
+rbnx caps          # 列出所有注册的 capability + interface
+rbnx tools         # LLM 看到的工具列表（MCP transport 子集）
+rbnx chat          # 直连 pilot 的 ratatui TUI
 ```
 
-输入问题即可。典型一轮：
+`rbnx chat` 里输入问题即可。典型一轮：
 
 ```
 You:   what can you see?
@@ -72,13 +85,22 @@ Pilot: I'll capture a current RGB camera snapshot to see what's in view.
 Pilot: The camera shows a potted plant near a beige wall …
 ```
 
-按 **Esc** 中断当前推理（`AbortSession`）。退出：`Ctrl+C`。
+按 **Esc** 中断当前推理（`AbortSession`）。退出 chat：`Ctrl+C`。
 
-## 只跑子集
+清栈：
 
 ```bash
-START_SIM_STACK=0 ./examples/run.sh    # 不启动 Webots 仿真，只 VLM + agent
-START_AGENT=0     ./examples/run.sh    # 只启控制面 + 仿真（调试桥接时用）
+bash examples/webots/sim/stop.sh   # 一键 kill 容器内 driver + rbnx boot + docker compose down
+```
+
+## 只起子集 / 调试
+
+```bash
+# 跳过 system 块（atlas/pilot 等已外部运行时）
+rbnx boot --skip-system
+
+# 单独起一个包（调试）
+rbnx start -p ./primitives/tiago_chassis
 ```
 
 ## 去看看里面发生了什么
@@ -86,10 +108,11 @@ START_AGENT=0     ./examples/run.sh    # 只启控制面 + 仿真（调试桥接
 栈跑起来之后：
 
 ```bash
-rbnx nodes      # 所有注册节点
-rbnx tools      # agent 可见的工具清单
-rbnx graph -o topology.png    # 系统拓扑图
-rbnx inspect    # 完整 runtime 快照（JSON）
+rbnx caps                    # 所有注册的 capability（旧别名 rbnx nodes 仍可用）
+rbnx tools                   # agent 可见的 MCP 工具
+rbnx describe --cap <id>     # 某个 cap 的 CAPABILITY.md 全文
+rbnx channels                # 当前活跃的 consumer→provider 通道
+rbnx inspect                 # 完整 runtime 快照（JSON）
 ```
 
 ## 下一步
@@ -97,7 +120,7 @@ rbnx inspect    # 完整 runtime 快照（JSON）
 - [系统全景](../architecture/overview.md)——控制面 / 数据面、一次请求的完整链路
 - [接入指南](../integration-guide/index.md)——把自己的硬件或算法接入 Robonix
 - [Build 与 Codegen](../integration-guide/build-and-codegen.md)——包作者必读（`rbnx setup`、`rbnx codegen`、自定义 contract）
-- [接口目录](../interface-catalog/index.md)——`prm/*` 原语与 `srv/*` 服务的契约定义
+- [接口目录](../interface-catalog/index.md)——`primitive/*` 原语与 `service/*` 服务的契约定义
 
 ## 常见问题
 
@@ -105,6 +128,10 @@ rbnx inspect    # 完整 runtime 快照（JSON）
 
 **Webots 卡顿**：确认 `nvidia-smi` 可用且装了 `nvidia-container-toolkit`；否则跑在纯 CPU 软光栅上会很慢。
 
-**MCP 工具暂时不可见（`rbnx tools` 空）**：容器里 Webots + Nav2 首次启动需 ~40 s，等一会儿。
+**MCP 工具暂时不可见（`rbnx tools` 空）**：T1 仿真 + T2 `rbnx boot` 全部就绪需 ~10 s，等一会儿；如果一直空，看 `rbnx-boot/logs/<name>.log`。
 
-**VLM 报错但 pilot 没崩**：符合预期——错误会以普通消息出现在 chat 里，session 不死，直接发下一条即可。
+**LLM 调工具被 422 拒绝**：driver 端 schema 与函数签名不一致。driver 应该用 `mcp_contract` 装饰器 + codegen IO 类，schema 由契约自动决定，不要手写。详见 [命名空间与接口模型 · MCP 与 mcp_contract](../architecture/namespace-and-interfaces.md#mcp-与-mcp_contract)。
+
+**LLM 跑几轮就停了，但任务没完成**：Pilot 的 system prompt 已经包含 "persistence" 段落要求 LLM 持续迭代直到任务可验证完成；如果还停，多半是 LLM 模型本身倾向短回合（换更强的 reasoner，或者 prompt 里追加任务可验证条件）。
+
+**VLM 报错但 pilot 没崩**：符合预期——错误以普通消息出现在 chat 里，session 不死，直接发下一条即可。

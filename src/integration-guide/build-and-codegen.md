@@ -1,12 +1,9 @@
 # Package 构建与代码生成
 
+TODO：本页内容待更新。
+
 本页讲**怎么用 `rbnx` 命令把一个 package 从源码构建成可运行状态**——包括定位 Robonix
 主仓源码、生成 proto/MCP stubs、以及 package 自己的 build.sh 模板。
-
-Robonix 的 contract TOML、ROS IDL 和 runtime proto 都在主仓里。下游 package（无论
-在主仓 `examples/packages/` 下，还是完全独立的另一个 git 仓库里，甚至在另一台小车
-上）做 codegen 时都要引用这些路径 —— 但每个 package 不应该硬编码"我在 rust/examples/packages/foo
-下所以 rust root 在 ../../.."。`rbnx setup` + `rbnx codegen` 把这两件事拆开解决。
 
 ## 第一步：登记 Robonix 源码根（`rbnx setup`）
 
@@ -100,17 +97,15 @@ echo "[build] done."
 
 ```
 my_package/
-├── contracts/              # 本地 contract TOML（mirror 主仓 rust/contracts/）
+├── capabilities/              # 本地 contract TOML（mirror 主仓 rust/capabilities/）
 │   └── my_custom.v1.toml
-├── interfaces/lib/         # 本地 ROS IDL（mirror 主仓 rust/crates/robonix-interfaces/lib/）
-│   └── my_pkg/
-│       ├── msg/
-│       └── srv/
+│   ├── msg/
+│   └── srv/
 └── scripts/build.sh
 ```
 
 > ⚠️ **TODO**：`rbnx codegen` 目前**不会**自动 union 这两个目录到 system paths。
-> 如果你的 package 有 `contracts/` 或 `interfaces/lib/` 里的自定义内容，暂时需要
+> 如果你的 package 有 `capabilities/` 或 `interfaces/lib/` 里的自定义内容，暂时需要
 > 在 build.sh 里自己做合并（maniskill_vla_demo 保留了这段 staging 逻辑作为参考模板）。
 > 未来 `rbnx codegen` 会原生支持。
 

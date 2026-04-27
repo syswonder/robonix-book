@@ -27,21 +27,8 @@ pilot: Robonix Pilot {
   style.font-size: 24
   grid-columns: 3
   a: 意图理解\n→ 认知大模型 { style.font-size: 18 }
-  b: ReAct\n推理循环 { style.font-size: 18 }
-  c: 会话 (Session)\n管理 { style.font-size: 18 }
-}
-
-sys: 默认框架服务 {
-  style.fill: "#FFF3E0"
-  style.stroke: "#F57C00"
-  style.font-size: 24
-  grid-columns: 4
-  a: Cognition\n(VLM) { style.font-size: 18 }
-  b: ASR / TTS { style.font-size: 18 }
-  c: 记忆 { style.font-size: 18 }
-  d: 地图与定位 { style.font-size: 18 }
-  e: 数据采集 { style.font-size: 18 }
-  f: 系统监控 { style.font-size: 18 }
+  b: 方案规划\n(RTDL) { style.font-size: 18 }
+  c: 会话管理 { style.font-size: 18 }
 }
 
 executor: Robonix Executor {
@@ -58,10 +45,9 @@ atlas: Atlas {
   style.stroke: "#E91E63"
   style.font-size: 24
   grid-columns: 4
-  a: 节点/接口\n注册 { style.font-size: 18 }
-  b: 节点/能力\n查询 { style.font-size: 18 }
+  a: 能力注册 { style.font-size: 18 }
+  b: 能力查询 { style.font-size: 18 }
   c: 通道分配 { style.font-size: 18 }
-  d: Skill Library { style.font-size: 18 }
 }
 
 tools: 场景工具 (家庭 / 工厂 / …) {
