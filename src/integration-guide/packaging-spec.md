@@ -253,3 +253,64 @@ user_invocable = true
 ```
 
 `rbnx codegen` 会把包内的 `capabilities/msg/*.msg` 和 `capabilities/srv/*.srv` 也 codegen 到包的 `proto_gen/`，和官方接口一样导入使用。（TODO）
+
+## Design invariants — what NOT to do in a package
+
+These are not nice-to-haves. They are correctness constraints; violating
+them silently breaks portability across robots / sims / hardware
+revisions. CI should eventually enforce all of them.
+
+### 1. Cross-package topic names go through atlas, never hardcoded
+
+If your package consumes data produced by another package (e.g. a nav
+service consuming a SLAM service's occupancy grid), look up the topic
+via `QueryCapabilities + ConnectCapability` against the producer's
+**contract**. Do not write the literal topic name as a constant or
+default in your code.
+
+The reason: the same nav service has to run unchanged on webots
+(`/scanner_normalized`), a real Mid360 robot (`/mid360/scan`), and a
+turtlebot (`/scan`). The instant any of those is hardcoded, the
+package is no longer portable and the abstraction is fake.
+
+Exceptions (allowed to be hardcoded):
+- Topics WITHIN the same package (e.g. an internal sync queue).
+- Topics declared by the SAME package's primitive layer for its own
+  hardware fix-ups (see invariant #3).
+
+### 2. Manifest = runtime declaration
+
+Every capability listed in `package_manifest.yaml::capabilities` MUST
+be DeclareInterface'd against atlas at startup. Aspirational entries
+("we plan to implement save_map someday") rot — they make `rbnx caps`
+output lie about what's actually available, and downstream consumers
+that try to ConnectCapability fail at runtime instead of at deploy
+parsing. If it's not implemented, it's not in the manifest.
+
+### 3. Platform-specific compensation lives in the primitive that owns
+the hardware, never in a generic service
+
+Webots' lidar publishes a reversed-angle scan. URDF link names use
+spaces ("Astra rgb") that don't match the message-stamped frame_id.
+Wheel encoders dead-reckon during slip. **All such fix-ups belong in
+the corresponding primitive package** (`tiago_lidar/scan_normalize.py`,
+`tiago_camera`'s static TF bridge, etc.) — never in mapping or nav.
+
+A generic service must never special-case "if running on webots, do
+X". The package that owns the sensor / actuator declares clean,
+spec-compliant data through its atlas contract; downstream services
+trust the contract.
+
+### 4. Algo-pluggable services expose a fixed contract surface
+
+When a service supports multiple back-ends (mapping ships rtabmap +
+dlio + fastlio2; nav will eventually ship simple_nav + nav2-wrapper),
+EVERY back-end must declare the SAME set of contracts. Different
+internal topic names are fine — the bridge maps each contract to
+whichever topic the active algo exposes. If an algo can't natively
+produce a contracted output, the launch file must spawn an adapter.
+
+Adding a new contract to the surface is a versioning event for the
+package — bump `package.version` and update every back-end. Don't add
+"this contract only exists on algo X" — that violates the algo-agnostic
+guarantee consumers depend on.

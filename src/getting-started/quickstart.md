@@ -49,22 +49,34 @@ export VLM_MODEL=qwen3-vl-plus
 整个栈分两个终端，仿真和 Robonix 系统服务/驱动各占一个：
 
 ```bash
-# T1：仿真容器（Webots + ROS 2 + Nav2，docker compose 栈，Ctrl-C 停）
+# T1：仿真容器（Webots + ROS 2 + 3 个 driver，docker compose 栈，Ctrl-C 停）
+# sim/start.sh 末尾会自动启动 rviz2，所以不需要手动开。
+export DISPLAY=:0
 bash examples/webots/sim/start.sh
 
-# T2：Robonix 系统服务 + Tiago 驱动 + Nav2 wrapper
+# T2：Robonix 系统服务 + 系统/服务/技能包
 export VLM_BASE_URL=https://api.openai.com/v1
 export VLM_API_KEY=sk-...
 export VLM_MODEL=gpt-5.4-mini
 cd examples/webots
-rbnx boot        # atlas + executor + pilot + 4 个 driver + nav2
+rbnx boot
 ```
 
 T1 不是 Robonix 包——它就是个 docker compose 栈。Robonix 不管它的生命周期。
 
-T2 的 `rbnx boot` 读 `examples/webots/robonix_manifest.yaml`，按声明顺序起 system 块（atlas / executor / pilot）和所有 primitive / service 包。driver 进程跑在仿真容器里（通过 `docker exec`），与 Webots 共享同一份 DDS graph，host 上不需要 ROS 2 环境。
+T2 的 `rbnx boot` 读 `examples/webots/robonix_manifest.yaml`，按声明顺序拉起所有组件。当前 webots 部署一共 11 个：
 
-`rbnx boot` 报告 `✓ 7 component(s) up` 后即可进入下一步。具体启动时序见 [系统部署与启动流程](../architecture/deployment-and-startup.md)。
+- `system` 块：`atlas` + `executor` + `pilot` + `scene` + `speech`
+- `primitive` 块：`tiago_chassis` + `tiago_camera` + `tiago_lidar`
+- `service` 块：`simple_nav`（Robonix 自家 A* + Pure-Pursuit，已替代 Nav2）+ `mapping`（rtabmap 2D + RGBD fusion）+ `explore`（frontier 自主探索 skill）
+
+driver 进程跑在仿真容器里（`docker exec`），系统服务（scene、mapping）跑在它们各自的 docker 容器里加入主机 DDS 总线。host 上不需要 ROS 2 环境。
+
+`rbnx boot` 报告 `✓ 11 component(s) up` 后即可进入下一步。具体启动时序见 [系统部署与启动流程](../architecture/deployment-and-startup.md)。
+
+> **scene 第一次跑要预热**：`scene` 容器构建时会拉 ~3 GB 的 torch+cu124 wheel、concept-graphs 源码，并预下 YOLO-World + MobileSAM 权重。第一次启 sim 之前先 `cd system/scene && bash scripts/build.sh` 把镜像建好。
+>
+> 之后可以打开 <http://localhost:50107/> 看 scene 的 2D + 3D 实时可视化（左侧 occupancy + object pin，右侧 3D 点云 + bbox + Tiago 本体）。
 
 ## 5. 跟机器人对话
 
