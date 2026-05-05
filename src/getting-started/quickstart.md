@@ -74,9 +74,11 @@ driver 进程跑在仿真容器里（`docker exec`），系统服务（scene、m
 
 `rbnx boot` 报告 `✓ 11 component(s) up` 后即可进入下一步。具体启动时序见 [系统部署与启动流程](../architecture/deployment-and-startup.md)。
 
-> **scene 第一次跑要预热**：`scene` 容器构建时会拉 ~3 GB 的 torch+cu124 wheel、concept-graphs 源码，并预下 YOLO-World + MobileSAM 权重。第一次启 sim 之前先 `cd system/scene && bash scripts/build.sh` 把镜像建好。
+> **scene 第一次跑要预热**：`scene` 容器构建时会拉 ~3 GB 的 torch+cu124 wheel、concept-graphs 源码，并预下 YOLO-World + MobileSAM 权重。第一次启 sim 之前先 `cd system/scene && bash scripts/build.sh` 把镜像建好（首次约 8–12 分钟）。
 >
-> 之后可以打开 <http://localhost:50107/> 看 scene 的 2D + 3D 实时可视化（左侧 occupancy + object pin，右侧 3D 点云 + bbox + Tiago 本体）。
+> 之后打开 <http://localhost:50107/> 看 scene 的 3 栏实时面板：左 = 2D occupancy + 物体定位，中 = 3D 点云 + bbox + Tiago 本体，右 = 相机 RGB + 深度直播流。
+
+> **cache 注意**：`rbnx boot` 第一次会把 `mapping`、`explore` 这些 URL 远端包克隆到 `examples/webots/rbnx-boot/cache/`，以后默认走 cache。如果这两个仓库上游有更新，你需要手动 `cd examples/webots/rbnx-boot/cache/<pkg> && git pull`，或者直接 `rm -rf rbnx-boot/cache` 让下一次 boot 重新克隆——目前 boot 不会主动 fetch（`--build` / `--no-fetch` flag 在 backlog 上）。
 
 ## 5. 跟机器人对话
 
@@ -98,6 +100,22 @@ Pilot: The camera shows a potted plant near a beige wall …
 ```
 
 按 **Esc** 中断当前推理（`AbortSession`）。退出 chat：`Ctrl+C`。
+
+### 一句话让机器人自己探索 + 建语义地图
+
+`explore` 是自带的 frontier 探索 skill，pilot 会把它当 MCP 工具调用：
+
+```bash
+# 一次性 prompt，事件流打到 stdout，state 终止时退出
+rbnx ask "请彻底探索整个房间，调用 explore 后耐心等待，每 5 秒查 status，期间不要 cancel"
+```
+
+跑起来之后：
+- `rbnx-boot/logs/service_explore.log` 每跳 frontier 打一行 `driving to frontier (x,y) size=...`，每个 sweep 步打 `sweep at (x,y) yaw=...°`
+- `mapping_rbnx` 的 occupancy grid 会随机器人走过填空白
+- `scene` 的 3 栏 web UI 实时反映：物体进 registry、点云累计、地图扩张
+
+默认 Tiago/Webots 场景跑完一次完整探索（~6 个 frontier hops）大约 3–4 分钟。 `rbnx ask` 默认 timeout 30 s，长任务用 `timeout 240 rbnx ask "..."` 包一层，或者直接 `rbnx chat` 交互式跑。
 
 清栈：
 
