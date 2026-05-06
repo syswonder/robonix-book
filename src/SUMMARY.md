@@ -16,6 +16,7 @@
 - [能力与能力接口](architecture/namespace-and-interfaces.md)
 - [Atlas 能力目录](architecture/atlas.md)
 - [系统部署与启动流程](architecture/deployment-and-startup.md)
+- [能力生命周期与状态机](architecture/cap-lifecycle.md)
 
 ---
 - [接口目录](interface-catalog/index.md)

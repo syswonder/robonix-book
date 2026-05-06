@@ -21,7 +21,7 @@ RegisterCapability(capability_id, namespace, capability_md_path)
 Heartbeat(capability_id) ← 每 N 秒续约
 ```
 
-同一个 capability 下的多个 interface 可以走不同传输。例如 tiago_chassis 既可以暴露 `robonix/primitive/chassis/state`（MCP，给 LLM 调）又暴露 `robonix/primitive/chassis/odom`（ROS 2，给 SLAM 订阅）。
+同一个 capability 下的多个 interface 可以走不同传输。例如 tiago_chassis 既可以暴露 `robonix/primitive/chassis/move`（MCP，给 LLM 调）又暴露 `robonix/primitive/chassis/odom`（ROS 2，给 SLAM 订阅）。
 
 ## 三种传输
 
@@ -65,11 +65,10 @@ stub.RegisterCapability(RegisterCapabilityRequest(
     capability_md_path = "/abs/path/to/tiago_chassis/CAPABILITY.md",
 ))
 
-# 2. 登记两个 MCP interface
-def state(msg: Empty) -> RobotState: ...     # @mcp_contract 装饰
+# 2. 登记一个 MCP interface
 def move(msg: MoveCommand) -> String: ...    # @mcp_contract 装饰
 
-for fn, port in [(state, 50111), (move, 50112)]:
+for fn, port in [(move, 50112)]:
     stub.DeclareInterface(DeclareInterfaceRequest(
         capability_id = "com.robonix.primitive.tiago_chassis",
         contract_id   = fn._robonix_contract_id,    # mcp_contract 写入
@@ -85,7 +84,7 @@ for fn, port in [(state, 50111), (move, 50112)]:
 asyncio.create_task(heartbeat_loop(stub, "com.robonix.primitive.tiago_chassis"))
 ```
 
-contract_id（`robonix/primitive/chassis/state`、`robonix/primitive/chassis/move`）必须在 namespace `robonix/primitive/chassis` 前缀下，Atlas 在 DeclareInterface 时会校验。
+contract_id（`robonix/primitive/chassis/move`、`robonix/primitive/chassis/odom`）必须在 namespace `robonix/primitive/chassis` 前缀下，Atlas 在 DeclareInterface 时会校验。
 
 ## capability 文档懒加载
 
