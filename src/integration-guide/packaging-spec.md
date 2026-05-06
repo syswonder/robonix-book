@@ -28,68 +28,79 @@ rbnx start -p ./service/slam_fastlio2
 
 ## Deploy manifest 示例
 
+实例参考：`examples/webots/robonix_manifest.yaml`。
+
 ```yaml
-name: my-robot
+manifestVersion: 1
+name: my-robot-deploy
 
 env:
   ROS_DISTRO: humble
 
-# 每个 system 服务的 config 直接写在它自己下面，不重复。
-# pilot 会从 vlm.listen 自己推断该 dial 哪里，不需要再在 pilot 里写一遍。
+# system 服务（atlas / executor / pilot / memory / scene / speech / liaison /
+# nexus）的 config 直接写在 key 下面。`atlas` `executor` `pilot` 是
+# rbnx 自带的 Rust 二进制；其余是包。每个 key 的 config 是 cap 自己消费的
+# 任意字典，rbnx 把它 JSON 序列化后通过 Driver(CMD_INIT, config_json) 透传。
 system:
-  atlas:    { listen: 127.0.0.1:50051 }
-  executor: { listen: 127.0.0.1:50061 }
-  pilot:    { listen: 127.0.0.1:50071 }
-  liaison:  { listen: 127.0.0.1:50081 }
-  memory:   { backend: sqlite, path: ${HOME}/.robonix/memory.db }
-  vlm:
-    listen: 127.0.0.1:50091
-    upstream: ${VLM_BASE_URL}
-    api_key:  ${VLM_API_KEY}
-    model:    ${VLM_MODEL}
-    api_format: openai
+  atlas:
+    listen: 127.0.0.1:50051
+    log: info
+  executor:
+    listen: 127.0.0.1:50061
+    log: info
+  pilot:
+    listen: 127.0.0.1:50071
+    log: info
+    # vlm 不是独立 system 服务 —— 它是 pilot 的 upstream 配置，写在 pilot 里。
+    vlm:
+      upstream: ${VLM_BASE_URL}
+      api_key:  ${VLM_API_KEY}
+      model:    ${VLM_MODEL}
+      api_format: openai
+  memory:   { backend: sqlite, log: info }
+  scene:    { log: info }
+  speech:
+    log: info
+    disable_whisper: true             # 节省一份 Whisper-large 权重
+    tts_voice: zh-CN-XiaoxiaoNeural
 
-# 硬件。每个条目是一个硬件实例（设备）
+# 硬件。每个条目是一个 instance（设备）。
 primitive:
-  - package: com.robonix.primitive.sensor.lidar3d.mid360
-    path: ./primitive/sensor_lidar3d_mid360
-    name: lidar3d
+  - name: tiago_chassis
+    path: ./primitives/tiago_chassis
     config:
-      ip: 192.168.1.161
-      mounted_frame: livox_frame
+      odom_frame: odom
+      base_frame: base_link
 
 # 场景服务。path 是本地路径；url 是 git 地址（首次 clone 到 rbnx-boot/cache/）。
 service:
-  - package: com.robonix.service.slam.fastlio2
-    path: ./service/slam_fastlio2
-    name: slam
+  - name: mapping
+    url: https://github.com/enkerewpo/mapping_rbnx
+    branch: main
     config:
-      mode: mapping
-      cube_len: 100
-      map_dir: ${HOME}/.robonix/maps/current
+      algo: rtabmap
+      sensors: { lidar2d: true, rgbd: true, odom: true }
 
-  - package: com.robonix.service.nav.nav2
-    url: https://github.com/syswonder/robonix-nav.git
-    branch: v0.3
-    name: nav
+  - name: simple_nav
+    path: ./services/simple_nav
     config:
-      planner: SmacPlanner2D
+      robot_radius: 0.25
+      max_linear: 0.5
 
 skill:
-  - package: com.robonix.skill.navigation.navigate_to_landmark
-    path: ./skill/navigate_to_landmark
-    name: navigate_to_landmark
+  - name: explore
+    url: https://github.com/enkerewpo/explore_rbnx
+    branch: main
     config:
-      vlm_model: claude-opus-4-7
-      retry_on_ambiguous: true
+      explore_mode: frontier
+      timeout_s: 600
 ```
 
 ### 条目字段
 
-- **`package`**：包名，要和包 manifest 里的 `package.name` 一致
-- **`path`** 或 **`url`**：二选一。`path` 相对 manifest 目录；`url` 是 git，首次 clone 到 `rbnx-boot/cache/<name>/`，可加 `branch:` 锁分支
-- **`name`**：instance 名字 / 日志前缀
-- **`config`**：任意 YAML 字典，JSON 化成 `RBNX_CAP_CONFIG_JSON` 给包
+- **`name`**：instance 名字 / 日志前缀（不是包名）。同一个包用不同 `name` 可以起多份。
+- **`path`** 或 **`url`**：二选一。`path` 相对 manifest 目录；`url` 是 git，首次 clone 到 `rbnx-boot/cache/<name>/`，可加 `branch:` 锁分支。
+- **`config`**：任意 YAML 字典，rbnx 序列化为 JSON 后通过 `Driver(CMD_INIT, config_json)` 透传给包的 on_init 处理器。
 
 ## Package manifest 示例
 
@@ -170,21 +181,24 @@ primitive:
 
 ### Primitive 的 driver 生命周期
 
-每个抽象硬件类别对应一个 driver contract（如 `robonix/primitive/lidar/lidar3d/driver`）。driver 是普通 RPC 接口，里面通过 `command` 字段区分 `INIT / RESET / SHUTDOWN / PROBE` 四个操作。Robonix 启动 primitive 包后，会先调它的 driver `INIT(config_json)` 做硬件初始化 / 自检 / 参数下发；失败则不进入数据面。`PROBE` 可随时被调用查询状态。`config_json` 是从 manifest 透传下来的字符串，包自己解析。
+每个抽象硬件类别对应一个 driver contract（如 `robonix/primitive/lidar/lidar3d/driver`）。Driver 是普通 RPC 接口，按 `command` 字段区分四个操作 —— 同一组命令 service 和 skill 包也用，区别只在 rbnx 替哪一类自动发哪些。完整状态机见 [能力生命周期与状态机](../architecture/cap-lifecycle.md)。
 
-Driver 的 IDL（共享的）在 `rust/crates/robonix-interfaces/lib/robonix_msg/srv/Driver.srv`：
+Driver IDL（共享）：`rust/crates/robonix-interfaces/lib/lifecycle/srv/Driver.srv`：
+
 ```
-uint8 CMD_INIT = 0
-uint8 CMD_RESET = 1
-uint8 CMD_SHUTDOWN = 2
-uint8 CMD_PROBE = 3
+uint8 CMD_INIT     = 0   # 解析 config_json、resolve atlas 上的依赖
+uint8 CMD_SHUTDOWN = 1   # SIGTERM 之前的优雅退出（可选实现）
+uint8 CMD_UP       = 2   # 申请热资源、起线程、订阅 ROS、加载模型
+uint8 CMD_DOWN     = 3   # 释放热资源；保留 atlas 注册（skill-only 才有意义）
 uint8 command
-string config_json
+string config_json       # 从 boot manifest 的 config: 块透传下来
 ---
 bool ok
-string state      # uninit | ready | error | shutdown
+string state             # ready | online | offline | shutdown | error | deferred
 string error
 ```
+
+`rbnx boot` 对每个 primitive / service 自动发 `CMD_INIT` → `CMD_UP`，到 ONLINE 就常驻；对 skill 只发 `CMD_INIT`，停在 INITIALIZED，`CMD_UP` 由 executor 在第一次路由 MCP 调用时按需触发。`config_json` 永远是 manifest 的 `config:` 字段透传，包自己解析。
 
 ## 开发自己的包
 

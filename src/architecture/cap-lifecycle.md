@@ -1,16 +1,16 @@
 # 能力生命周期与状态机
 
-每个 Robonix capability 在运行期处于五个状态之一。状态由 capability 进程自己 push 给 Atlas（`SetCapabilityState` RPC），Atlas 只缓存最新值。`rbnx caps` 显示的 `[STATE]` 就是这个值。
+每个 Robonix 能力（capability）运行时处于五个状态之一。状态由能力进程自己上报到 Atlas（通过 `SetCapabilityState` RPC），Atlas 只缓存最新值。`rbnx caps` 输出里方括号中的标签就是这个值。
 
 ## 状态
 
 | 状态 | 含义 |
 |---|---|
-| `REGISTERED`  | 进程已起、`RegisterCapability` 完成，`Driver(CMD_INIT)` 还没发或还没回。 |
-| `INITIALIZED` | `Driver(CMD_INIT)` 返回 `ok=true`；配置已 parse、依赖已 resolve；尚未持有热资源。 |
-| `ONLINE`      | `Driver(CMD_UP)` 返回 `ok=true`；正在主动服务请求。 |
-| `OFFLINE`     | `Driver(CMD_DOWN)` 返回 `ok=true`；只 skill 用得到 —— gRPC server 和 atlas 注册仍在，但 `on_up` 申请的资源已释放。 |
-| `ERROR`       | 上一个 `Driver(CMD_*)` ok=false 或 RPC 异常。 |
+| `REGISTERED`  | 进程已启动、`RegisterCapability` 完成，但还没收到 / 还没处理完 `Driver(CMD_INIT)`。 |
+| `INITIALIZED` | `Driver(CMD_INIT)` 返回 `ok=true`；配置已解析，依赖已查好，但还没占用热资源。 |
+| `ONLINE`      | `Driver(CMD_UP)` 返回 `ok=true`；正在对外提供服务。 |
+| `OFFLINE`     | `Driver(CMD_DOWN)` 返回 `ok=true`；只对 skill 有意义 —— gRPC 服务端和 Atlas 注册都保留，但 `on_up` 申请的资源已释放。 |
+| `ERROR`       | 上一次 `Driver(CMD_*)` 返回 `ok=false` 或抛出异常。 |
 
 ## 状态机
 
@@ -24,25 +24,25 @@ stateDiagram-v2
     OFFLINE     --> ONLINE      : CMD_UP
 ```
 
-加上两条全局规则：
+两条横向规则之外的全局边：
 
-- 任意状态收到 `Driver(CMD_SHUTDOWN)` 或 SIGTERM → terminated。
-- 任意 `Driver(CMD_*)` 返回 `ok=false` / 抛异常 → `ERROR`，之后只能 `SHUTDOWN`。
+- 任意状态收到 `Driver(CMD_SHUTDOWN)` 或 SIGTERM → 进程终止。
+- 任意 `Driver(CMD_*)` 返回 `ok=false` 或抛出异常 → 进入 `ERROR`，之后只能再收 `Driver(CMD_SHUTDOWN)`。
 
 ## 谁触发哪条边
 
-`kind` 字段在 capability TOML 里写，目前取 `primitive` / `service` / `skill` 三种。
+能力 TOML 里的 `kind` 字段目前只取 `primitive` / `service` / `skill` 三种。
 
 | 边 | 触发者 | 何时 |
 |---|---|---|
-| `REGISTERED → INITIALIZED` | `rbnx boot` | 部署到这个 cap 时 |
-| `INITIALIZED → ONLINE`（primitive、service） | `rbnx boot` | 紧接着 `CMD_INIT` 之后自动发 `CMD_UP` |
-| `INITIALIZED → ONLINE`（skill） | `executor` | 第一次有 MCP tool 路由到这个 skill 时 |
-| `ONLINE → OFFLINE`（skill） | `executor` | 未来 eviction 算法决定该 skill 冷却时（**当前未实现**，sticky 不降级） |
-| `OFFLINE → ONLINE`（skill） | `executor` | OFFLINE 后再次有 MCP 调用 |
-| `→ [*]` | `rbnx shutdown` / SIGTERM | 拆栈 |
+| `REGISTERED → INITIALIZED` | `rbnx boot` | 启动该能力时 |
+| `INITIALIZED → ONLINE`（primitive、service） | `rbnx boot` | 紧接着 `CMD_INIT` 后自动发 `CMD_UP` |
+| `INITIALIZED → ONLINE`（skill） | Executor | 第一次有 MCP 调用路由到这个 skill 时 |
+| `ONLINE → OFFLINE`（skill） | Executor（淘汰策略） | 未来淘汰策略判定该 skill 冷却时（**当前未实现**，sticky 不降级） |
+| `OFFLINE → ONLINE`（skill） | Executor | 进入 OFFLINE 后再次收到 MCP 调用 |
+| `→ 终止` | `rbnx shutdown` / SIGTERM | 拆栈 |
 
-差别只在 skill：boot 阶段停在 `INITIALIZED`，进 `ONLINE` 是 executor 按需触发的；primitive 和 service 在 boot 完成时已经 `ONLINE`。
+唯一的差别在 skill：`rbnx boot` 阶段停在 `INITIALIZED`，进 `ONLINE` 是 Executor 按需触发的；primitive 和 service 在 boot 完成时已经处于 `ONLINE`。
 
 ## 启动顺序
 
