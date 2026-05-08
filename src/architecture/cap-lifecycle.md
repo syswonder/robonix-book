@@ -93,7 +93,7 @@ executor 进程内维护 `cap_id → "已 UP"` 的 sticky set：第一次调某 
 ## 写 skill 的最小骨架
 
 ```python
-from robonix_py import Capability
+from robonix_api import Capability
 
 cap = Capability(id="com.robonix.skill.foo", namespace="robonix/skill/foo")
 ctrl = None

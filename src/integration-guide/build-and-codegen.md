@@ -69,7 +69,7 @@ PKG="${RBNX_PACKAGE_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 
 FLAGS=()
 [[ "${RBNX_BUILD_CLEAN:-}" == "1" ]] && FLAGS+=(--clean)
-# Add --mcp if your package uses MCP tools (robonix_py.mcp_contract).
+# Add --mcp if your package uses MCP tools (robonix_api.mcp_contract).
 FLAGS+=(--mcp)
 
 rbnx codegen -p "$PKG" "${FLAGS[@]}"
@@ -128,5 +128,5 @@ rbnx config --show
 # 取某个路径（用于自己的脚本）
 $(rbnx path contracts)
 $(rbnx path interfaces-lib)
-$(rbnx path robonix-py)
+$(rbnx path robonix-api)
 ```
