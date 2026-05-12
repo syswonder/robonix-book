@@ -103,9 +103,9 @@ rbnx chat             # 试 "say hello to alice"
 | | 含义 | Python | 生命周期 |
 |---|---|---|---|
 | 原语 / 服务 / 技能 | 一个独立运行的能力提供者 | `service = Service(id="my_navigate", namespace=...)` | `REGISTERED → INACTIVE → ACTIVE → ...`（见 §5）|
-| Capability | 能力提供者暴露的一条接口 `(contract_id, transport, endpoint, params, description)`，Pilot 大模型在 prompt 里看到的就是这些 | `@service.mcp(...)` / `@service.grpc(...)` / `service.declare_ros2_topic(...)` 等装饰器/方法 | 跟随 owner 能力提供者 |
+| Capability | 能力提供者暴露的一条接口 `(contract_id, transport, endpoint, params, description)`，Pilot 大模型在 prompt 里看到的就是这些 | `@service.mcp(...)` / `@service.grpc(...)` / `service.declare_ros2_topic(...)` 等装饰器/方法 | 跟随能力提供者 |
 
-`id` 是该能力提供者在 atlas 里的唯一 id（`audio_driver` / `tiago_chassis` / `my_navigate`）；Capability 没有自己的 id，只通过 `(owner_id, contract_id)` 寻址。
+`id` 是该能力提供者在 atlas 里的唯一 id（`audio_driver` / `tiago_chassis` / `my_navigate`）；Capability 没有自己的 id，只通过 `(provider_id, contract_id)` 寻址。
 
 ### 3.3 包
 
@@ -165,10 +165,10 @@ rbnx chat             # 试 "say hello to alice"
 
 **为什么是 `topic_in` / `topic_out`、不是无方向的 `topic`**
 
-后缀刻画的是**声明者（contract owner）的角色**，不是数据的物理流向：
+后缀刻画的是**声明者（能力提供者）的角色**，不是数据的物理流向：
 
-* `topic_out` — owner 是 source，consumer 反向拿 endpoint 去 subscribe（典型：lidar 声明 `/scan`）。
-* `topic_in` — owner 是 sink，consumer 反向拿 endpoint 去 publish（典型：chassis 声明 `/cmd_vel`）。
+* `topic_out` — 能力提供者是 source，consumer 反向拿 endpoint 去 subscribe（典型：lidar 声明 `/scan`）。
+* `topic_in` — 能力提供者是 sink，consumer 反向拿 endpoint 去 publish（典型：chassis 声明 `/cmd_vel`）。
 
 去掉方向后会失去两件不可替代的信息：(1) gRPC fallback 的 codegen 没法决定生成 server-stream 还是 client-stream（见上脚注 ²）；(2) consumer 拿到 endpoint 后不知道自己该 pub 还是 sub，atlas 的"指路"语义就缺一半。多对多 pub/sub（`/tf` 这种）的解法是每个 publisher 各自声明一条 `topic_out` Capability，全指同一个 topic 名；不需要新 mode。
 
@@ -376,7 +376,7 @@ if __name__ == "__main__":
 | `@service.grpc(contract_id, *, description="")` | 把函数挂成 gRPC servicer 方法；gRPC 无 docstring 惯例，建议显式传 description |
 | `ATLAS.query(*, kind=, id=, contract_id=, …)` | 按条件搜原语/服务/技能记录（kind=UNSPECIFIED 时三类一起返回）|
 | `ATLAS.query_primitives/_services/_skills(...)` | `query()` 的 kind 已固定的快捷形式 |
-| `ATLAS.find_capability(*, contract_id=, transport=, …)` | 扁平视角——按 contract 搜，返回 `list[Capability]`（每条 Capability 自带 `owner_id` / `owner_kind`）|
+| `ATLAS.find_capability(*, contract_id=, transport=, …)` | 扁平视角——按 contract 搜，返回 `list[Capability]`（每条 Capability 自带 `provider_id` / `provider_kind`）|
 | `ATLAS.find_unique_capability(...)` | 同上但断言只有一条；0 或 >1 都 raise（依赖唯一 capability 时用）|
 | `service.connect_capability(cap_view, contract_id, transport)` | 用一条 `Capability` 建一条 consumer→提供方的 `Channel` |
 | `service.declare_ros2_topic`   | 把一个 ROS 2 topic publisher 在 atlas 里登记为某契约（详见 §14.8） |
@@ -956,7 +956,7 @@ from robonix_api.atlas_types import Transport, Capability
 | `Ok()` / `Err("reason")` | lifecycle handler 返回值 |
 | `ATLAS.query(*, kind=…, id=…, contract_id=…, namespace_prefix=…, transport=…)` | 搜能力提供者记录 |
 | `ATLAS.query_primitives/_services/_skills(...)` | `query()` 已固定 kind 的快捷形式 |
-| `ATLAS.find_capability(*, contract_id=…, transport=…, owner_kind=…, owner_id=…, namespace_prefix=…)` | 按 contract 搜，返回 `list[Capability]` |
+| `ATLAS.find_capability(*, contract_id=…, transport=…, provider_kind=…, provider_id=…, namespace_prefix=…)` | 按 contract 搜，返回 `list[Capability]` |
 | `ATLAS.find_unique_capability(*, contract_id=…, ...)` | 同上但断言只有一条；0 或 >1 都 raise |
 | `service.connect_capability(cap_view, contract_id, transport)` | 用一条 Capability 建 consumer → 提供方 `Channel` |
 | `@service.mcp(contract_id, *, name=None, description="")` | 把函数挂成 MCP 工具（`mode=rpc`，给 LLM 调）；description 默认取 docstring |
@@ -1037,7 +1037,7 @@ def deactivate():
 `ATLAS` 两种 API：
 
 * `ATLAS.query(*, id=…, kind=…, contract_id=…, …)` —— 能力提供者视角，按 id / kind / contract 搜能力提供者记录。`ATLAS.query_primitives/_services/_skills` 是固定 kind 的快捷形式。
-* `ATLAS.find_capability(*, contract_id=…, transport=…, …)` —— 接口视角，返回 `list[Capability]`（自带 `owner_id` / `owner_kind`）。`find_unique_capability` 在 0 或 >1 时 raise，依赖唯一 capability 时用。
+* `ATLAS.find_capability(*, contract_id=…, transport=…, …)` —— 接口视角，返回 `list[Capability]`（自带 `provider_id` / `provider_kind`）。`find_unique_capability` 在 0 或 >1 时 raise，依赖唯一 capability 时用。
 
 `service.connect_capability(cap_view, contract_id, transport)` 用一条 Capability 开 `Channel`，`ch.endpoint` 是对方实际地址。
 
@@ -1053,9 +1053,9 @@ with service.connect_capability(cap_view, "robonix/primitive/chassis/move",
                                 Transport.GRPC) as ch:
     ...
 
-# 多 provider 时：按 owner_id 自己挑
+# 多 provider 时：按 provider_id 自己挑
 caps  = ATLAS.find_capability(contract_id="robonix/primitive/camera/rgb")
-front = next((c for c in caps if c.owner_id == "tiago_camera_front"), None)
+front = next((c for c in caps if c.provider_id == "tiago_camera_front"), None)
 ```
 
 ### 14.5 atlas-types 数据结构
@@ -1081,8 +1081,8 @@ front = next((c for c in caps if c.owner_id == "tiago_camera_front"), None)
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `owner_id` | `str` | 暴露这条 capability 的能力提供者 id |
-| `owner_kind` | `Kind` | 该能力提供者的 kind |
+| `provider_id` | `str` | 暴露这条 capability 的能力提供者 id |
+| `provider_kind` | `Kind` | 该能力提供者的 kind |
 | `contract_id` | `str` | 接口 id |
 | `transport` | `Transport` | gRPC / ROS2 / MCP |
 | `params` | `GrpcParams \| Ros2Params \| McpParams` | transport-specific（gRPC service+method / ROS 2 qos\_profile / MCP description+schema）|
@@ -1099,7 +1099,7 @@ recs      = ATLAS.query(contract_id="robonix/primitive/chassis/move",
                         transport=Transport.GRPC)        # 按 contract
 ```
 
-#### `ATLAS.find_capability(*, contract_id, transport, owner_kind, owner_id, namespace_prefix) -> list[Capability]`
+#### `ATLAS.find_capability(*, contract_id, transport, provider_kind, provider_id, namespace_prefix) -> list[Capability]`
 
 把所有能力提供者的 `capabilities[]` 拉平展开，返回所有匹配的 `Capability`（可能为空）。
 
