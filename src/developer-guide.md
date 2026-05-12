@@ -842,7 +842,7 @@ name: my-robot                       # 部署名（任意）
 env:                                 # 可选：部署级 env（一般留空，env 在外层 export）
 
 # ─── system: robonix 自带的系统组件 ───
-# key 是固定的 system 服务名（atlas/executor/pilot/liaison/nexus/memory/scene/speech），
+# key 是固定的 system 服务名（atlas/executor/pilot/liaison/memory/scene/speech），
 # value 是它的配置块；保持原样的层级会被 JSON 化喂给能力提供者的 on_init(cfg)。
 system:
   atlas:
@@ -1480,7 +1480,7 @@ def asr_stream(request_iterator, ctx):
 | `manifestVersion` | int | `1` |
 | `name` | string | 部署名（任意） |
 | `env` | object | 部署级环境变量（一般留空） |
-| `system` | map | system 服务的配置块；key 是固定 system 名（atlas/executor/pilot/liaison/nexus/memory/scene/speech…），value 透传给该 system 服务的 on\_init |
+| `system` | map | system 服务的配置块；key 是固定 system 名（atlas/executor/pilot/liaison/memory/scene/speech…），value 透传给该 system 服务的 on\_init |
 | `primitive` | list | primitive 包列表 |
 | `service` | list | service 包列表 |
 | `skill` | list | skill 包列表 |
