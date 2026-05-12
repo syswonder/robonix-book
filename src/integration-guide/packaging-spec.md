@@ -39,7 +39,7 @@ env:
 
 # system 服务（atlas / executor / pilot / memory / scene / speech / liaison /
 # nexus）的 config 直接写在 key 下面。`atlas` `executor` `pilot` 是
-# rbnx 自带的 Rust 二进制；其余是包。每个 key 的 config 是 cap 自己消费的
+# rbnx 自带的 Rust 二进制；其余是包。每个 key 的 config 是包自己消费的
 # 任意字典，rbnx 把它 JSON 序列化后通过 Driver(CMD_INIT, config_json) 透传。
 system:
   atlas:
@@ -181,7 +181,7 @@ primitive:
 
 ### Primitive 的 driver 生命周期
 
-每个抽象硬件类别对应一个 driver contract（如 `robonix/primitive/lidar/lidar3d/driver`）。Driver 是普通 RPC 接口，按 `command` 字段区分四个操作 —— 同一组命令 service 和 skill 包也用，区别只在 rbnx 替哪一类自动发哪些。完整状态机见 [能力生命周期与状态机](../architecture/cap-lifecycle.md)。
+每个抽象硬件类别对应一个 driver contract（如 `robonix/primitive/lidar/lidar3d/driver`）。Driver 是普通的 RPC capability，按 `command` 字段区分四个操作 —— 同一组命令 service 和 skill 包也用，区别只在 rbnx 替哪一类自动发哪些。完整状态机见 [能力生命周期与状态机](../architecture/cap-lifecycle.md)。
 
 Driver IDL（共享）：`rust/crates/robonix-interfaces/lib/lifecycle/srv/Driver.srv`：
 

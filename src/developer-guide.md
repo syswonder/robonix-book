@@ -1054,8 +1054,8 @@ with service.connect_capability(cap_view, "robonix/primitive/chassis/move",
     ...
 
 # 多 provider 时：按 provider_id 自己挑
-caps  = ATLAS.find_capability(contract_id="robonix/primitive/camera/rgb")
-front = next((c for c in caps if c.provider_id == "tiago_camera_front"), None)
+capabilities = ATLAS.find_capability(contract_id="robonix/primitive/camera/rgb")
+front = next((c for c in capabilities if c.provider_id == "tiago_camera_front"), None)
 ```
 
 ### 14.5 atlas-types 数据结构

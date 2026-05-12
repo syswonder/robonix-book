@@ -42,15 +42,15 @@ Atlas 服务定义在 `rust/crates/robonix-atlas/proto/atlas.proto`，关键 RPC
 
 | RPC | 调用方 | 作用 |
 |-----|--------|------|
-| `RegisterPrimitive` / `RegisterService` / `RegisterSkill` | Provider | 登记 id + namespace + capability_md_path（按种类三个 typed RPC） |
-| `DeclareCapability` | Provider | 把一个 contract_id 绑到一种 transport+endpoint |
-| `Heartbeat` | Provider | 续约，超时（默认 30 s）后该 provider 被驱逐 |
-| `Unregister` | Provider | 主动注销（也可以让心跳超时） |
-| `SetLifecycleState` | Provider | 推送当前状态（REGISTERED / INACTIVE / ACTIVE / ERROR / TERMINATED） |
-| `Query` | Consumer | 按 `id` / `namespace_prefix` / `kind` / `contract_id` / `transport` 过滤检索 |
-| `ConnectCapability` | Consumer | 提交"我要用 provider X 的 contract Y 走 Z 传输"，atlas 记录通道并返回 endpoint |
-| `DisconnectCapability` | Consumer | 释放通道（atlas 仅做记账） |
-| `QueryContract` / `ListContracts` | Consumer | 拉契约 IDL（字段定义、Request/Response 形状） |
+| `RegisterPrimitive` / `RegisterService` / `RegisterSkill` | 能力提供者 | 登记 id + namespace + capability_md_path（按种类三个 typed RPC） |
+| `DeclareCapability` | 能力提供者 | 把一个 contract_id 绑到一种 transport+endpoint |
+| `Heartbeat` | 能力提供者 | 续约，超时（默认 30 s）后该 provider 被驱逐 |
+| `Unregister` | 能力提供者 | 主动注销（也可以让心跳超时） |
+| `SetLifecycleState` | 能力提供者 | 推送当前状态（REGISTERED / INACTIVE / ACTIVE / ERROR / TERMINATED） |
+| `Query` | 消费者 | 按 `id` / `namespace_prefix` / `kind` / `contract_id` / `transport` 过滤检索 |
+| `ConnectCapability` | 消费者 | 提交"我要用 provider X 的 contract Y 走 Z 传输"，atlas 记录通道并返回 endpoint |
+| `DisconnectCapability` | 消费者 | 释放通道（atlas 仅做记账） |
+| `QueryContract` / `ListContracts` | 消费者 | 拉契约 IDL（字段定义、Request/Response 形状） |
 | `InspectAtlas` | 调试 | 一次性 dump 当前所有 providers + capabilities + channels（JSON） |
 
 `Connect` / `Disconnect` 只是 atlas 侧的记账：真正的数据面连接（gRPC dial、ROS topic sub、MCP HTTP 客户端）由 consumer 自己用拿到的 endpoint 建。

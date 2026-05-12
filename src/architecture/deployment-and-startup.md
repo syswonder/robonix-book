@@ -64,7 +64,7 @@ T+15s   T2: rbnx boot                 # 读 robonix_manifest.yaml
 T+15s   host: spawn robonix-atlas       # listen 50051
 T+16s   host: atlas RegisterService "robonix/system/atlas"   # self-register
 T+16s   host: spawn robonix-executor    # connect to atlas，RegisterService
-T+17s   host: spawn robonix-pilot       # discover vlm/memory caps from atlas
+T+17s   host: spawn robonix-pilot       # discover vlm/memory providers from atlas
 T+18s   host: docker exec sim python chassis_driver/driver.py
 T+19s   sim:  chassis driver RegisterPrimitive + DeclareCapability (state, move) MCP
 T+19s   host: deploy 收到 register 通知 → 进入下一条 primitive

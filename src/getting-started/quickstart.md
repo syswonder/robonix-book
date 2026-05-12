@@ -160,7 +160,7 @@ rbnx inspect                 # 完整 runtime 快照（JSON）
 
 **MCP 工具暂时不可见（`rbnx tools` 空）**：T1 仿真 + T2 `rbnx boot` 全部就绪需 ~10 s，等一会儿；如果一直空，看 `rbnx-boot/logs/<name>.log`。
 
-**LLM 调工具被 422 拒绝**：driver 端 schema 与函数签名不一致。driver 应该用 `mcp_contract` 装饰器 + codegen IO 类，schema 由契约自动决定，不要手写。详见 [命名空间与接口模型 · MCP 与 mcp_contract](../architecture/namespace-and-interfaces.md#mcp-与-mcp_contract)。
+**LLM 调工具被 422 拒绝**：driver 端 schema 与函数签名不一致。driver 应该用 `mcp_contract` 装饰器 + codegen IO 类，schema 由契约自动决定，不要手写。详见 [命名空间与契约 · MCP 与 mcp_contract](../architecture/namespace-and-contracts.md#mcp-与-mcp_contract)。
 
 **LLM 跑几轮就停了，但任务没完成**：Pilot 的 system prompt 已经包含 "persistence" 段落要求 LLM 持续迭代直到任务可验证完成；如果还停，多半是 LLM 模型本身倾向短回合（换更强的 reasoner，或者 prompt 里追加任务可验证条件）。
 

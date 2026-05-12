@@ -13,7 +13,7 @@
 ---
 
 - [系统全景](architecture/overview.md)
-- [能力与能力接口](architecture/namespace-and-interfaces.md)
+- [命名空间与契约](architecture/namespace-and-contracts.md)
 - [Atlas 能力目录](architecture/atlas.md)
 - [系统部署与启动流程](architecture/deployment-and-startup.md)
 
