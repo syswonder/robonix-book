@@ -85,7 +85,7 @@ driver 进程跑在仿真容器里（`docker exec`），系统服务（scene、m
 第三个终端：
 
 ```bash
-rbnx caps          # 列出所有注册的 capability + interface
+rbnx caps          # 列出所有注册的能力提供者 + 其每条 capability
 rbnx tools         # LLM 看到的工具列表（MCP transport 子集）
 rbnx chat          # 直连 pilot 的 ratatui TUI
 ```
@@ -138,9 +138,9 @@ rbnx start -p ./primitives/tiago_chassis
 栈跑起来之后：
 
 ```bash
-rbnx caps                    # 所有注册的 capability（旧别名 rbnx nodes 仍可用）
+rbnx caps                    # 所有注册的能力提供者及其 capability
 rbnx tools                   # agent 可见的 MCP 工具
-rbnx describe --cap <id>     # 某个 cap 的 CAPABILITY.md 全文
+rbnx describe --cap <id>     # 某个能力提供者的 CAPABILITY.md 全文
 rbnx channels                # 当前活跃的 consumer→provider 通道
 rbnx inspect                 # 完整 runtime 快照（JSON）
 ```
@@ -160,7 +160,7 @@ rbnx inspect                 # 完整 runtime 快照（JSON）
 
 **MCP 工具暂时不可见（`rbnx tools` 空）**：T1 仿真 + T2 `rbnx boot` 全部就绪需 ~10 s，等一会儿；如果一直空，看 `rbnx-boot/logs/<name>.log`。
 
-**LLM 调工具被 422 拒绝**：driver 端 schema 与函数签名不一致。driver 应该用 `mcp_contract` 装饰器 + codegen IO 类，schema 由契约自动决定，不要手写。详见 [命名空间与契约 · MCP 与 mcp_contract](../architecture/namespace-and-contracts.md#mcp-与-mcp_contract)。
+**LLM 调工具被 422 拒绝**：driver 端 schema 与函数签名不一致。driver 应该用 `@<provider>.mcp(...)` 装饰器 + codegen 出来的 IO dataclass，schema 由契约自动决定，不要手写。详见[开发者指南 §14.9](../developer-guide.md#149-servicemcp--servicegrpc)。
 
 **LLM 跑几轮就停了，但任务没完成**：Pilot 的 system prompt 已经包含 "persistence" 段落要求 LLM 持续迭代直到任务可验证完成；如果还停，多半是 LLM 模型本身倾向短回合（换更强的 reasoner，或者 prompt 里追加任务可验证条件）。
 

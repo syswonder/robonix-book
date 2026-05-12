@@ -19,7 +19,7 @@ rbnx start -p ./service/slam_fastlio2
 
 `rbnx boot` 的流程：
 1. 展开 `${VAR}` 环境变量
-2. 起 `system:` 服务（atlas / executor / pilot / liaison / memory / vlm 等 cargo 二进制）
+2. 起 `system:` 服务（atlas / executor / pilot / liaison 是 Rust 二进制；memory / scene / speech / nexus 是 Python 包）
 3. 对每个 `primitive` / `service` / `skill` 条目：把它的 `config` 块写到 `rbnx-boot/instances/<name>.json`，然后 `rbnx start -p <path>`，env 里带两个变量：`RBNX_CONFIG_FILE=<json-path>` 和 `RBNX_INSTANCE_NAME=<name>`
 4. 日志落到 `rbnx-boot/logs/<component>.log`
 5. Ctrl-C 统一 kill
