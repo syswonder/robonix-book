@@ -4,6 +4,10 @@
 
 ---
 
+- [开发者指南](developer-guide.md)
+
+---
+
 - [EAIOS 架构背景](background/eaios.md)
 
 ---
