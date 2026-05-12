@@ -1,6 +1,6 @@
 # Robonix 开发者指南
 
-**本指南内容所对应的上游 robonix 仓库 commit**：[`syswonder/robonix:dev@1e64e52`](https://github.com/syswonder/robonix/commit/1e64e52)（2026-05-12 dev 分支 HEAD）。
+**本指南内容所对应的上游 robonix 仓库 commit**：[`syswonder/robonix:dev@ee7c60f`](https://github.com/syswonder/robonix/commit/ee7c60f)（2026-05-12 dev 分支 HEAD）。
 
 **面向**：写 service / skill / primitive 的开发者。
 
@@ -257,7 +257,7 @@ cap 端用户**唯一**能影响 state 的方式：在 `on_init` / `on_activate`
 
 权限隔离天然落在**进程边界**。robonix-api 整个库不存在 state-write API，用户代码"无法写 state"不是靠约束、不是靠 lint，是靠**它根本没有那个函数能调**。atlas server 端只接受上面四类调用者，其它进程（包括用户额外 spawn 的脚本）就算手搓 grpc client 调 `SetCapabilityState` 也应当被拒。
 
-> v0.1 阶段 atlas server 端**还没**做调用方身份校验——理论上任何能连 50051 的进程都能调成功 `SetCapabilityState`。**这是 v0.1 的已知缺口，不是设计意图**。v0.2+ 在 atlas server 端落实身份校验后，非授权调用会被协议层直接拒绝。但 robonix-api 公开面**不暴露** state-write 入口这一点是 v0.1 就稳定的——用 robonix-api 写 cap 的开发者不会意外越权。
+> 当前 atlas server 端**还没**做调用方身份校验——理论上任何能连 50051 的进程都能调成功 `SetCapabilityState`。**这是已知缺口，不是设计意图**，后续会在 atlas server 端落实身份校验，非授权调用会被协议层直接拒绝。但 robonix-api 公开面**不暴露** state-write 入口这一点是稳定的——用 robonix-api 写 cap 的开发者不会意外越权。
 
 ***
 
