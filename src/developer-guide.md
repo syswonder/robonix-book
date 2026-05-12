@@ -4,7 +4,7 @@
 
 **面向**：写 service / skill / primitive 的开发者。
 
-> **v0.2 概念拆分（2026-05-11 会议确定）**：**原语 / 服务 / 技能** 是三类独立运行的实体（生命周期 / 注册都挂在它们身上）；它们**对外暴露的若干"能力"（Capability）** 是另一类东西——只是 contract + transport + endpoint 的描述，Pilot 大模型通过这些 Capability 看见整个系统能干什么。Python 开发面直接看到的就是 `Primitive` / `Service` / `Skill` 三个类，旧的统一 `Capability(id=...)` 已删除。
+> **概念**：**原语 / 服务 / 技能** 是三类独立运行的实例（带 lifecycle）；它们对外暴露的 **Capability** 是 contract + transport + endpoint 的接口描述。Python 里就是 `Primitive` / `Service` / `Skill` 三个类。
 
 **阅读路径**：
 
@@ -73,10 +73,10 @@ rbnx chat             # 试 "say hello to alice"
 
 **三个核心机制**协同工作（详见 Part II）：
 
-* **原语 / 服务 / 技能**：三类独立运行的实体（Python 里写为 `Primitive(id, namespace)` / `Service(...)` / `Skill(...)`）。挂 lifecycle、跑装饰器、对外暴露**若干 Capability**。
-* **能力（Capability）**：一个原语/服务/技能向外暴露的**一条具体接口**（contract + transport + endpoint，附 description）。Pilot 大模型看到的就是这些 Capability。一个实体可以同时提供多条 Capability（比如 `tiago_camera` 同时暴露 `rgb` / `depth` / `extrinsics`）。
-* **Atlas**：每个原语/服务/技能启动时把"我是谁、是什么 kind、暴露哪些 Capability、在哪"注册过来；其它实体通过它发现 + 寻址。**没有 Atlas 就要硬编码地址**，部署一变就改代码。
-* **能力契约（Contract）**：每条 Capability 背后的形状（toml 描述 + ROS IDL 类型）。换实现不动契约，下游不用改。
+* **原语 / 服务 / 技能**：三类独立运行的实例，Python 里写为 `Primitive(id, ns)` / `Service(...)` / `Skill(...)`，挂 lifecycle、装饰器、对外暴露若干 Capability。
+* **Capability**：实例对外暴露的一条接口（contract + transport + endpoint）。一个实例可同时暴露多条（`tiago_camera` → `rgb` + `depth` + `extrinsics`）。
+* **Atlas**：实例启动时把"我是谁、暴露什么、在哪"注册过来；别人通过它发现 + 寻址。**没有 Atlas 就要硬编码地址**。
+* **Contract**：Capability 的形状（toml + ROS IDL）。换实现不动契约。
 
 剩下的章节都是落地细节。Robonix 内部还跑 pilot / executor / liaison 等系统服务。
 
@@ -100,32 +100,24 @@ rbnx chat             # 试 "say hello to alice"
 
 第三方实验可用 `myorg/...` 自前缀，atlas 不强制 `robonix/`。`robonix/system/` 是 robonix 自带组件保留前缀。
 
-### 3.2 定义（v0.2 概念拆分）
+### 3.2 定义
 
-**原语 / 服务 / 技能**（实体）和**能力 / Capability**（接口）是两类不同的东西，**不要混用**。
-
-| | 含义 | Python 写法 | 生命周期 |
+| | 含义 | Python | 生命周期 |
 |---|---|---|---|
-| 原语 / 服务 / 技能 | 一个独立运行的实例。Atlas 里的"参与者"，三选一。 | `cap = Service(id="my_navigate", namespace=...)` | `REGISTERED → INACTIVE → ACTIVE → ...`（见 §5）|
-| 能力（Capability） | 上面那个实例暴露的**一条接口**——一条 `(contract_id, transport, endpoint, params, description)`。Pilot 大模型在 prompt 里看到的就是这些 | 通过 `@cap.mcp(...)` / `@cap.grpc(...)` / `cap.declare_ros2_topic(...)` 等装饰器/方法**声明**出来 | 跟随 owner 实体；owner 进 `TERMINATED` 时 atlas 自动清理 |
+| 原语 / 服务 / 技能 | 一个独立运行的实例 | `cap = Service(id="my_navigate", namespace=...)` | `REGISTERED → INACTIVE → ACTIVE → ...`（见 §5）|
+| Capability | 实例暴露的一条接口 `(contract_id, transport, endpoint, params, description)`，Pilot 大模型在 prompt 里看到的就是这些 | `@cap.mcp(...)` / `@cap.grpc(...)` / `cap.declare_ros2_topic(...)` 等装饰器/方法 | 跟随 owner 实例 |
 
-一个原语/服务/技能同一时刻可暴露多条 Capability（如 `tiago_camera` 这个原语提供 `rgb` + `depth` + `extrinsics` 三条 Capability）。**`id` 是该原语/服务/技能在 atlas 里的唯一 id**（`audio_driver` / `tiago_chassis` / `my_navigate`），同一部署内不重复；Capability 没有自己的 id，只通过 `(owner_id, contract_id)` 寻址。
-
-> 旧版（v0.1.x）里"能力 = primitive/service/skill 实例 = `Capability(id=...)`"的写法已删除——新的 Python API 强制用 `Primitive` / `Service` / `Skill` 三个具体类，"能力（Capability）"专指接口。
+`id` 是该实例在 atlas 里的唯一 id（`audio_driver` / `tiago_chassis` / `my_navigate`）；Capability 没有自己的 id，只通过 `(owner_id, contract_id)` 寻址。
 
 ### 3.3 包
 
-**静态构建/分发单元**——目录、manifest、（可选）docker。运行时被启动为**一个原语 / 服务 / 技能实例**。
+**静态构建/分发单元**——目录、manifest、（可选）docker。运行时启动为一个原语 / 服务 / 技能实例。
 
-`package.name` 用反向域名（`com.org.foo`）做发布身份；实例 id 是运行时身份。两者不必相同。**实例 id 由 Python 源里 `Primitive/Service/Skill(id="...")` 一处声明**——rbnx boot 在 spawn 包之后 poll atlas 拿到新注册的实例，再跟 `robonix_manifest.yaml` 里挂这个包的 `name:` 对账（两处一致：Python `Primitive/Service/Skill(id=...)` = `robonix_manifest.yaml` 的 `name:`）。
-
-包结构详见 §6。
+`package.name` 用反向域名（`com.org.foo`）做发布身份；实例 id 是运行时身份，由 Python 源里 `Primitive/Service/Skill(id="...")` 声明。两者不必相同。rbnx boot 在 spawn 包之后 poll atlas 拿到新注册的实例，跟 `robonix_manifest.yaml` 里挂这个包的 `name:` 对账（两处必须一致）。包结构详见 §6。
 
 ### 3.4 Atlas 能力目录
 
-整个部署的中心目录服务（gRPC，端口 `50051`）。每个原语 / 服务 / 技能启动时按 kind 调对应的 `RegisterPrimitive` / `RegisterService` / `RegisterSkill`；之后每条暴露的接口调 `DeclareCapability`。其它实例调 `Query`（被 `ATLAS.query_primitives/_services/_skills` 包装，返回实例记录列表）或 `find_capability`（扁平展开到 Capability 列表）拿 endpoint。
-
-Atlas **不传业务数据**——只传"谁在哪里能干什么"。
+中心目录服务（gRPC，端口 `50051`）。实例启动时按 kind 调 `RegisterPrimitive` / `RegisterService` / `RegisterSkill`，之后每条接口调 `DeclareCapability`。其它实例调 `Query`（`ATLAS.query_primitives/_services/_skills`，返回实例记录列表）或 `find_capability`（扁平展开到 Capability 列表）拿 endpoint。Atlas **不传业务数据**，只传"谁在哪里能干什么"。
 
 ***
 
@@ -1028,68 +1020,42 @@ rbnx start -p ./services/simple_nav -s max_linear=0.3 -s pid_linear=[1,0,0.1]
 
 ## 14. Python API
 
-`robonix_api` 是写 capability 的核心库——`Capability` 类 + 一组装饰器 + `Result` 类型。本节是手册主体，每个 API 给出**签名、参数、返回、机制、示例**。
+`robonix_api` 是写原语 / 服务 / 技能的核心库——三个类 + 一组装饰器 + `Result` 类型 + `ATLAS` 客户端。每个 API 给出**签名、参数、返回、机制、示例**。
 
-> **范围**：本节描述的是**预计 v0.1 发布时定稿的 Python API 规划**。dev 上当前实现已经按这套形态推进，但在 v0.1 正式发版前签名 / 命名 / 默认值都可能微调。一旦 v0.1 发版，下面这张表就是稳定 API 边界，破坏性改动需要 v0.2。
+> 本节是 v0.1 发版前的 API 规划。dev 上已经按这套形态推进，签名 / 命名 / 默认值在正式发版前仍可能微调。
 
 ### 14.0 总表
 
 ```python
-from robonix_api import Service, Ok, Err, ATLAS
+from robonix_api import Service, Ok, Err, ATLAS   # 或 Primitive / Skill
 from robonix_api.atlas_types import Transport, Capability
 ```
 
-按用途分组：
-
-> 签名里的 `*` 是 Python keyword-only 标志——`*` 之后的参数必须以 `name=value` 传，不能按位置传，比如 `ATLAS.find_capability(contract_id="...", transport=Transport.GRPC)`；省略 `contract_id=` 直接传字符串会 raise `TypeError`。这样写避免位置误用，调用点也更易读。
-
-**构造 + 入口**（§14.1 / §14.2）
+> 签名里的 `*` 是 keyword-only 标志——`*` 之后的参数必须用 `name=value` 传，不能按位置传。
 
 | API | 用途 |
 |---|---|
-| `Primitive(id, namespace)` / `Service(...)` / `Skill(...)` | 构造**一个原语 / 服务 / 技能实例**（按 package 类型选一个；atlas 注册时 kind 不同，其它方法完全一致）|
+| `Primitive(id, namespace)` / `Service(...)` / `Skill(...)` | 构造一个实例（按 package 类型选一个，三个类方法完全一致，只是 atlas 注册时 kind 不同）|
 | `cap.run()` | 阻塞主循环；注册 + listen + 心跳 + 等 SIGTERM |
-
-**lifecycle 装饰器**（§14.3）
-
-| 装饰器 | 签名 | 状态边 | 备注 |
-|---|---|---|---|
-| `@cap.on_init` | `(cfg: dict) -> Result` | REGISTERED → INACTIVE | 必填 |
-| `@cap.on_activate` | `() -> Result` | INACTIVE → ACTIVE | 必填 |
-| `@cap.on_deactivate` | `() -> Result` | ACTIVE → INACTIVE | 必填 |
-| `@cap.on_shutdown` | `() -> Result` | 任意 → TERMINATED | 可选 |
-
-**`Result` 类型**（§14.7）
-
-| 构造 | 含义 |
-|---|---|
-| `Ok()` | 成功，推进状态 |
-| `Err("reason")` | 失败，进 `ERROR` |
-
-**atlas 发现 + 连接**（§14.4 / §14.5 / §14.6）
-
-| API | 用途 |
-|---|---|
-| `ATLAS.query(*, kind=…, id=…, contract_id=…, namespace_prefix=…, transport=…)` | 按条件搜原语/服务/技能记录 |
-| `ATLAS.query_primitives/_services/_skills(...)` | `query()` 的 kind 已固定的快捷形式 |
-| `ATLAS.find_capability(*, contract_id=…, transport=…, owner_kind=…, owner_id=…, namespace_prefix=…)` | 扁平视角——按 contract 搜，返回 `list[Capability]`（自带 `owner_id` / `owner_kind`）|
-| `ATLAS.find_unique_capability(*, contract_id=…, ...)` | 同上但断言只有一条；0 或 >1 都 raise `ValueError` |
-| `cap.connect_capability(cap_view, contract_id, transport)` | 用一条 `Capability` 建一条 consumer→提供方的 `Channel` |
-
-**接口装饰器 / 声明**（§14.8 / §14.9）
-
-| API | 用途 |
-|---|---|
+| `@cap.on_init(cfg) -> Result` | REGISTERED → INACTIVE，必填 |
+| `@cap.on_activate() -> Result` | INACTIVE → ACTIVE，必填 |
+| `@cap.on_deactivate() -> Result` | ACTIVE → INACTIVE，必填 |
+| `@cap.on_shutdown() -> Result` | 任意 → TERMINATED，可选 |
+| `Ok()` / `Err("reason")` | lifecycle handler 返回值 |
+| `ATLAS.query(*, kind=…, id=…, contract_id=…, namespace_prefix=…, transport=…)` | 搜实例记录 |
+| `ATLAS.query_primitives/_services/_skills(...)` | `query()` 已固定 kind 的快捷形式 |
+| `ATLAS.find_capability(*, contract_id=…, transport=…, owner_kind=…, owner_id=…, namespace_prefix=…)` | 按 contract 搜，返回 `list[Capability]` |
+| `ATLAS.find_unique_capability(*, contract_id=…, ...)` | 同上但断言只有一条；0 或 >1 都 raise |
+| `cap.connect_capability(cap_view, contract_id, transport)` | 用一条 Capability 建 consumer → 提供方 `Channel` |
 | `@cap.mcp(contract_id, *, name=None)` | 把函数挂成 MCP 工具（`mode=rpc`，给 LLM 调）|
 | `@cap.grpc(contract_id)` | 把函数挂成 contract 对应 gRPC 方法 |
-| `cap.declare_ros2_topic`   | 登记 ROS 2 topic publisher（contract `mode=topic_*`）|
-| `cap.declare_ros2_service` | 登记 ROS 2 service（contract `mode=rpc`）|
+| `cap.declare_ros2_topic` / `declare_ros2_service` | 登记 ROS 2 端点 |
 
 只读属性：`cap.id` / `cap.namespace` / `cap.state`。
 
 ### 14.1 `Primitive` / `Service` / `Skill`
 
-**签名**：三个类签名一致——`Primitive(id, namespace)` / `Service(id, namespace)` / `Skill(id, namespace)`。按 package 类型挑一个，atlas 注册时 kind 不同，其它方法完全一致。**通常在模块顶部构造一个全局 `cap` 实例，再用装饰器把 handler 挂上去。**
+三个类签名一致：`Primitive(id, namespace)` / `Service(id, namespace)` / `Skill(id, namespace)`。按 package 类型挑一个，atlas 注册 kind 不同，其它一致。通常在模块顶部构造一个全局 `cap`，再用装饰器挂 handler。
 
 | 参数 | 类型 | 必填 | 说明 |
 |---|---|---|---|
@@ -1110,19 +1076,15 @@ cap = Service(id="my_navigate", namespace="robonix/service/myorg")
 
 按顺序：
 
-1. **连 atlas + 注册**——`RegisterCapability(id=cap.id, namespace=cap.namespace, capability_md_path=...)`。如果 atlas 拒（端口不通 / 已存在同 id），抛出退出。
-2. **启动 gRPC server**——自动选一个空闲端口，把两类 servicer 挂到同一个 server 上：
-   * 固定的 `<namespace>/driver` 生命周期接口（`Driver(CMD_INIT/ACTIVATE/DEACTIVATE/SHUTDOWN)`）——这是 `rbnx boot` / executor 控制 capability 状态的入口。**这个 server 起来 capability 才有"被指挥"的能力。**
-   * 所有 `@cap.grpc(contract_id)` 装饰的业务方法。
-3. **atlas-declare 所有 gRPC contract**——对每条 contract 调 `DeclareInterface(transport=GRPC, endpoint="host:port", service_name=..., method=...)`，这样 consumer 才能 `find()` 到。
-4. **启动 MCP HTTP server（如果有 `@cap.mcp`）**——FastMCP + uvicorn，自动选端口；同样给每条 MCP contract `DeclareInterface(transport=MCP, endpoint=http_url)`。
-5. **起后台心跳线程**——10s 一次给 atlas 发 `Heartbeat`，超 90s 没心跳 atlas 把这个 capability 标 TERMINATED。
-6. **装 SIGTERM / SIGINT handler**——收到信号触发 teardown：依次跑 `on_shutdown` → 停 server → unregister → 进程退出（你自己用 `subprocess.Popen` 起的子进程需要在 `on_shutdown` 里收尾）。
-7. **阻塞**：`signal.pause()` 直到信号到达。
+1. 连 atlas + 按 kind 调对应 Register RPC（端口不通 / 重名 id 都抛出退出）
+2. 启动 gRPC server（自动选端口），把 `<namespace>/driver` 生命周期接口和所有 `@cap.grpc` 业务方法挂上去
+3. 对每条 gRPC contract 调 `DeclareCapability(transport=GRPC, endpoint="host:port", ...)`
+4. 有 `@cap.mcp` 的话起 MCP HTTP server（FastMCP + uvicorn），declare 一次
+5. 起心跳线程，10s 一次；超 90s 无心跳 atlas 把实例标 TERMINATED
+6. 装 SIGTERM / SIGINT handler：teardown 时依次跑 `on_shutdown` → 停 server → unregister
+7. `signal.pause()` 阻塞
 
-#### 状态机的位置
-
-注意：步骤 1-5 完成后 capability 在 atlas 里只是 `REGISTERED`。**还没跑 `on_init`**——boot 拓扑里要等 `Driver(CMD_INIT)` RPC 到达（通过步骤 2 起来的 driver server），才会触发 `on_init` 进 `INACTIVE`。所以 `cap.run()` 返回之前 capability 的状态推进是被外界（rbnx boot / executor）异步驱动的。
+步骤 1-5 完成后实例在 atlas 里只是 `REGISTERED`，**还没跑 `on_init`**——等 `Driver(CMD_INIT)` RPC 到达才会触发，进 `INACTIVE`。`cap.run()` 返回前的状态推进全靠外界（rbnx boot / executor）异步驱动。
 
 ```python
 if __name__ == "__main__":
@@ -1294,18 +1256,16 @@ def shutdown():
     return Ok()
 ```
 
-### 14.4 ATLAS / 原语·服务·技能 / Capability
+### 14.4 ATLAS 发现 + connect
 
-先把模型钉清楚（**v0.2 概念拆分**）：
+`ATLAS` 两种 API：
 
-* **原语 / 服务 / 技能 = 一个独立运行实例**。在 atlas 里有唯一 `id` 和 `kind`（PRIMITIVE / SERVICE / SKILL），并向外暴露**若干 Capability**（contract）。所有 Capability 共享同一个 `namespace`——例如 `tiago_camera_front` 这个原语暴露 `robonix/primitive/camera/{rgb,depth,extrinsics}` 三条 Capability。
-* **发现走 `ATLAS`**——`from robonix_api import ATLAS` 拿到 module-level uppercase singleton。**两种 API 分工明确**：
-  * `ATLAS.query(*, id=…, kind=…, contract_id=…, …)` —— **实例视角**，按 id / kind / contract 搜原语 / 服务 / 技能的注册档案。最典型场景：你**已经知道** id（`ATLAS.query(id="tiago_chassis")`）；或者只想看某类（`ATLAS.query_skills()`）。
-  * `ATLAS.find_capability(*, contract_id=…, transport=…, …)` —— **接口视角**，返回 `list[Capability]`（自带 `owner_id` / `owner_kind`）。最典型场景：你**只知道契约**，问"谁能干这个"。
-  * `ATLAS.find_unique_capability(contract_id=…, ...)` —— 同上但 0 或 >1 都 raise `ValueError`，依赖唯一 capability 时用。
-* **`cap.connect_capability(cap_view, contract_id, transport)` 才是真正发起一次接口调用**——`cap_view` 是上一步从 `find_capability` / `find_unique_capability` 拿到的 `Capability`。返回 `Channel`，里面 `endpoint` 是对方实际地址。
+* `ATLAS.query(*, id=…, kind=…, contract_id=…, …)` —— 实例视角，按 id / kind / contract 搜实例记录。`ATLAS.query_primitives/_services/_skills` 是固定 kind 的快捷形式。
+* `ATLAS.find_capability(*, contract_id=…, transport=…, …)` —— 接口视角，返回 `list[Capability]`（自带 `owner_id` / `owner_kind`）。`find_unique_capability` 在 0 或 >1 时 raise，依赖唯一 capability 时用。
 
-**三种典型写法**：
+`cap.connect_capability(cap_view, contract_id, transport)` 用一条 Capability 开 `Channel`，`ch.endpoint` 是对方实际地址。
+
+**典型写法**：
 
 ```python
 # (A) 我知道是哪个实例（最 explicit）
@@ -1344,89 +1304,52 @@ with cap.connect_capability(front,
     ...
 ```
 
-### 14.5 `ATLAS.query` / `ATLAS.find_capability`
+### 14.5 atlas-types 数据结构
 
-```python
-from robonix_api import ATLAS
-from robonix_api.atlas_types import Transport, Capability
-```
+`ATLAS` 是 module-level singleton（参照 `prometheus_client.REGISTRY` 风格），第一次访问时连到 atlas（端口取 `ROBONIX_ATLAS`，默认 `127.0.0.1:50051`）。
 
-`ATLAS` 是 module-level uppercase singleton（参照 `prometheus_client.REGISTRY` 的风格），第一次访问时连到 atlas（端口取 `ROBONIX_ATLAS` 环境变量，默认 `127.0.0.1:50051`）。所有实例共享。
+返回的两个 dataclass 都是 frozen，要新数据就重新 query。
 
-#### 实现端 vs 目录端
-
-三个角色，用途完全不同：
-
-| 类 | 是什么 | 谁创建 | 你能改吗 |
-|---|---|---|---|
-| `Primitive` / `Service` / `Skill` | **你写的实例本身**——挂 handler、跑 lifecycle、对外暴露 Capability | 你（`cap = Service(id, namespace)`）| 是（挂装饰器、调 `cap.run()`）|
-| `ATLAS.query` 返回的记录 | **atlas 里"某个实例的注册档案"的快照**——含当前 state、它声明了哪些 capability、心跳时间等 | 框架 / atlas | 否（frozen dataclass，要新数据就重新 query）|
-| `Capability` | **atlas 里"某个实例暴露的一条接口"的快照**——含 contract_id / transport / endpoint / owner_id / description 等 | 框架 / atlas（`ATLAS.find_capability` 返回 `list[Capability]`）| 否（frozen） |
-
-简单说：`Primitive/Service/Skill` 是**实现**端的对象（你 own 的那个实例）；atlas 返回的记录和 `Capability` 是**目录**端的视图（atlas 看到的别人——或者你自己——的那条记录）。
-
-#### 实例记录（`ATLAS.query` / `query_primitives` / `query_services` / `query_skills` 的返回单元）
-
-frozen dataclass，字段：
+**实例记录**（`ATLAS.query / query_primitives / query_services / query_skills` 返回单元）：
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `id` | `str` | 实例 id（atlas 里唯一）|
 | `kind` | `Kind` | `PRIMITIVE` / `SERVICE` / `SKILL` |
-| `namespace` | `str` | 实例的 contract 公共前缀 |
-| `state` | `LifecycleState` | 当前 lifecycle 状态枚举（§5.1）|
-| `state_detail` | `str` | 处于 `ERROR` 时框架写入的 reason；其它状态可能为空 |
-| `last_heartbeat_ms` | `int` | 上次心跳的 unix 毫秒时间戳 |
-| `capability_md_path` | `str` | 注册时实例报上来的 `CAPABILITY.md` 路径 |
-| `capabilities` | `tuple[Capability, ...]` | 该实例已声明的所有 Capability（每条自带 `owner_id`/`owner_kind`） |
+| `namespace` | `str` | contract 公共前缀 |
+| `state` | `LifecycleState` | §5.1 |
+| `state_detail` | `str` | `ERROR` 时为 reason，其它可能为空 |
+| `last_heartbeat_ms` | `int` | 上次心跳 unix ms |
+| `capability_md_path` | `str` | 注册时报上来的 `CAPABILITY.md` 路径 |
+| `capabilities` | `tuple[Capability, ...]` | 该实例已声明的所有 Capability |
 
-#### `Capability` 数据结构
-
-frozen dataclass，字段：
+**`Capability`**（`ATLAS.find_capability` 返回单元）：
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `owner_id` | `str` | 暴露这条 capability 的实例 id |
-| `owner_kind` | `Kind` | 该实例的 kind |
-| `contract_id` | `str` | 接口 ID，例如 `robonix/primitive/chassis/move` |
-| `transport` | `Transport` | 走哪个 transport 提供这条接口 |
-| `params` | `GrpcParams \| Ros2Params \| McpParams` | transport-specific 参数（gRPC 的 service+method / ROS 2 的 qos\_profile / MCP 的 description+schema）|
-| `description` | `str` | 来源合并：contract toml 的 description + declare 时传入的 description + 包根 `CAPABILITY.md`（给 Pilot 看的）|
+| `owner_id` | `str` | 提供方实例 id |
+| `owner_kind` | `Kind` | 提供方 kind |
+| `contract_id` | `str` | 接口 id |
+| `transport` | `Transport` | gRPC / ROS2 / MCP |
+| `params` | `GrpcParams \| Ros2Params \| McpParams` | transport-specific（gRPC service+method / ROS 2 qos\_profile / MCP description+schema）|
+| `description` | `str` | 来源合并：contract toml + declare 时传入 + 包根 `CAPABILITY.md`（给 Pilot 看的）|
 
-`Transport` 是 `IntEnum`，值：`UNSPECIFIED` / `GRPC` / `ROS2` / `MCP`；`Kind` 是 `IntEnum`，值：`UNSPECIFIED` / `PRIMITIVE` / `SERVICE` / `SKILL`；`LifecycleState` 见 §5.1。
+`Transport` 是 `IntEnum`：`UNSPECIFIED` / `GRPC` / `ROS2` / `MCP`；`Kind` 是 `IntEnum`：`UNSPECIFIED` / `PRIMITIVE` / `SERVICE` / `SKILL`。
 
-只读语义——这些 dataclass 是 frozen，拿到后只能读不能改；要修改必须重新 `ATLAS.query` / `find_capability` 拉一份新的。
-
-#### `ATLAS.query(*, kind=Kind.UNSPECIFIED, id="", contract_id="", namespace_prefix="", transport=Transport.UNSPECIFIED)`
-
-按条件搜原语 / 服务 / 技能的注册档案。常用入参组合：
+#### `ATLAS.query(*, kind, id, contract_id, namespace_prefix, transport)`
 
 ```python
-# 按 id 精确取（最常见）
-[chassis] = ATLAS.query(id="tiago_chassis")  # 0 或 1；多了 unpack 会 raise
-
-# 全部 skills
-skills = ATLAS.query(kind=Kind.SKILL)          # 等价于 ATLAS.query_skills()
-
-# 提供某 contract 的所有实例（gRPC 实现）
-recs = ATLAS.query(contract_id="robonix/primitive/chassis/move",
-                   transport=Transport.GRPC)
+[chassis] = ATLAS.query(id="tiago_chassis")              # 按 id（0 或 1）
+skills    = ATLAS.query(kind=Kind.SKILL)                 # == query_skills()
+recs      = ATLAS.query(contract_id="robonix/primitive/chassis/move",
+                        transport=Transport.GRPC)        # 按 contract
 ```
 
-`query_primitives` / `query_services` / `query_skills` 是 `query(kind=...)` 的快捷形式。
+#### `ATLAS.find_capability(*, contract_id, transport, owner_kind, owner_id, namespace_prefix) -> list[Capability]`
 
-#### `ATLAS.find_capability(*, contract_id="", transport=Transport.UNSPECIFIED, owner_kind=Kind.UNSPECIFIED, owner_id="", namespace_prefix="") -> list[Capability]`
+把所有实例的 `capabilities[]` 拉平展开，返回所有匹配的 `Capability`（可能为空）。
 
-**扁平视角**——把所有实例的 `capabilities[]` 拉平展开，返回所有匹配的 `Capability`。永远返回 `list`（可能为空）。
-
-| 参数 | 类型 | 说明 |
-|---|---|---|
-| `contract_id` | `str` | 接口 id，例如 `robonix/primitive/chassis/move`；空 = 不限 |
-| `transport` | `Transport?` | 要求 capability 走指定 transport；省略 = 任意 |
-| `owner_id` | `str?` | 限定特定实例 id |
-| `owner_kind` | `Kind?` | 限定实例 kind（PRIMITIVE / SERVICE / SKILL）|
-
-**`on_init` 里轻量探活最常用**：
+`on_init` 里轻量探活最常用：
 
 ```python
 @cap.on_init
@@ -1438,7 +1361,7 @@ def init(cfg):
 
 #### `ATLAS.find_unique_capability(*, contract_id, ...) -> Capability`
 
-同 `find_capability`，但**断言只匹配一条**。0 或 >1 都 raise `ValueError`，直接拿一条 `Capability` 不需要 unpack。依赖唯一 capability 时用它，多实例场景用 `find_capability` 自己挑。
+同 `find_capability`，但 0 或 >1 都 raise `ValueError`，依赖唯一 capability 时用。
 
 ### 14.6 `cap.connect_capability`
 
@@ -1462,11 +1385,7 @@ def init(cfg):
 | `close()` | method | 显式 disconnect（idempotent；多次调用安全）|
 | `__enter__` / `__exit__` | context manager | `with` 块退出时自动 `close()` |
 
-**机制**：
-
-1. 调 atlas 的 `ConnectCapability(consumer=cap.id, owner=cap_view.owner_id, contract_id, transport)` 拿 endpoint
-2. atlas 记一条 consumer→提供方边（供 `rbnx channels` 审计 + 心跳追踪）
-3. 框架内部维护一张 channel 表——`ch.close()` / `Channel.__exit__` / 实例 teardown 时都会调 atlas 的 `DisconnectCapability` 把对应边删掉
+**机制**：atlas 端记一条 consumer→提供方边（`rbnx channels` 审计 + 心跳追踪），框架维护实例本地 channel 表——`ch.close()` / `Channel.__exit__` / 实例 teardown 都会调 atlas 的 `DisconnectCapability` 删掉对应边。
 
 **两种用法**：
 
@@ -1513,7 +1432,7 @@ def deactivate():
     return Ok()
 ```
 
-实例内部的 channel 表是**保险**——即便用户忘了 `close()` 也忘了 `with`，`cap.run()` 退出 / SIGTERM teardown 时框架会遍历表把所有未关 channel `Disconnect`。但**显式 `with` 或 `close()` 才是规范写法**——长期持有未关的 channel 会让 atlas 端 consumer 边一直存在，影响 `rbnx channels` 审计的准确性。
+实例内部的 channel 表是兜底——即便忘了 `close()` / `with`，teardown 时框架会遍历表 `Disconnect` 所有未关 channel。但显式 `with` / `close()` 才是规范写法（不然 atlas 端的 consumer 边会一直挂着，影响 `rbnx channels` 审计）。
 
 ### 14.7 `Result` 类型
 
@@ -1533,7 +1452,7 @@ return Err("device /dev/ttyUSB0 not found")
 
 ### 14.8 `cap.declare_ros2_topic` / `cap.declare_ros2_service`
 
-robonix v1 **不 wrap rclpy**。ROS 2 publisher / subscriber / service / client 用户**直接用 rclpy 起**——`rclpy.init() + Node + create_publisher / create_subscription / create_service + spin` 是 ROS 2 标准接口，所有 ROS 2 文档都按这个写。robonix 只在中间放一个**显式声明**点：把"我这个实例在某个 ROS 端点上提供一个满足某 contract 的能力"告诉 atlas，让 consumer 能通过 `ATLAS.find_capability` + `cap.connect_capability(transport=ROS2)` 拿到名字 + QoS。
+robonix v1 **不 wrap rclpy**——publisher / subscriber / service / client 直接 `rclpy.init() + Node + create_publisher / create_subscription / create_service + spin`。robonix 只插一个 declare 点告诉 atlas"我在某个 ROS 端点上提供某 contract"，让 consumer 能通过 `ATLAS.find_capability` + `cap.connect_capability(transport=ROS2)` 拿到名字 + QoS。
 
 ROS 2 有两类端点，分别对应两个 declare 方法：
 
