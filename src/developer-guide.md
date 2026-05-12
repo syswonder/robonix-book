@@ -147,8 +147,8 @@ rbnx chat             # 试 "say hello to alice"
 | `rpc_server_stream` | 请求 → 响应流 |
 | `rpc_client_stream` | 请求流 → 响应 |
 | `rpc_bidirectional_stream` | 双向流 |
-| `topic_out` | 实例持续 publish 这条 topic |
-| `topic_in` | 实例持续 subscribe 这条 topic（典型：chassis 声明它消费 `Twist` 命令） |
+| `topic_out` | 该能力持续 publish 这条 topic |
+| `topic_in` | 该能力持续 subscribe 这条 topic（典型：chassis 声明它消费 `Twist` 命令） |
 
 **transport × mode 兼容矩阵**：
 
@@ -1662,7 +1662,7 @@ handler：`(req)` 或 `(req, ctx)`，return 一个 Response 对象。框架按 i
 
 **(2) `mode = "rpc_server_stream"` — 一收多发（server streaming）**
 
-实例收到一个请求，**用 `yield` 推一系列响应**。
+该能力收到一个请求，**用 `yield` 推一系列响应**。
 
 ```toml
 [mode]
@@ -1685,7 +1685,7 @@ def execute(req, ctx):
 
 **(3) `mode = "rpc_client_stream"` — 多收一发（client streaming）**
 
-实例收到一个**请求迭代器**，消费完后回**单个**响应。
+该能力收到一个**请求迭代器**，消费完后回**单个**响应。
 
 ```toml
 [mode]
@@ -1734,7 +1734,7 @@ def asr_stream(request_iterator, ctx):
 
 要点：`request_iterator` 进，`yield` 出，**两侧独立异步**——不需要一对一对应。可以收 N 个 chunk 中间 yield 1 个 partial。
 
-**(5) `mode = "topic_out"` — 实例持续 publish**
+**(5) `mode = "topic_out"` — 该能力持续 publish**
 
 走 gRPC 时**实现是 server streaming**——consumer "订阅" = 发个 Empty 请求拿一个 yield 流。
 
@@ -1760,9 +1760,9 @@ def stream(req, ctx):
 
 要点：和 server\_stream 同形态，但语义上"主动持续推"——`while ctx.is_active():` 死循环 yield 直到客户端断。
 
-**(6) `mode = "topic_in"` — 实例持续 subscribe**
+**(6) `mode = "topic_in"` — 该能力持续 subscribe**
 
-走 gRPC 时**实现是 client streaming**——consumer 发流，实例消费。
+走 gRPC 时**实现是 client streaming**——consumer 发流，能力消费。
 
 ```toml
 [mode]
@@ -1778,7 +1778,7 @@ def stream(request_iterator, ctx):
     return std_msgs_pb2.Empty()
 ```
 
-要点：和 client\_stream 同形态，语义是"该实例是 sink"——为传统的 ROS2 topic 抽象（实例订阅）在 gRPC transport 上的等价物。
+要点：和 client\_stream 同形态，语义是"该能力是 sink"——为传统的 ROS2 topic 抽象（能力订阅）在 gRPC transport 上的等价物。
 
 **`topic_*` 走 ROS 2 transport 时不用 `@cap.grpc`**——见 §14.8 `cap.declare_ros2_topic` + 用户自管的 rclpy publisher/subscription。`topic_*` 只在该 contract 想跨语言或穿 docker 网络时才走 gRPC。
 
