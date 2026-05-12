@@ -4,10 +4,6 @@
 
 ---
 
-- [开发者指南](developer-guide.md)
-
----
-
 - [EAIOS 架构背景](background/eaios.md)
 
 ---
@@ -20,7 +16,6 @@
 - [能力与能力接口](architecture/namespace-and-interfaces.md)
 - [Atlas 能力目录](architecture/atlas.md)
 - [系统部署与启动流程](architecture/deployment-and-startup.md)
-- [能力生命周期与状态机](architecture/cap-lifecycle.md)
 
 ---
 - [接口目录](interface-catalog/index.md)
@@ -40,5 +35,6 @@
 ---
 
 - [接入指南](integration-guide/index.md)
+  - [开发者指南](developer-guide.md)
   - [Package 与部署规范](integration-guide/packaging-spec.md)
   - [Package 构建与代码生成](integration-guide/build-and-codegen.md)

@@ -1,6 +1,115 @@
-/* Widen mdBook content: override the default --content-max-width (750px) */
+/* Widen mdBook content + apply Robonix brand color (#283689). */
 :root {
     --content-max-width: 1100px;
+}
+
+/* Hide the big prev/next chapter arrows on each page. */
+.nav-chapters,
+.nav-wrapper,
+.nav-wide-wrapper,
+.previous,
+.next {
+    display: none !important;
+}
+
+/* Replace mdbook's default `❱` fold indicator with a clear chevron.
+   The toggle is rendered as <a><div>❱</div></a>; we hide the inner div
+   and inject a CSS triangle via ::before that rotates on expand. */
+.chapter-fold-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.6em;
+    height: 1.6em;
+    margin-left: 0.4em;
+    color: inherit;
+    opacity: 0.75;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: opacity 0.15s ease;
+}
+.chapter-fold-toggle > div {
+    display: none;
+}
+.chapter-fold-toggle::before {
+    content: "▶";
+    font-size: 1em;
+    line-height: 1;
+    transform: rotate(0deg);
+    transform-origin: center;
+    transition: transform 0.15s ease;
+}
+.chapter-fold-toggle:hover {
+    opacity: 1;
+    background: rgba(127, 127, 127, 0.18);
+}
+/* When the chapter is expanded, the triangle points down. */
+.chapter-item.expanded > .chapter-link-wrapper > .chapter-fold-toggle::before {
+    transform: rotate(90deg);
+}
+
+/* Constrain large diagrams (e.g. cap-lifecycle.png) — full-width is ugly. */
+img[src$="cap-lifecycle.png"] {
+    display: block;
+    max-width: 560px;
+    width: 100%;
+    margin: 1em auto;
+}
+
+/* Light theme: override accent colors to Robonix blue. */
+.light {
+    --links: #283689;
+    --sidebar-active: #283689;
+    --searchresults-header-fg: #283689;
+}
+
+/* Rust theme uses the same palette as light for our purposes. */
+.rust {
+    --links: #283689;
+    --sidebar-active: #283689;
+}
+
+/* Dark themes get a lighter variant of the brand color for contrast. */
+.coal, .navy, .ayu {
+    --links: #6178c8;
+    --sidebar-active: #6178c8;
+}
+
+/* ── Muted syntax highlighting (light themes) ─────────────────────────
+   Default mdbook highlight palette is too neon. Tone it down to a
+   github-light-ish scheme that harmonises with the brand navy. */
+.light .hljs, .rust .hljs {
+    background: #f6f8fa;
+    color: #24292e;
+}
+.light .hljs-keyword, .rust .hljs-keyword,
+.light .hljs-built_in, .rust .hljs-built_in {
+    color: #283689;
+    font-weight: 600;
+}
+.light .hljs-string, .rust .hljs-string {
+    color: #1f6f43;
+}
+.light .hljs-comment, .rust .hljs-comment {
+    color: #8a929b;
+    font-style: italic;
+}
+.light .hljs-number, .rust .hljs-number,
+.light .hljs-literal, .rust .hljs-literal {
+    color: #b15c1a;
+}
+.light .hljs-title, .rust .hljs-title,
+.light .hljs-function .hljs-title, .rust .hljs-function .hljs-title {
+    color: #4b3789;
+    font-weight: 600;
+}
+.light .hljs-type, .rust .hljs-type,
+.light .hljs-class, .rust .hljs-class {
+    color: #2c5282;
+}
+.light .hljs-attr, .rust .hljs-attr,
+.light .hljs-symbol, .rust .hljs-symbol {
+    color: #5a6b85;
 }
 
 /* RIDL syntax: keywords bold, title/attr/symbol/type distinct colors */

@@ -35,8 +35,8 @@ jobs:
           curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh -s -- -y
           source "$HOME/.cargo/env"
           rustup update
-          cargo install mdbook --git https://github.com/Sunshine40/mdBook --branch search-non-english --force
-          cargo install mdbook-mermaid --version 0.14.0
+          cargo install mdbook --version 0.5.2 --force
+          cargo install mdbook-mermaid --version 0.17.0 --force
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v5

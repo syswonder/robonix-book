@@ -11,6 +11,10 @@ command = "mdbook-mermaid"
 [output.html]
 additional-css = ["theme/wide.css"]
 additional-js = ["mermaid.min.js", "mermaid-init.js"]
-default-theme = "light"
+default-theme = "auto"
 git-repository-url = "https://github.com/syswonder/robonix"
 mathjax-support = true
+
+[output.html.fold]
+enable = true
+level = 1
