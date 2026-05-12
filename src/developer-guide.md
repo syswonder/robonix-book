@@ -372,7 +372,7 @@ if __name__ == "__main__":
 | `@service.on_activate(fn)` | INACTIVE→ACTIVE；**skill 必填**，primitive / service 可省（省时框架自动返 `Ok()`）；无输入，返回 Result |
 | `@service.on_deactivate(fn)` | ACTIVE→INACTIVE；同 `on_activate` 的规则；无输入，返回 Result |
 | `@service.on_shutdown(fn)` | 任意→TERMINATED；可选；无输入，返回 Result |
-| `@service.mcp(contract_id, *, name=None, description="")` | 把函数挂成 MCP 工具（LLM 直接调），描述默认取 docstring |
+| `@service.mcp(contract_id, *, description="")` | 把函数挂成 MCP 工具（LLM 直接调），描述默认取 docstring |
 | `@service.grpc(contract_id, *, description="")` | 把函数挂成 gRPC servicer 方法；gRPC 无 docstring 惯例，建议显式传 description |
 | `ATLAS.query(*, kind=, id=, contract_id=, …)` | 按条件搜原语/服务/技能记录（kind=UNSPECIFIED 时三类一起返回）|
 | `ATLAS.query_primitives/_services/_skills(...)` | `query()` 的 kind 已固定的快捷形式 |
@@ -959,7 +959,7 @@ from robonix_api.atlas_types import Transport, Capability
 | `ATLAS.find_capability(*, contract_id=…, transport=…, provider_kind=…, provider_id=…, namespace_prefix=…)` | 按 contract 搜，返回 `list[Capability]` |
 | `ATLAS.find_unique_capability(*, contract_id=…, ...)` | 同上但断言只有一条；0 或 >1 都 raise |
 | `service.connect_capability(cap_view, contract_id, transport)` | 用一条 Capability 建 consumer → 提供方 `Channel` |
-| `@service.mcp(contract_id, *, name=None, description="")` | 把函数挂成 MCP 工具（`mode=rpc`，给 LLM 调）；description 默认取 docstring |
+| `@service.mcp(contract_id, *, description="")` | 把函数挂成 MCP 工具（`mode=rpc`，给 LLM 调）；description 默认取 docstring |
 | `@service.grpc(contract_id, *, description="")` | 把函数挂成 contract 对应 gRPC 方法；建议显式传 description |
 | `service.declare_ros2_topic` / `declare_ros2_service` | 登记 ROS 2 端点 |
 
@@ -1291,7 +1291,7 @@ def qos_from_str(s):
 
 ### 14.9 `@service.mcp` / `@service.grpc`
 
-#### `@service.mcp(contract_id, *, name=None, description="")` — MCP 工具
+#### `@service.mcp(contract_id, *, description="")` — MCP 工具
 
 把一个普通 Python 函数挂成一条 MCP 工具，pilot / 任何 MCP 客户端都能调到。
 
@@ -1318,7 +1318,7 @@ def hello(req: Hello_Request) -> Hello_Response:
 
 三个都拼给 LLM。最常用就是 docstring——FastMCP 也认；显式覆盖时写 `@service.mcp("...", description="...")`。
 
-codegen 生成的 dataclass 命名是 `<SrvName>_Request` / `<SrvName>_Response`（按 ROS srv 文件名）；msg 文件直接是 `<MsgName>`。每个能力提供者一个 FastMCP HTTP server（自动选端口），所有 `@service.mcp` 都挂在同一 server 上。`name=` 可重命名工具（默认用 contract id 末段）。
+codegen 生成的 dataclass 命名是 `<SrvName>_Request` / `<SrvName>_Response`（按 ROS srv 文件名）；msg 文件直接是 `<MsgName>`。每个能力提供者一个 FastMCP HTTP server（自动选端口），所有 `@service.mcp` 都挂在同一 server 上。MCP server 端的工具名固定 = `contract_id` 末段（跟 executor dispatch 那一侧用同一个推导），所以**装饰器不暴露 `name=` kwarg**——避免函数名 / 工具名漂移撞 executor。
 
 #### `@service.grpc(contract_id, *, description="")` — gRPC 方法 handler
 
