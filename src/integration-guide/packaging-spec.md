@@ -20,11 +20,11 @@ rbnx start -p ./service/slam_fastlio2
 `rbnx boot` 的流程：
 1. 展开 `${VAR}` 环境变量
 2. 起 `system:` 服务（atlas / executor / pilot / liaison 是 Rust 二进制；memory / scene / speech 是 Python 包）
-3. 对每个 `primitive` / `service` / `skill` 条目：把它的 `config` 块写到 `rbnx-boot/instances/<name>.json`，然后 `rbnx start -p <path>`，env 里带两个变量：`RBNX_CONFIG_FILE=<json-path>` 和 `RBNX_INSTANCE_NAME=<name>`
+3. 对每个 `primitive` / `service` / `skill` 条目：`rbnx start -p <path>` 拉起包进程，等它在 atlas 上注册完，然后调一次 gRPC `Driver(CMD_INIT, config_json=<manifest 里 config 块 JSON 化>)`。`on_init(cfg: dict)` 在包里接到这个 dict，没有 env、没有文件
 4. 日志落到 `rbnx-boot/logs/<component>.log`
 5. Ctrl-C 统一 kill
 
-> config 用文件传递（不是 env 里直接塞 JSON）——避开 bash 对引号/换行的 escape、`ARG_MAX` 限制、以及 `printenv | jq` 这种不直观的 debug 路径。包里一行 `jq` 就能读配置，同一个包的多个 instance（name 不同）各有自己的 json 文件，互不干扰。
+> config 通过 gRPC `Driver(CMD_INIT)` 的 `config_json` 字段透传——没有 env、没有文件、不依赖 bash 引号 escape。包代码只暴露一个 `@<provider>.on_init(cfg: dict)` 入口；同一个包的多个 instance（manifest 里 `name` 不同）各自拿到自己的 `cfg`，互不干扰。
 
 ## Deploy manifest 示例
 
@@ -134,50 +134,38 @@ depends: # 库依赖，即需要用到另一个库的代码/数据（如model）
 
 ### 包里读 config
 
-rbnx 传两个 env 变量：
-- `RBNX_CONFIG_FILE`：本 instance 的配置 json 绝对路径
-- `RBNX_INSTANCE_NAME`：本 instance 名字（同包多实例时用来区分）
+包代码用 `@<provider>.on_init` 注册一个 handler，框架会把 `Driver(CMD_INIT)` 带来的 `config_json` 解析成 `dict` 再调进来：
 
-```bash
-# bin/start.sh
-set -eo pipefail
-: "${RBNX_CONFIG_FILE:=/dev/null}"      # 单独 rbnx start 的 fallback
-MODE=$(jq -r '.mode // "mapping"' < "$RBNX_CONFIG_FILE")
-CUBE=$(jq -r '.cube_len // 100'  < "$RBNX_CONFIG_FILE")
-echo "[start] instance=$RBNX_INSTANCE_NAME mode=$MODE cube=$CUBE"
-exec ros2 launch my_pkg.launch.py mode:="$MODE" cube_len:="$CUBE"
-```
-
-或者 Python：
 ```python
-import json, os
-cfg = json.load(open(os.environ["RBNX_CONFIG_FILE"]))
-mode = cfg.get("mode", "mapping")
+from robonix_api import Service, Ok
+
+mapping = Service(id="mapping", namespace="robonix/service/map")
+
+@mapping.on_init
+def init(cfg: dict):
+    algo = cfg.get("algo", "rtabmap")
+    sensors = cfg.get("sensors", {})
+    # ...用 cfg 启服务...
+    return Ok()
 ```
 
-## 设计说明
+没有 env、没有配置文件、不需要 `jq`。同一个包的多个 instance 各自得到自己的 `cfg`。`rbnx start -p <path> -c local.yaml` 单包调试时，`-c` 的 YAML 也会走同一条路：序列化成 JSON → `Driver(CMD_INIT, config_json)` → `on_init(cfg)`。
 
-### 为什么 config 是透传，不做 schema
+### 多实例（同一个包跑多份）
 
-每个包最清楚自己的配置。Robonix 核心不定 schema，包自己 parse `RBNX_CAP_CONFIG_JSON`，加字段不用改核心代码。
-
-### 多实例（primitive 一机多件）
-
-一台车两个 MID360，或同一个 camera 驱动挂两个摄像头：deploy manifest 里写两条就行。
+一台车两个 MID360，或者同一个 camera 驱动挂两个摄像头：deploy manifest 里写两条，**path 相同 / name 不同 / config 不同**。
 
 ```yaml
 primitive:
-  - package: com.robonix.primitive.sensor.lidar3d.mid360
-    path: ./primitive/sensor_lidar3d_mid360
-    name: lidar_front
+  - name: lidar_front
+    path: ./primitives/mid360
     config: { ip: 192.168.1.161, mounted_frame: livox_front, topic_prefix: /lidar_front }
-  - package: com.robonix.primitive.sensor.lidar3d.mid360
-    path: ./primitive/sensor_lidar3d_mid360
-    name: lidar_rear
+  - name: lidar_rear
+    path: ./primitives/mid360
     config: { ip: 192.168.1.162, mounted_frame: livox_rear, topic_prefix: /lidar_rear }
 ```
 
-两条用同一个包、同一个 path，`name` 和 `config` 不同。rbnx 会分别 spawn 两个 `rbnx start`，每个拿到自己的 `RBNX_CAP_CONFIG_JSON`。包里要根据 config（比如 `topic_prefix`）决定发什么 topic、以什么 instance id 注册到 atlas（如 `robonix/primitive/lidar/lidar3d@front`）。
+`rbnx boot` 分别 spawn 两个 `rbnx start`，给两个 instance 各自下发对应 `config`。包代码在 `on_init(cfg)` 里按 `cfg["topic_prefix"]` 等决定发什么 topic、用什么 id 注册到 atlas（如 `Primitive(id="lidar_front", namespace="robonix/primitive/lidar")` vs `Primitive(id="lidar_rear", ...)`）——id 通常直接读 `cfg`，让两份实例分得清楚。
 
 ### Primitive 的 driver 生命周期
 
@@ -202,30 +190,30 @@ string error
 
 ## 开发自己的包
 
-### 接口来源：官方 vs 包内
+### 接口（contract）来源：官方 vs 包内
 
-| 层 | 接口在哪 | 说明 |
+| 层 | contract 在哪 | 说明 |
 |---|---|---|
-| **primitive** | `rust/contracts/primitive/` | 官方标准，接入新硬件按已有接口实现；有空缺提 PR 新增 |
-| **service** | `rust/contracts/service/`（多数）+ 少量包内 | 场景服务大多复用官方接口（SLAM / nav / perception），只有明确私有的才自定义 |
-| **system** | `rust/contracts/system/` | 控制面，全官方（pilot / executor / memory / vlm 等） |
+| **primitive** | robonix 源码仓库的 `capabilities/primitive/` | 官方标准，接入新硬件按已有 contract 实现；缺接口提 PR 新增 |
+| **service** | `capabilities/service/`（多数）+ 少量包内 | 场景服务大多复用官方 contract（mapping / navigation / scene 等），明确私有的才自定义 |
+| **system** | `capabilities/system/` | 仓库内置（atlas / pilot / executor / liaison / memory / scene / speech），不外开 |
 | **skill** | **全部在包内** | skill 是 agent 层，每个包自己定义，不进主仓库 |
 
-### Primitive / Service 包：实现官方接口
+### Primitive / Service 包：实现官方 contract
 
-`capabilities:` 里**只写 name**，不写 path：
+`capabilities:` 里只写 `name`，不写 `path`：
 
 ```yaml
 capabilities:
-  - name: robonix/primitive/lidar/lidar3d
-  - name: robonix/primitive/lidar/lidar3d/driver
+  - name: robonix/primitive/lidar/lidar
+  - name: robonix/primitive/lidar/driver
 ```
 
-Robonix 去 `rust/contracts/primitive/sensor/lidar3d.v1.toml` 查接口形状，你的代码按 TOML 里指向的 ROS IDL / proto 实现。别人看到你的包立刻知道它"提供什么"，接口互通。
+`rbnx codegen` 去 `<robonix-repo>/capabilities/primitive/lidar/lidar.v1.toml` 查接口形状，代码按 TOML 里指向的 ROS IDL 实现。下游消费者只看 contract id 就能对接。
 
-### Skill 包：TOML 写在包里
+### Skill 包：contract 写在包里
 
-skill 的接口是 agent 层面的，每个应用都不一样，**没有官方标准**。TOML 放包里，`capabilities:` 用 `path` 指：
+skill 的接口是 agent 层面的，每个应用都不一样，**没有官方标准**。把 TOML 放包内 `capabilities/`，`capabilities:` 里用 `path` 指：
 
 ```yaml
 capabilities:
@@ -233,12 +221,12 @@ capabilities:
     path: capabilities/weird_thing.v1.toml
 ```
 
-TOML 格式和 primitive/service 的官方结构一致（`[contract]` + `[io.srv]` / `[io.msg]` + `[mode]` + `[semantics]`），但 srv/msg 的**路径解析规则不同**：
+TOML 字段格式跟官方 contract 一致（`[contract]` + `[io.srv]` / `[io.msg]` + `[mode]`），但 IDL 的**路径解析规则不同**：
 
-- **官方 TOML**（在 robonix 源码仓库 `capabilities/` 里）：`[io.srv] srv = "robonix_msg/srv/Foo"` → 去 `rust/crates/robonix-interfaces/lib/robonix_msg/srv/Foo.srv` 找
-- **包内 TOML**（在你本地 package 的 `capabilities/` 里）：`[io.srv] srv = "srv/Foo"` → 去**包的 `capabilities/srv/Foo.srv`** 找
+- **官方 TOML**（在 robonix 源码仓库 `capabilities/` 里）：`[io.srv] srv = "lidar/srv/Foo"` → 去 `rust/crates/robonix-interfaces/lib/lidar/srv/Foo.srv` 找
+- **包内 TOML**（在自己 package 的 `capabilities/` 里）：`[io.srv] srv = "srv/Foo"` → 去**包的 `capabilities/srv/Foo.srv`** 找
 
-典型的 skill 包 `capabilities/` 布局：
+典型 skill 包 `capabilities/` 布局：
 
 ```
 capabilities/
@@ -257,74 +245,40 @@ version = "1"
 kind    = "skill"
 
 [io.srv]
-srv = "srv/MyRequest"    # 指向 capabilities/srv/MyRequest.srv（包内）
+srv = "srv/MyRequest"    # 指向包内 capabilities/srv/MyRequest.srv
 
 [mode]
 type = "rpc"
-
-[semantics]
-user_invocable = true
 ```
 
-`rbnx codegen` 会把包内的 `capabilities/msg/*.msg` 和 `capabilities/srv/*.srv` 也 codegen 到包的 `proto_gen/`，和官方接口一样导入使用。（TODO）
+`rbnx codegen` 会把包内的 `capabilities/msg/*.msg` 和 `capabilities/srv/*.srv` 一起 codegen 到包的 `rbnx-build/codegen/`，跟引用官方 contract 时一样 import 使用。
 
-## Design invariants — what NOT to do in a package
+## 设计不变量 — 包里**不能**做的事
 
-These are not nice-to-haves. They are correctness constraints; violating
-them silently breaks portability across robots / sims / hardware
-revisions. CI should eventually enforce all of them.
+下面这些不是"建议"，是**正确性约束**。违反任意一条都会让包失去跨机器人 / 跨仿真 / 跨硬件版本的可移植性，未来 CI 会强制检查。
 
-### 1. Cross-package topic names go through atlas, never hardcoded
+### 1. 跨包 topic 名走 atlas，绝不硬编码
 
-If your package consumes data produced by another package (e.g. a nav
-service consuming a SLAM service's occupancy grid), look up the topic
-via `QueryCapabilities + ConnectCapability` against the producer's
-**contract**. Do not write the literal topic name as a constant or
-default in your code.
+如果你的包消费另一个包产出的数据（如导航服务订阅 SLAM 服务的占据栅格），用 `ATLAS.find_capability` + `connect_capability` 按对方 **contract** 查 endpoint。**不要**把字面 topic 名写在代码里当常量或 default。
 
-The reason: the same nav service has to run unchanged on webots
-(`/scanner_normalized`), a real Mid360 robot (`/mid360/scan`), and a
-turtlebot (`/scan`). The instant any of those is hardcoded, the
-package is no longer portable and the abstraction is fake.
+理由：同一个 nav service 要不改一行就跑在 webots（`/scanner_normalized`）、Mid360 真机（`/mid360/scan`）、turtlebot（`/scan`）上。任何一个 topic 硬编码，跨机就崩，抽象就假。
 
-Exceptions (allowed to be hardcoded):
-- Topics WITHIN the same package (e.g. an internal sync queue).
-- Topics declared by the SAME package's primitive layer for its own
-  hardware fix-ups (see invariant #3).
+允许硬编码的例外：
+- 包内自用的 topic（如内部同步队列）
+- 同一个 primitive 包内的 hardware fix-up（见不变量 §3）
 
-### 2. Manifest = runtime declaration
+### 2. manifest 即运行时声明
 
-Every capability listed in `package_manifest.yaml::capabilities` MUST
-be DeclareCapability'd against atlas at startup. Aspirational entries
-("we plan to implement save_map someday") rot — they make `rbnx caps`
-output lie about what's actually available, and downstream consumers
-that try to ConnectCapability fail at runtime instead of at deploy
-parsing. If it's not implemented, it's not in the manifest.
+`package_manifest.yaml::capabilities` 列出的每条 contract **必须**在启动时真的 `DeclareCapability` 上去。占位条目（"以后实现 save_map"）会腐烂——让 `rbnx caps` 输出撒谎，下游 `ConnectCapability` 时才在 runtime 炸而不是部署解析时早暴露。**没实现，就不写进 manifest。**
 
-### 3. Platform-specific compensation lives in the primitive that owns
-the hardware, never in a generic service
+### 3. 平台相关补丁住在 primitive 包里，不能进通用服务
 
-Webots' lidar publishes a reversed-angle scan. URDF link names use
-spaces ("Astra rgb") that don't match the message-stamped frame_id.
-Wheel encoders dead-reckon during slip. **All such fix-ups belong in
-the corresponding primitive package** (`tiago_lidar/scan_normalize.py`,
-`tiago_camera`'s static TF bridge, etc.) — never in mapping or nav.
+Webots 的 lidar 发反向角度的 scan、URDF link 名带空格（"Astra rgb"）跟 frame_id 不一致、轮编码器打滑时漂移——所有这类 fix-up **必须**在对应的 primitive 包里搞定（`tiago_lidar/scan_normalize.py`、`tiago_camera` 的静态 TF bridge 等），**不要**进 mapping / nav。
 
-A generic service must never special-case "if running on webots, do
-X". The package that owns the sensor / actuator declares clean,
-spec-compliant data through its atlas contract; downstream services
-trust the contract.
+通用服务绝不能写 "if 跑在 webots 上 do X" 这种代码。primitive 包通过自己的 atlas contract 输出干净的、合规的数据；下游服务信 contract。
 
-### 4. Algo-pluggable services expose a fixed contract surface
+### 4. 多算法 service 共享同一组 contract
 
-When a service supports multiple back-ends (mapping ships rtabmap +
-dlio + fastlio2; nav will eventually ship simple_nav + nav2-wrapper),
-EVERY back-end must declare the SAME set of contracts. Different
-internal topic names are fine — the bridge maps each contract to
-whichever topic the active algo exposes. If an algo can't natively
-produce a contracted output, the launch file must spawn an adapter.
+一个 service 支持多后端时（mapping 同时有 rtabmap / dlio / fastlio2；nav 未来会有 simple_nav / nav2-wrapper），**每个后端必须声明同一组 contract**。内部 topic 名可以不同——bridge 负责把 contract 映射到当前算法实际发的 topic。算法天生产不出某条契约输出时，launch 文件起一个 adapter 补上。
 
-Adding a new contract to the surface is a versioning event for the
-package — bump `package.version` and update every back-end. Don't add
-"this contract only exists on algo X" — that violates the algo-agnostic
-guarantee consumers depend on.
+往 contract 集合里加新条目是**包的版本事件**——bump `package.version` + 更新所有后端。**不要**写 "这条 contract 只在算法 X 上有"——这破坏了消费者赖以为生的算法无关担保。

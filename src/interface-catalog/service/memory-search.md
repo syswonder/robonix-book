@@ -13,7 +13,7 @@
 | `robonix/system/memorysave` | `rpc` | `std_msgs/String` → `std_msgs/String` | `sys/memory_save.v1.toml` |
 | `robonix/system/memorycompact` | `rpc` | `std_msgs/String` → `std_msgs/String` | `sys/memory_compact.v1.toml` |
 
-> 契约 TOML 路径省略 `rust/contracts/` 前缀。索引参数、embedding 模型、`top_k` 等为部署侧元数据，不在契约内。
+> 契约 TOML 路径省略 `capabilities/` 前缀。索引参数、embedding 模型、`top_k` 等为部署侧元数据，不在契约内。
 
 ## MCP 形态（示例包 `memsearch_service`）
 
