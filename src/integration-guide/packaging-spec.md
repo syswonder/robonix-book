@@ -188,17 +188,17 @@ Driver IDL（共享）：`rust/crates/robonix-interfaces/lib/lifecycle/srv/Drive
 ```
 uint8 CMD_INIT     = 0   # 解析 config_json、resolve atlas 上的依赖
 uint8 CMD_SHUTDOWN = 1   # SIGTERM 之前的优雅退出（可选实现）
-uint8 CMD_UP       = 2   # 申请热资源、起线程、订阅 ROS、加载模型
-uint8 CMD_DOWN     = 3   # 释放热资源；保留 atlas 注册（skill-only 才有意义）
+uint8 CMD_ACTIVATE       = 2   # 申请热资源、起线程、订阅 ROS、加载模型
+uint8 CMD_DEACTIVATE     = 3   # 释放热资源；保留 atlas 注册（skill-only 才有意义）
 uint8 command
 string config_json       # 从 boot manifest 的 config: 块透传下来
 ---
 bool ok
-string state             # ready | online | offline | shutdown | error | deferred
+string state             # REGISTERED | INACTIVE | ACTIVE | ERROR | TERMINATED
 string error
 ```
 
-`rbnx boot` 对每个 primitive / service 自动发 `CMD_INIT` → `CMD_UP`，到 ONLINE 就常驻；对 skill 只发 `CMD_INIT`，停在 INITIALIZED，`CMD_UP` 由 executor 在第一次路由 MCP 调用时按需触发。`config_json` 永远是 manifest 的 `config:` 字段透传，包自己解析。
+`rbnx boot` 对每个 primitive / service 自动发 `CMD_INIT` → `CMD_ACTIVATE`，到 ACTIVE 就常驻；对 skill 只发 `CMD_INIT`，停在 INACTIVE，`CMD_ACTIVATE` 由 executor 在第一次路由 MCP 调用时按需触发。`config_json` 永远是 manifest 的 `config:` 字段透传，包自己解析。
 
 ## 开发自己的包
 
@@ -295,7 +295,7 @@ Exceptions (allowed to be hardcoded):
 ### 2. Manifest = runtime declaration
 
 Every capability listed in `package_manifest.yaml::capabilities` MUST
-be DeclareInterface'd against atlas at startup. Aspirational entries
+be DeclareCapability'd against atlas at startup. Aspirational entries
 ("we plan to implement save_map someday") rot — they make `rbnx caps`
 output lie about what's actually available, and downstream consumers
 that try to ConnectCapability fail at runtime instead of at deploy
