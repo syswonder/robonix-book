@@ -1125,9 +1125,11 @@ def init(cfg):
 
 | 参数 | 类型 | 说明 |
 |---|---|---|
-| `cap_view` | `Capability` | 上一步从 `ATLAS.find_capability` / `find_unique_capability` 拿到的那条 |
+| `cap_view` | `Capability` \| `CapabilityProvider` | 接收方实体——常见情形是 `ATLAS.find_capability` / `find_unique_capability` 返回的 `Capability`；也可直接传 `ATLAS.query_*` 返回的 `CapabilityProvider`（适合"按 provider 找一组 capability"的场景）|
 | `contract_id` | `str` | 要消费的接口 |
 | `transport` | `Transport` | 走 gRPC / ROS2 / MCP |
+
+> **设计说明（v0.1 锁）**：当 `cap_view` 是 `Capability` 时，`contract_id` 与 `transport` 看起来跟 `cap_view.contract_id` / `cap_view.transport` 重复——这是有意保留的：参数允许 `CapabilityProvider`（一个 provider 多 capability，框架无法替你选）作为输入，所以两个参数仍然显式必填。v0.2 计划引入一个"`Capability` 入参时可省"的简写形式，但 v0.1 API 已经锁定，**不修改签名**；如需提早收口请到 issue tracker 讨论。
 
 **返回**：`Channel`，关键字段 + 方法：
 
