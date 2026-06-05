@@ -1,6 +1,6 @@
 # 底盘 robonix/primitive/chassis
 
-底盘原语覆盖移动机器人的**低层**运动控制和反馈。IDL 定义在 `capabilities/lib/chassis/`，契约 TOML 在 `capabilities/primitive/chassis/`。
+底盘原语覆盖移动机器人的**低层**运动控制和反馈。契约定义在 Robonix 源码树下：IDL 在 `capabilities/lib/chassis/`，契约 TOML 在 `capabilities/primitive/chassis/`（绝对路径见 `rbnx path capabilities`）。
 
 > **注意**：目标式导航（`navigate` / `status` / `cancel`）不属于底盘原语，由 `robonix/service/navigation/*` 服务承担（通常 Nav2）——详见 [导航服务](../service/navigation.md)。位姿在 map 帧的查询也不在这里——那是定位服务（`service/map/pose`）的职责。底盘原语只负责下发瞬时速度（`move` / `twist_in`）和反馈底盘自身的运动事实（`odom`）。
 

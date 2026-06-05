@@ -23,11 +23,11 @@ Robonix 用两份文件描述每个能力的契约：
 - 一份 **TOML**：元数据——契约 ID、版本、种类（primitive / service / skill）、传输模式等。
 - 一份 **ROS IDL**（`.msg` / `.srv`）：载荷的结构——消息或服务的字段。
 
-"TOML + ROS IDL" 是 Robonix 规定的**描述语法**。它只刻画"这个能力承载什么形状的数据"，**本身不关心用什么通信方式传输**。底盘、机械臂、相机等的标准契约都已用这套语法定义好，随主仓库一起分发（`capabilities/` 存 TOML，`capabilities/lib/` 存 IDL）。
+"TOML + ROS IDL" 是 Robonix 规定的**描述语法**。它只刻画"这个能力承载什么形状的数据"，**本身不关心用什么通信方式传输**。底盘、机械臂、相机等的标准契约都已用这套语法定义好，随主仓库一起分发，位于 Robonix 源码树的 `capabilities/`（TOML）与 `capabilities/lib/`（IDL）下。
 
 ### 1.2 codegen：把描述投射到各种通信方式
 
-`robonix-codegen`（经 `rbnx codegen` / `rbnx ros2-idl` 调用）读取上述与通信方式无关的描述，为 Robonix 目前支持的**每一种通信方式**生成实现/消费该能力所需的全部代码：
+`robonix-codegen`（经 `rbnx codegen` 调用）读取上述与通信方式无关的描述，为 Robonix 目前支持的**每一种通信方式**生成实现/消费该能力所需的全部代码：
 
 | 通信方式 | codegen 产物 | 适用接口 |
 |---|---|---|
@@ -111,7 +111,7 @@ primitives/my_chassis/
 
 ## 步骤 3：声明底盘要实现的契约
 
-底盘的标准契约如下（IDL 在 `capabilities/lib/chassis/`，TOML 在 `capabilities/primitive/chassis/`）。"传输方式"一列是参考实现采用的方式；**除 `driver` 固定为 gRPC 外，其余均为推荐，厂商可自行选择**：
+底盘的标准契约如下（定义在步骤 1 克隆的 Robonix 源码树里：契约 TOML 在 `<robonix>/capabilities/primitive/chassis/`，IDL 在 `<robonix>/capabilities/lib/chassis/`；`<robonix>` 的绝对路径可用 `rbnx path capabilities` 查看。这些是 Robonix 预置的，你只实现、不修改）。"传输方式"一列是参考实现采用的方式；**除 `driver` 固定为 gRPC 外，其余均为推荐，厂商可自行选择**：
 
 | 契约 ID | 传输方式 | 载荷 | 消费方 |
 |---|---|---|---|
@@ -146,8 +146,6 @@ cd -
 ```
 
 `source` 之后，当前 shell 中的 `geometry_msgs`、`nav_msgs` 等均来自 Robonix 的定义。后续的 C++ 节点（编译期）与 Python 原语（运行期）都 source 这份 `install/setup.bash`（见步骤 5、7）。
-
-> 若多个 ROS 2 节点要共用一份与具体包无关的 overlay，也可以 `rbnx ros2-idl -o <dir>` 单独生成一份再 `colcon build`。
 
 ---
 
