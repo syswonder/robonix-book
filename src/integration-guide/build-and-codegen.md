@@ -31,17 +31,25 @@ Fix:  cd /path/to/robonix && rbnx setup
 ```bash
 rbnx codegen -p /path/to/my_package                 # 生成 proto + Python stubs
 rbnx codegen -p /path/to/my_package --mcp           # 同时生成 robonix_mcp_types/（MCP 工具包需要）
+rbnx codegen -p /path/to/my_package --ros2          # 同时生成 ros2_idl/（ROS 2 话题/服务需要）
 rbnx codegen -p /path/to/my_package --mcp --clean   # 先清理旧产物再生成
 rbnx codegen -p /path/to/my_package --mcp --out-dir bridge   # 产物落到 <pkg>/bridge/ 子目录
 ```
+
+三种传输的产物都落在 `<pkg>/rbnx-build/codegen/` 下，约定一致：
+
+- `proto_gen/`：gRPC 的 Python stubs（始终生成）
+- `robonix_mcp_types/`：MCP 的 dataclass（加 `--mcp`）
+- `ros2_idl/`：ROS 2 的 canonical 消息包（加 `--ros2`）——这是**源码**，需在 ROS 2 环境里 `colcon build`，再 `source install/setup.bash`；之后节点的消息类型即来自 Robonix 的定义
 
 做的事（全在 `rbnx` 内部）：
 
 1. 把 robonix 源码仓库的 `capabilities/` 和 package 自己的 `capabilities/` 合并，扫出当前 package 能引用的 contract 全集（同 `contract_id` 包内覆盖全局）
 2. 调 `robonix-codegen` 生成 proto 描述
-3. 若加 `--mcp`，再生成 MCP dataclass 到 `<pkg>/robonix_mcp_types/`
-4. 调 `grpc_tools.protoc` 把 proto 翻成 Python stubs，落到 `<pkg>/proto_gen/`
-5. 不需要写 `PYTHONPATH`——`robonix_api` 第一次 import 时会自动把上面两个目录加进 `sys.path`
+3. 若加 `--mcp`，再生成 MCP dataclass 到 `<pkg>/rbnx-build/codegen/robonix_mcp_types/`
+4. 调 `grpc_tools.protoc` 把 proto 翻成 Python stubs，落到 `<pkg>/rbnx-build/codegen/proto_gen/`
+5. 若加 `--ros2`，生成 ROS 2 canonical 消息包到 `<pkg>/rbnx-build/codegen/ros2_idl/`
+6. 不需要写 `PYTHONPATH`——`robonix_api` 第一次 import 时会自动把 `proto_gen` / `robonix_mcp_types` 加进 `sys.path`（`ros2_idl` 由 `colcon` + `source` 接管）
 
 ## 第三步：package 的 build.sh 模板
 

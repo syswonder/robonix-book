@@ -136,17 +136,18 @@ capabilities:
 
 ## 步骤 4：生成 Robonix 标准 ROS 2 消息包
 
-底盘的 `twist_in`、`odom` 走 ROS 2 话题，其载荷类型须采用 Robonix 的标准定义（[见 1.3](#13-消息类型一律以-robonix-的-idl-为准)）。在项目根目录生成并编译这套消息包：
+底盘的 `twist_in`、`odom` 走 ROS 2 话题，其载荷类型须采用 Robonix 的标准定义（[见 1.3](#13-消息类型一律以-robonix-的-idl-为准)）。这套消息包由 `rbnx codegen --ros2` 生成，与 gRPC/MCP 桩一样落在包的 `rbnx-build/codegen/` 下（`ros2_idl/`），由步骤 5 的 `build.sh` 一并产出，无需单独命令。生成的是源码，用 `colcon` 编译一次即可：
 
 ```bash
-rbnx ros2-idl -o robonix_idl_ws        # 生成到 robonix_idl_ws/src/
-cd robonix_idl_ws
-colcon build                            # 用任意 ROS 2 工具链编译（推荐 Humble）
-source install/setup.bash               # 之后你的 ROS 2 节点即使用 Robonix 的类型定义
-cd ..
+cd primitives/my_chassis/rbnx-build/codegen/ros2_idl
+colcon build                            # 任意 ROS 2 工具链（推荐 Humble）
+source install/setup.bash               # 之后 ROS 2 节点即使用 Robonix 的类型定义
+cd -
 ```
 
-`source` 之后，当前 shell 中的 `geometry_msgs`、`nav_msgs` 等均来自 Robonix 的定义。后续的 C++ 节点与 Python 原语在启动时都需要 source 这套环境（见步骤 7）。
+`source` 之后，当前 shell 中的 `geometry_msgs`、`nav_msgs` 等均来自 Robonix 的定义。后续的 C++ 节点（编译期）与 Python 原语（运行期）都 source 这份 `install/setup.bash`（见步骤 5、7）。
+
+> 若多个 ROS 2 节点要共用一份与具体包无关的 overlay，也可以 `rbnx ros2-idl -o <dir>` 单独生成一份再 `colcon build`。
 
 ---
 
@@ -229,7 +230,7 @@ int main(int argc, char** argv) {
 编译此节点（先 source 步骤 4 的消息包，使 `find_package(geometry_msgs)` 等解析到 Robonix 的定义）：
 
 ```bash
-source robonix_idl_ws/install/setup.bash
+source primitives/my_chassis/rbnx-build/codegen/ros2_idl/install/setup.bash
 cd ros2_nodes && colcon build && cd ..
 ```
 
@@ -315,8 +316,8 @@ PKG_ROOT="${RBNX_PACKAGE_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 DEPLOY_ROOT="$PKG_ROOT/../.."           # 项目根目录（按你的布局调整）
 cd "$PKG_ROOT"
 
-# Robonix 标准 ROS 2 消息 + 你的 C++ 节点（步骤 4、5 的编译产物）。
-source "$DEPLOY_ROOT/robonix_idl_ws/install/setup.bash"
+# Robonix 标准 ROS 2 消息（rbnx-build/codegen/ros2_idl）+ 你的 C++ 节点。
+source "$PKG_ROOT/rbnx-build/codegen/ros2_idl/install/setup.bash"
 source "$DEPLOY_ROOT/ros2_nodes/install/setup.bash"
 
 # robonix-api 所在路径，使 `from robonix_api import ...` 可解析。
