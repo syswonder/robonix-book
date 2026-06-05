@@ -496,12 +496,19 @@ Robonix 通过 atlas 实现能力的自动发现，厂商无需在包之间手�
 
 > 提示：腿足 / 小众本体（Unitree、云深处、Segway 等）多落在情形 B / C，需要自己写适配；轮式底盘多落在情形 A。Segway / Ninebot 等只有社区 ROS 2 驱动，集成前需自行评估其可靠性与发行版匹配。
 
-参考仓库（截至调研时）：
+参考文献（GitHub 仓库与官方文档，均访问于 2026 年 6 月）：
 
-- 松灵 AgileX：[`ugv_sdk`](https://github.com/agilexrobotics/ugv_sdk) · [`scout_ros2`](https://github.com/agilexrobotics/scout_ros2) · [`ranger_ros2`](https://github.com/agilexrobotics/ranger_ros2) · [`limo_ros2`](https://github.com/agilexrobotics/limo_ros2)
-- Clearpath：[robot 安装文档](https://docs.clearpathrobotics.com/docs/ros/installation/robot/)
-- iRobot Create 3：[ROS 2 API](https://iroboteducation.github.io/create3_docs/api/ros2/)
-- Unitree：[`unitree_sdk2`](https://github.com/unitreerobotics/unitree_sdk2) · [`unitree_ros2`](https://github.com/unitreerobotics/unitree_ros2)
-- 云深处 DEEP Robotics：[`Lite3_MotionSDK`](https://github.com/DeepRoboticsLab/Lite3_MotionSDK)
-- Universal Robots：[`Universal_Robots_ROS2_Driver`](https://github.com/UniversalRobots/Universal_Robots_ROS2_Driver) · [`ur_rtde`](https://gitlab.com/sdurobotics/ur_rtde)
-- 传感器：[RealSense `realsense-ros`](https://github.com/IntelRealSense/realsense-ros) · [Orbbec `OrbbecSDK_ROS2`](https://github.com/orbbec/OrbbecSDK_ROS2) · [Livox `livox_ros_driver2`](https://github.com/Livox-SDK/livox_ros_driver2)
+1. AgileX Robotics. `ugv_sdk`: AgileX 移动平台 C++ 控制库. GitHub. <https://github.com/agilexrobotics/ugv_sdk>
+2. AgileX Robotics. `scout_ros2`: Scout 底盘 ROS 2 驱动. GitHub. <https://github.com/agilexrobotics/scout_ros2>
+3. AgileX Robotics. `ranger_ros2`: Ranger 底盘 ROS 2 驱动. GitHub. <https://github.com/agilexrobotics/ranger_ros2>
+4. AgileX Robotics. `limo_ros2`: LIMO 底盘 ROS 2 驱动. GitHub. <https://github.com/agilexrobotics/limo_ros2>
+5. Clearpath Robotics. Robot Installation (ROS 2) 文档. <https://docs.clearpathrobotics.com/docs/ros/installation/robot/>
+6. iRobot. Create 3 ROS 2 Interface 文档. <https://iroboteducation.github.io/create3_docs/api/ros2/>
+7. Unitree Robotics. `unitree_sdk2`: 核心 C++ SDK（基于 CycloneDDS）. GitHub. <https://github.com/unitreerobotics/unitree_sdk2>
+8. Unitree Robotics. `unitree_ros2`: ROS 2 DDS 桥接. GitHub. <https://github.com/unitreerobotics/unitree_ros2>
+9. DEEP Robotics. `Lite3_MotionSDK`: 绝影 Lite3 运动控制 SDK（C++ / UDP）. GitHub. <https://github.com/DeepRoboticsLab/Lite3_MotionSDK>
+10. Universal Robots. `Universal_Robots_ROS2_Driver`: 官方 ROS 2 驱动. GitHub. <https://github.com/UniversalRobots/Universal_Robots_ROS2_Driver>
+11. SDU Robotics. `ur_rtde`: UR RTDE C++ / Python 接口库. GitLab. <https://gitlab.com/sdurobotics/ur_rtde>
+12. Intel RealSense. `realsense-ros`: RealSense ROS 2 wrapper. GitHub. <https://github.com/IntelRealSense/realsense-ros>
+13. Orbbec. `OrbbecSDK_ROS2`: Orbbec ROS 2 wrapper. GitHub. <https://github.com/orbbec/OrbbecSDK_ROS2>
+14. Livox. `livox_ros_driver2`: Livox ROS 1 / ROS 2 驱动. GitHub. <https://github.com/Livox-SDK/livox_ros_driver2>

@@ -34,7 +34,7 @@ make install
 # OpenAI（或任意 OpenAI 兼容网关）
 export VLM_API_KEY=sk-xxx
 export VLM_BASE_URL=https://api.openai.com/v1
-export VLM_MODEL=gpt-5.4-mini
+export VLM_MODEL=gpt-5.5
 
 # Qwen（阿里 DashScope 提供 OpenAI 兼容网关）
 export VLM_API_KEY=sk-xxx
@@ -57,7 +57,7 @@ bash examples/webots/sim/start.sh
 # T2：Robonix 系统服务 + 系统/服务/技能包
 export VLM_BASE_URL=https://api.openai.com/v1
 export VLM_API_KEY=sk-...
-export VLM_MODEL=gpt-5.4-mini
+export VLM_MODEL=gpt-5.5
 cd examples/webots
 rbnx boot
 ```

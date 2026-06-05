@@ -22,7 +22,7 @@ bash examples/webots/sim/start.sh
 cd examples/webots
 export VLM_BASE_URL=https://api.openai.com/v1
 export VLM_API_KEY=sk-...
-export VLM_MODEL=gpt-5.4-mini
+export VLM_MODEL=gpt-5.5
 rbnx boot
 ```
 
