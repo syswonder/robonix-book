@@ -343,7 +343,47 @@ if __name__ == "__main__":
 - `@chassis.grpc(contract_id)` 将函数注册为该契约的 gRPC 处理函数；其请求/返回为 `rbnx codegen` 生成的 protobuf 消息。
 - `chassis.run()` 阻塞运行，内部处理 gRPC、ROS 2、心跳与信号。
 
-`driver` 生命周期接口由 `Primitive` 基类自动提供并声明，厂商无需自行实现，仅按需编写 `on_init`（必填）及可选的 `on_activate` / `on_deactivate` / `on_shutdown`。
+### 生命周期与资源释放
+
+`driver` 契约（gRPC）由 `Primitive` 基类自动提供并声明，厂商不实现协议，只按需编写四个回调，对应状态机：
+
+| 回调 | 触发 | 状态迁移 | 说明 |
+|---|---|---|---|
+| `on_init(cfg)` | `rbnx boot` 的 `CMD_INIT` | REGISTERED → INACTIVE | 必填。连接硬件、建立发布/订阅、声明能力。返回 `Ok()` / `Err("原因")` / `Deferred("原因")`。 |
+| `on_activate()` | `CMD_ACTIVATE` | INACTIVE → ACTIVE | 可选。获取运行时资源（线程、模型句柄等）。primitive 省略时框架自动晋级。 |
+| `on_deactivate()` | `CMD_DEACTIVATE` | ACTIVE → INACTIVE | 可选。释放上面这些运行时资源。 |
+| `on_shutdown()` | SIGTERM / 进程退出 | 任意 → TERMINATED | 可选，但持有硬件资源的驱动建议实现。 |
+
+退出时框架自动关闭：你打开的 channel、`spawn` 起的子进程、`driver` 的 gRPC server。它不会替你停 rclpy 节点或断开你的 SDK——进程退出时 rclpy 节点由系统回收，但显式停掉后台线程、断开硬件是好习惯，放在 `on_shutdown` 里。上面的薄层写法（情形 A / B-1 / C）原语不持有硬件资源，无需 `on_shutdown`；情形 B-2（Python 原语兼任数据收发）则需要：
+
+```python
+import threading
+_stop = threading.Event()
+
+@chassis.on_init
+def init(cfg: dict):
+    global sdk
+    sdk = my_vendor_sdk.connect(cfg.get("device", "/dev/ttyUSB0"))
+    chassis.create_subscription(
+        "robonix/primitive/chassis/twist_in", topic="/cmd_vel", msg_type=Twist,
+        callback=lambda m: sdk.set_velocity(m.linear.x, m.angular.z), qos="reliable")
+    chassis.create_publisher(
+        "robonix/primitive/chassis/odom", topic="/odom", msg_type=Odometry, qos="reliable")
+    threading.Thread(target=_odom_loop, daemon=True).start()
+    return Ok()
+
+@chassis.on_shutdown
+def shutdown():
+    _stop.set()                      # 停后台发布线程
+    if sdk is not None:
+        sdk.disconnect()             # 断开硬件
+
+def _odom_loop():
+    import time
+    while not _stop.is_set():
+        chassis.emit("robonix/primitive/chassis/odom", _sdk_pose_to_odom(sdk.read_pose()))
+        time.sleep(0.02)
+```
 
 ---
 
