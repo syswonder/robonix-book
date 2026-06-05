@@ -35,6 +35,7 @@
 ---
 
 - [接入指南](integration-guide/index.md)
+  - [本体接入手册（厂家版）](integration-guide/vendor-onboarding.md)
   - [开发者指南](developer-guide.md)
   - [Package 与部署规范](integration-guide/packaging-spec.md)
   - [Package 构建与代码生成](integration-guide/build-and-codegen.md)
