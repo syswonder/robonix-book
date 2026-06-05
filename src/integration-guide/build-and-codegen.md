@@ -40,7 +40,7 @@ rbnx codegen -p /path/to/my_package --mcp --out-dir bridge   # 产物落到 <pkg
 
 - `proto_gen/`：gRPC 的 Python stubs（始终生成）
 - `robonix_mcp_types/`：MCP 的 dataclass（加 `--mcp`）
-- `ros2_idl/`：ROS 2 的 canonical 消息包（加 `--ros2`）——这是**源码**，需在 ROS 2 环境里 `colcon build`，再 `source install/setup.bash`；之后节点的消息类型即来自 Robonix 的定义
+- `ros2_idl/`：ROS 2 的 canonical 消息包（加 `--ros2`）——这是源码，需在 ROS 2 环境里 `colcon build`，再 `source install/setup.bash`；之后节点的消息类型即来自 Robonix 的定义
 
 做的事（全在 `rbnx` 内部）：
 
