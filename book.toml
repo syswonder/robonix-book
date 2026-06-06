@@ -8,6 +8,12 @@ title = "robonix 手册"
 [preprocessor.mermaid]
 command = "mdbook-mermaid"
 
+# In-page table of contents: a `[toc]` marker anywhere in a page expands to
+# a heading outline. Build dependency: `cargo install mdbook-toc`.
+[preprocessor.toc]
+command = "mdbook-toc"
+marker = "[toc]"
+
 [output.html]
 additional-css = ["theme/wide.css"]
 additional-js = ["mermaid.min.js", "mermaid-init.js"]

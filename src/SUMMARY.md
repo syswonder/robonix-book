@@ -12,7 +12,7 @@
 
 ---
 
-- [系统全景](architecture/overview.md)
+- [系统组件](architecture/components.md)
 - [命名空间与契约](architecture/namespace-and-contracts.md)
 - [Atlas 能力目录](architecture/atlas.md)
 - [系统部署与启动流程](architecture/deployment-and-startup.md)
@@ -20,17 +20,30 @@
 ---
 - [接口目录](interface-catalog/index.md)
   - [原语（primitive）](interface-catalog/primitive/index.md)
-    - [底盘](interface-catalog/primitive/chassis.md)
-    - [相机](interface-catalog/primitive/camera.md)
-    - [机械臂](interface-catalog/primitive/arm.md)
+    - [底盘 chassis](interface-catalog/primitive/chassis.md)
+    - [相机 camera](interface-catalog/primitive/camera.md)
+    - [激光雷达 lidar](interface-catalog/primitive/lidar.md)
+    - [IMU](interface-catalog/primitive/imu.md)
+    - [音频 audio](interface-catalog/primitive/audio.md)
   - [服务（service）](interface-catalog/service/index.md)
-    - [Pilot 任务规划](interface-catalog/service/pilot.md)
-    - [Executor 方案执行](interface-catalog/service/executor.md)
-    - [Liaison 用户交互](interface-catalog/service/liaison.md)
-    - [空间地图](interface-catalog/service/map.md)
-    - [导航](interface-catalog/service/navigation.md)
-    - [语义地图](interface-catalog/service/semantic-map.md)
-    - [记忆](interface-catalog/service/memory-search.md)
+    - [空间地图 map](interface-catalog/service/map.md)
+    - [导航 navigation](interface-catalog/service/navigation.md)
+    - [语音 speech](interface-catalog/service/speech.md)
+    - [声纹 voiceprint](interface-catalog/service/voiceprint.md)
+    - [记忆 memory](interface-catalog/service/memory.md)
+  - [系统（system）](interface-catalog/system/index.md)
+    - [Pilot 任务规划](interface-catalog/system/pilot.md)
+    - [Executor 方案执行](interface-catalog/system/executor.md)
+    - [Liaison 用户交互](interface-catalog/system/liaison.md)
+    - [Scene 场景与语义地图](interface-catalog/system/scene.md)
+    - [Soma 本体模型](interface-catalog/system/soma.md)
+
+---
+
+- [参考](reference/index.md)
+  - [契约参考（自动生成）](reference/contracts.md)
+  - [ROS IDL 参考（自动生成）](reference/idl.md)
+  - [代码 API（rustdoc / Sphinx）](reference/api.md)
 
 ---
 

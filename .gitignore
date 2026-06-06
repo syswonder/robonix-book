@@ -3,3 +3,6 @@ theme/highlight.js
 mermaid.min.js
 mermaid-init.js
 .DS_Store
+
+# Locally-generated API docs (rustdoc/pdoc). Built fresh by CI for Pages.
+src/api/

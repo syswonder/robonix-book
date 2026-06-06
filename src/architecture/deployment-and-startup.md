@@ -1,5 +1,7 @@
 # 系统部署与启动流程
 
+[toc]
+
 本页讲清楚一次完整的 Robonix 部署在终端里发生了什么——从 `rbnx boot` 第一行 log 到 `rbnx chat` 收到第一个工具调用之间的所有事件。读完应该能：自己写一份 deploy manifest、看懂 `rbnx-boot/logs/` 里的输出、定位"组件起不来"或"LLM 看不到工具"这类问题在哪个阶段。
 
 ## 两层 manifest

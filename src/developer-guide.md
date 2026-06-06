@@ -1,5 +1,7 @@
 # Robonix 开发者指南
 
+[toc]
+
 **本指南内容所对应的上游 robonix 仓库 commit**：[`syswonder/robonix:dev@0ba783d`](https://github.com/syswonder/robonix/commit/0ba783d)（2026-05-12 dev 分支 HEAD）。
 
 **面向**：写 service / skill / primitive 的开发者。

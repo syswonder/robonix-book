@@ -1,5 +1,7 @@
 # Package 构建与代码生成
 
+[toc]
+
 讲怎么用 `rbnx` 把一个 package 从源码构建到可运行——登记 Robonix 源码根、生成 stubs、`build.sh` 模板、package 自带 contract / IDL。
 
 ## 第一步：登记 Robonix 源码根（`rbnx setup`）

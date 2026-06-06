@@ -1,5 +1,7 @@
 # Robonix 包与部署配置规范
 
+[toc]
+
 Robonix 部署分**两层** manifest：
 
 | 文件 | 范围 | 谁读 |

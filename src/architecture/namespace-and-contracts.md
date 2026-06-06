@@ -1,5 +1,7 @@
 # 命名空间与契约
 
+[toc]
+
 Robonix 的能力提供者（原语 / 服务 / 技能）都通过 **contract** 暴露自己提供的能力（capability）。contract 描述"是什么"——schema、IO、交互形态；具体由谁实现、绑哪种 transport、endpoint 在哪，是注册时再决定的。
 
 ## 命名空间

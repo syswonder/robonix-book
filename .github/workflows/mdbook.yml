@@ -1,54 +1,90 @@
-# Sample workflow for building and deploying a mdBook site to GitHub Pages
+# Build and deploy the Robonix mdBook (+ rust/python API docs) to GitHub Pages.
 #
-# To get started with mdBook see: https://rust-lang.github.io/mdBook/index.html
-#
+# The book itself is plain markdown (mdBook compiles it with no robonix
+# environment). The per-item API docs are NOT committed — they're built
+# fresh here from a pinned robonix commit and copied into book/api/ so the
+# repo never carries 100+ MB of generated HTML:
+#   book/api/rust    rustdoc  (cargo doc --no-deps --workspace)
+#   book/api/python  Sphinx   (autodoc + furo, robonix_api)
 name: Deploy mdBook site to Pages
 
 on:
-  # Runs on pushes targeting the default branch
   push:
     branches: ["main"]
-
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
 concurrency:
   group: "pages"
   cancel-in-progress: false
 
 jobs:
-  # Build job
   build:
     runs-on: ubuntu-latest
+    env:
+      # The robonix commit the API docs are generated from. Bump this to the
+      # robonix commit these docs target — ideally the same commit stamped
+      # into reference/contracts.md (run `rbnx docs` there).
+      ROBONIX_REF: 953df33651e639ce40b8b824726da6e9d67073da
     steps:
       - uses: actions/checkout@v4
-      - name: Install mdBook
+      - name: Install Rust + mdBook toolchain
         run: |
           curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh -s -- -y
           source "$HOME/.cargo/env"
           rustup update
           cargo install mdbook --version 0.5.2 --force
           cargo install mdbook-mermaid --version 0.17.0 --force
+          cargo install mdbook-toc --force
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v5
-      - name: Build with mdBook
+      - name: Build the book
         run: |
+          source "$HOME/.cargo/env"
           ./scripts/build-highlight.sh
+
+      # ---- API docs: built from the robonix source, copied into book/api/ ----
+      - name: Checkout robonix source (pinned)
+        uses: actions/checkout@v4
+        with:
+          repository: syswonder/robonix
+          ref: ${{ env.ROBONIX_REF }}
+          path: robonix
+      # API-doc steps are best-effort: if they fail (e.g. scene's codegen
+      # stubs / heavy deps aren't present), the core book still deploys.
+      - name: Build Rust API docs (rustdoc)
+        continue-on-error: true
+        run: |
+          source "$HOME/.cargo/env"
+          cd robonix
+          cargo doc --no-deps --workspace
+          mkdir -p ../book/api/rust
+          cp -r target/doc/. ../book/api/rust/
+      - name: Build Python API docs (Sphinx)
+        continue-on-error: true
+        env:
+          # scene drags in heavy / codegen-generated modules not installed
+          # in this docs CI — mock them so autodoc can still read docstrings.
+          ROBONIX_SPHINX_MOCKS: "torch,rclpy,cv2,open3d,scipy,sklearn,semantic_map_mcp"
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install sphinx furo
+          python3 -m pip install ./robonix/pylib/robonix-api
+          mkdir -p book/api/python
+          ROBONIX_API_SRC="$PWD/robonix/pylib/robonix-api" \
+          ROBONIX_SCENE_SRC="$PWD/robonix/system/scene" \
+            python3 -m sphinx -b html apidoc/python book/api/python
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: book
 
-  # Deployment job
   deploy:
     environment:
       name: github-pages

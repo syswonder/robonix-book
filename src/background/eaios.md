@@ -1,5 +1,7 @@
 # EAIOS 架构背景
 
+[toc]
+
 Robonix 是 EAIOS（Embodied AI Operating System）架构的参考实现。EAIOS 由 CCF 泛在操作系统开放社区于 2026 年发布的《具身智能操作系统技术白皮书》中提出，其核心目标是在机器人系统层面建立统一的抽象体系，实现 AI 模型与硬件之间的软硬解耦。
 
 白皮书原文：[gitlink.org.cn/zone/uos/source/292](https://gitlink.org.cn/zone/uos/source/292)

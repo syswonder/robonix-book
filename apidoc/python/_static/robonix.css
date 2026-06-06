@@ -1,0 +1,9 @@
+/* Match the mdBook: load the web fonts the furo font-stack references,
+   and trim JetBrains Mono down a touch (it renders large). */
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+SC:wght@400;500;700&display=swap");
+
+code,
+pre,
+kbd {
+    font-size: 0.85em;
+}

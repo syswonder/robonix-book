@@ -1,5 +1,7 @@
 # Atlas 能力目录
 
+[toc]
+
 Atlas 是 Robonix 的**唯一控制平面**——所有进程（不管是 Robonix 自身的系统服务，还是用户提供的 primitive / service / skill 包）启动时第一件事就是连 Atlas，把自己暴露的 capability 登记上去；其他进程要找它们，也只能通过 Atlas。Atlas 本身不转发数据面流量，它只做"目录 + 通道协商"。
 
 ## 数据模型：能力提供者 + capability

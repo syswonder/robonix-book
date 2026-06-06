@@ -1,5 +1,7 @@
 # 快速上手
 
+[toc]
+
 5 分钟跑起一个完整的 Tiago 仿真 + VLM 对话 demo。
 
 ## 1. 前置
@@ -147,7 +149,7 @@ rbnx inspect                 # 完整 runtime 快照（JSON）
 
 ## 下一步
 
-- [系统全景](../architecture/overview.md)——控制面 / 数据面、一次请求的完整链路
+- [系统组件](../architecture/components.md)——12 个系统组件的职责与实现状态
 - [接入指南](../integration-guide/index.md)——把自己的硬件或算法接入 Robonix
 - [Build 与 Codegen](../integration-guide/build-and-codegen.md)——包作者必读（`rbnx setup`、`rbnx codegen`、自定义 contract）
 - [接口目录](../interface-catalog/index.md)——`primitive/*` 原语与 `service/*` 服务的契约定义

@@ -1,5 +1,9 @@
 #!/bin/bash
-# Build custom highlight.js with RIDL language support for mdbook.
+# Build custom highlight.js with RIDL + ROS IDL language support for mdbook.
+#
+# Language modules MUST be baked into theme/highlight.js (not loaded via
+# book.toml additional-js): mdBook runs highlightAll() before additional-js
+# executes, so a language registered there is too late.
 #
 # Run before mdbook build, or as part of the build pipeline.
 
@@ -21,9 +25,9 @@ fi
 
 # Write to theme (mdbook uses theme/highlight.js when present)
 mkdir -p theme
-cat "$HLJS" theme/ridl-register.js > theme/highlight.js
+cat "$HLJS" theme/ridl-register.js rosidl-register.js > theme/highlight.js
 
-echo "Created theme/highlight.js with RIDL support"
+echo "Created theme/highlight.js with RIDL + ROS IDL support"
 
 # Rebuild with custom highlight
 mdbook build
