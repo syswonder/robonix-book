@@ -55,6 +55,9 @@ jobs:
           repository: syswonder/robonix
           ref: ${{ env.ROBONIX_REF }}
           path: robonix
+          # IDL lives in submodules (capabilities/lib/common_interfaces, …);
+          # without them robonix-cli's build.rs contract validation fails.
+          submodules: recursive
       # API-doc steps are best-effort: if they fail (e.g. scene's codegen
       # stubs / heavy deps aren't present), the core book still deploys.
       - name: Build Rust API docs (rustdoc)
@@ -73,7 +76,7 @@ jobs:
           ROBONIX_SPHINX_MOCKS: "torch,rclpy,cv2,open3d,scipy,sklearn,semantic_map_mcp"
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install sphinx furo
+          python3 -m pip install sphinx furo numpy grpcio protobuf pyyaml
           python3 -m pip install ./robonix/pylib/robonix-api
           mkdir -p book/api/python
           ROBONIX_API_SRC="$PWD/robonix/pylib/robonix-api" \
