@@ -13,7 +13,7 @@ cd /path/to/robonix     # 仓库根目录
 rbnx setup
 ```
 
-`rbnx setup` 在当前目录及其上级查 `rust/Cargo.toml`、`capabilities`、`rust/crates/robonix-interfaces/lib` 三个 marker 都齐了才登记，缺一个直接报错。也支持显式传参 `rbnx setup /abs/path/to/robonix`。
+`rbnx setup` 在当前目录及其上级查 `Cargo.toml`、`capabilities`、`capabilities/lib` 三个 marker 都齐了才登记，缺一个直接报错。也支持显式传参 `rbnx setup /abs/path/to/robonix`。
 
 **`make install` 会自动跑一次 `rbnx setup`**——clone 完只要 `cd robonix/rust && make install` 即可。
 
@@ -55,7 +55,7 @@ rbnx codegen -p /path/to/my_package --mcp --out-dir bridge   # 产物落到 <pkg
 
 ## 第三步：package 的 build.sh 模板
 
-绝大多数 package 一句话：
+绝大多数 package 的 `build.sh` 仅需一行：
 
 ```bash
 #!/usr/bin/env bash
@@ -82,19 +82,20 @@ echo "[build] done."
 | `tiago_chassis` / `tiago_camera` / `tiago_lidar` / `audio_driver` | `examples/webots/primitives/` | 无 |
 | `simple_nav` | `examples/webots/services/simple_nav` | 无 |
 | `scene` | `system/scene` | docker compose build（perception 容器内跑 YOLO-World + MobileSAM）|
-| `memory` | `system/memory` | 无 |
-| `speech` | `system/speech` | 无（首次跑会下 FunASR / TTS 权重）|
+| `memory`（memsearch） | `services/memsearch` | 无 |
+| `speech` | `services/speech` | 无（首次跑会下 FunASR / TTS 权重）|
 
 ## 进阶：package 自带 contract / IDL
 
-如果包要暴露一个**官方仓库没有**的 contract（典型：skill 包），把契约写在包自己的 `capabilities/` 下：
+如果包要暴露一个**官方仓库没有**的 contract（典型：skill 包），把能力约定写在包自己的 `capabilities/` 下：
 
 ```
 my_package/
 ├── capabilities/                # 包内 contract
 │   ├── my_custom.v1.toml
-│   ├── msg/
-│   └── srv/
+│   └── lib/                     # 包内 ROS IDL（msg/ 与 srv/ 在此之下）
+│       └── my_custom/
+│           └── srv/
 ├── package_manifest.yaml
 └── scripts/build.sh
 ```
@@ -111,8 +112,8 @@ capabilities:
 
 IDL 路径解析规则：
 
-- **官方 TOML**（在 robonix 源码 `capabilities/` 里）：`[io.srv] srv = "lidar/srv/Foo"` → 去 `rust/crates/robonix-interfaces/lib/lidar/srv/Foo.srv` 找
-- **包内 TOML**（在你 package 的 `capabilities/` 里）：`[io.srv] srv = "srv/Foo"` → 去**包的 `capabilities/srv/Foo.srv`** 找
+- **官方 TOML**（在 robonix 源码 `capabilities/` 里）：`[contract] idl = "lidar/srv/Foo.srv"` → 去 `capabilities/lib/lidar/srv/Foo.srv` 找
+- **包内 TOML**（在你 package 的 `capabilities/` 里）：`[contract] idl = "my_custom/srv/Foo.srv"` → 去**包的 `capabilities/lib/my_custom/srv/Foo.srv`** 找
 
 atlas 对包内 contract id **不强制**校验前缀；只要 namespace 跟能力提供者的 namespace 一致（`DeclareCapability` 会校验），随便用 `myorg/...` 前缀都行——atlas 只在 contract 注册表里找不到时 log 一条 debug，不影响功能。
 

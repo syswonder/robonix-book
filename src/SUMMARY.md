@@ -13,7 +13,7 @@
 ---
 
 - [系统组件](architecture/components.md)
-- [命名空间与契约](architecture/namespace-and-contracts.md)
+- [命名空间与能力约定](architecture/namespace-and-contracts.md)
 - [Atlas 能力目录](architecture/atlas.md)
 - [系统部署与启动流程](architecture/deployment-and-startup.md)
 
@@ -41,14 +41,14 @@
 ---
 
 - [参考](reference/index.md)
-  - [契约参考（自动生成）](reference/contracts.md)
+  - [能力约定参考（自动生成）](reference/contracts.md)
   - [ROS IDL 参考（自动生成）](reference/idl.md)
   - [代码 API（rustdoc / Sphinx）](reference/api.md)
 
 ---
 
 - [接入指南](integration-guide/index.md)
-  - [本体接入手册（厂家版）](integration-guide/vendor-onboarding.md)
+  - [本体接入指南](integration-guide/vendor-onboarding.md)
   - [开发者指南](developer-guide.md)
   - [Package 与部署规范](integration-guide/packaging-spec.md)
   - [Package 构建与代码生成](integration-guide/build-and-codegen.md)

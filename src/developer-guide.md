@@ -11,7 +11,7 @@
 **阅读路径**：
 
 - **Part I 入门**（§1-§2）：跑通最小部署，建立全局印象
-- **Part II 核心概念**（§3-§5）：原语/服务/技能 / 契约 / 生命周期
+- **Part II 核心概念**（§3-§5）：原语/服务/技能 / 能力约定 / 生命周期
 - **Part III 开发**（§6-§10）：包结构 / API 速览 / 写服务 / 写原语 / 写技能
 - **Part IV 部署**（§11-§13）：部署目录 / 部署清单 / 启动
 - **Part V 参考**（§14-§16）：Python API / CLI / 配置字段
@@ -76,7 +76,7 @@ rbnx chat             # 试 "say hello to alice"
 * **原语 / 服务 / 技能**：三类独立运行的能力提供者，Python 里写为 `Primitive(id, ns)` / `Service(...)` / `Skill(...)`，挂 lifecycle、装饰器、对外暴露若干 Capability。
 * **Capability**：能力提供者对外暴露的一条接口（contract + transport + endpoint）。一个能力提供者可同时暴露多条（`tiago_camera` → `rgb` + `depth` + `extrinsics`）。
 * **Atlas**：能力提供者启动时把"我是谁、暴露什么、在哪"注册过来；别人通过它发现 + 寻址。**没有 Atlas 就要硬编码地址**。
-* **Contract**：Capability 的形状（toml + ROS IDL）。换实现不动契约。
+* **Contract**：Capability 的形状（toml + ROS IDL）。换实现不动能力约定。
 
 剩下的章节都是落地细节。Robonix 内部还跑 pilot / executor / liaison 等系统服务。
 
@@ -94,7 +94,7 @@ rbnx chat             # 试 "say hello to alice"
 
 | 类型 | namespace 前缀（例） | 定义 |
 |---|---|---|
-| primitive（原语）| `robonix/primitive/<kind>` | 对单一物理设备的硬件抽象，封装其不可再分解的原子操作集。`<kind>` ∈ {`audio`, `camera`, `chassis`, `lidar`}（封闭）|
+| primitive（原语）| `robonix/primitive/<kind>` | 对单一物理设备的硬件抽象，封装其不可再分解的原子操作集。`<kind>` ∈ {`audio`, `camera`, `chassis`, `imu`, `lidar`}（封闭）|
 | service（服务）| `robonix/service/<x>` | 由操作系统统一注册、调度与管理的标准化功能模块 |
 | skill（技能）| `robonix/skill/<x>` | 封装特定语义功能的可复用行为序列，由 LLM / 状态机触发 |
 
@@ -121,11 +121,11 @@ rbnx chat             # 试 "say hello to alice"
 
 ***
 
-## 4. 契约
+## 4. 能力约定
 
 ### 4.1 定义
 
-原语/服务/技能暴露的细粒度接口。可类比硬件接口规格书：定义"能做什么 + 数据是什么形状"，与具体实现解耦。一条契约由三件东西组成：
+原语/服务/技能暴露的细粒度接口。可类比硬件接口规格书：定义"能做什么 + 数据是什么形状"，与具体实现解耦。一条能力约定由三件东西组成：
 
 | 件 | 文件 | 决定 |
 |---|---|---|
@@ -137,7 +137,7 @@ rbnx chat             # 试 "say hello to alice"
 
 ### 4.2 模式（Mode）与传输（Transport）
 
-契约 toml 的 `[mode] type` 描述**抽象语义**（与具体协议无关）；传输是落地协议。一个模式可被多种传输实现。
+能力约定 toml 的 `[mode] type` 描述**抽象语义**（与具体协议无关）；传输是落地协议。一个模式可被多种传输实现。
 
 **抽象 mode**：
 
@@ -381,8 +381,8 @@ if __name__ == "__main__":
 | `ATLAS.find_capability(*, contract_id=, transport=, …)` | 扁平视角——按 contract 搜，返回 `list[Capability]`（每条 Capability 自带 `provider_id` / `provider_kind`）|
 | `ATLAS.find_unique_capability(...)` | 同上但断言只有一条；0 或 >1 都 raise（依赖唯一 capability 时用）|
 | `service.connect_capability(cap_view, contract_id, transport)` | 用一条 `Capability` 建一条 consumer→提供方的 `Channel` |
-| `service.declare_ros2_topic`   | 把一个 ROS 2 topic publisher 在 atlas 里登记为某契约（详见 §14.8） |
-| `service.declare_ros2_service` | 把一个 ROS 2 service 在 atlas 里登记为某契约（详见 §14.8） |
+| `service.declare_ros2_topic`   | 把一个 ROS 2 topic publisher 在 atlas 里登记为某能力约定（详见 §14.8） |
+| `service.declare_ros2_service` | 把一个 ROS 2 service 在 atlas 里登记为某能力约定（详见 §14.8） |
 | `Ok()` / `Err("...")` | API提供的辅助结果"类型"，能力提供者的 lifecycle handler 返回这两种之一 |
 
 **最小可跑的能力提供者长这样**——`on_init` 必填；`on_activate` / `on_deactivate` 对 primitive / service 可省（框架自动返 `Ok()`），skill 必须自己写：
@@ -712,7 +712,7 @@ capabilities:
 
 primitive 对应一个物理设备（一个相机、一个底盘、一台麦克风）。和 service 大体相同，差别如下：
 
-* `namespace = "robonix/primitive/<kind>"`，`<kind>` ∈ {`audio`, `camera`, `chassis`, `lidar`}（封闭）
+* `namespace = "robonix/primitive/<kind>"`，`<kind>` ∈ {`audio`, `camera`, `chassis`, `imu`, `lidar`}（封闭）
 * **"能力提供者 id = device id" 约定**：一个设备一个 primitive。3 个相机 → 3 个 primitive 能力提供者（`tiago_camera_front` / `tiago_camera_left` / `tiago_camera_right`）
 * 怎么打包（本地 venv / docker / ssh 到机器人主机）由 `scripts/start.sh` 决定——框架只看能力提供者进程能不能注册进 atlas。`template_rbnx/primitives/mock_chassis/` 给了一个 docker 例子。
 
@@ -806,7 +806,7 @@ def run(req):
 
 ## 11. 部署目录
 
-> 本部分通过 `template_rbnx` 这个最小部署模板把目录、manifest、契约的关系讲清。读完你应该能看懂一个部署的所有文件。
+> 本部分通过 `template_rbnx` 这个最小部署模板把目录、manifest、能力约定的关系讲清。读完你应该能看懂一个部署的所有文件。
 
 `template_rbnx` 是一个"空部署模板"：[`enkerewpo/template_rbnx`](https://github.com/enkerewpo/template_rbnx)。建议下面的章节边读边对着看真实文件。
 
@@ -819,8 +819,8 @@ template_rbnx/
 │   └── my_navigate/           一个 service 包（能力提供者 id = my_navigate）
 └── skills/
     ├── capabilities/
-    │   ├── lib/                   契约的 IDL 文件
-    │   ├── say_hello.v1.toml      契约定义
+    │   ├── lib/                   能力约定的 IDL 文件
+    │   ├── say_hello.v1.toml      能力约定定义
     │   └── driver.v1.toml
     └── say_hello/             一个 skill 包（能力提供者 id = say_hello）
 ```
@@ -986,11 +986,11 @@ service = Service(id="my_navigate", namespace="robonix/service/myorg")
 
 **阻塞主循环**。`main.py` 最后一行通常就是 `service.run()`，内部按序：
 
-1. 连 atlas + 按 kind 调对应 Register RPC（端口不通 / 重名 id 直接退出）
+1. 连 atlas + 按 kind 调对应 Register RPC（失败则记 warning 并继续，能力提供者停在 REGISTERED）
 2. 启 gRPC server（自动选端口），挂 `<namespace>/driver` 生命周期接口 + 所有 `@service.grpc` 业务方法
 3. 每条 gRPC contract 调 `DeclareCapability`
 4. 有 `@service.mcp` 则起 MCP HTTP server（FastMCP + uvicorn）并 declare
-5. 起心跳线程（10s 一次；超 90s 无心跳 atlas 标 TERMINATED）
+5. 起心跳线程（约 30s 一次；超 90s 无心跳 atlas 标 TERMINATED）
 6. 装 SIGTERM/SIGINT handler，触发时 `on_shutdown` → 停 server → unregister
 7. `signal.pause()` 阻塞
 
@@ -1152,18 +1152,20 @@ def init(cfg):
 
 ### 14.7 `Result` 类型
 
-lifecycle handler 必须返回两种之一：
+lifecycle handler 必须返回三种之一：
 
 | 构造 | 含义 | 后续行为 |
 |---|---|---|
 | `Ok()` | 成功 | 推进到下一态（CMD\_INIT→INACTIVE 等）|
 | `Err("reason")` | 失败 | 进 `ERROR`，`reason` 写入 atlas 的 `state_detail`，`rbnx caps -v` 能看到 |
+| `Deferred("reason")` | 尚未就绪、稍后重试 | 不迁移状态，保持当前态，`reason` 写入 `state_detail` |
 
-不返回 `Result`（例如忘了 return）会被框架视作 `Err`；handler 内部 `raise` 也会被捕获转成 `Err(str(exc))`。
+不返回 `Result`（例如忘了 return）会被框架视作 `Err`；handler 内部 `raise` 也会被捕获转成 `Err`（含异常类型与信息）。
 
 ```python
 return Ok()
 return Err("device /dev/ttyUSB0 not found")
+return Deferred("waiting for upstream map service")
 ```
 
 ### 14.8 `service.declare_ros2_topic` / `service.declare_ros2_service`
@@ -1188,7 +1190,7 @@ service.declare_ros2_topic(
     "robonix/primitive/lidar/lidar3d",
     "/scanner_normalized",
     qos="best_effort",
-    description="发布归一化点云（mid360 → robonix lidar3d 契约）",
+    description="发布归一化点云（mid360 → robonix lidar3d 能力约定）",
 )
 ```
 
@@ -1314,7 +1316,7 @@ def hello(req: Hello_Request) -> Hello_Response:
 
 **description（给 Pilot LLM 看的自然语言）的三源合并**：
 
-1. contract toml 的 `[contract].description`（契约级默认；同一 contract 所有实现共用）
+1. contract toml 的 `[contract].description`（能力约定级默认；同一 contract 所有实现共用）
 2. **装饰器的 `description=` kwarg；没传就 fallback 到 `fn.__doc__`**（MCP 生态惯例：docstring 即 tool description）
 3. 包根的 `CAPABILITY.md`（能力提供者级长文档，整个包共享）
 
@@ -1441,7 +1443,7 @@ def asr_stream(request_iterator, ctx):
 | 子命令 | 工作目录 | 作用 |
 |---|---|---|
 | `rbnx --version` | 任意 | 版本 |
-| `rbnx path <key>` | 任意 | 查 robonix 子树（`root` / `rust` / `capabilities` / `interfaces-lib` / `robonix-api`） |
+| `rbnx path <key>` | 任意 | 查 robonix 子树（`root` / `rust` / `capabilities` / `interfaces-lib` / `runtime-proto` / `robonix-api`） |
 | `rbnx codegen [--mcp]` | 单包 | 给当前 package 生 proto stubs / MCP dataclass 到 `<pkg>/rbnx-build/codegen/` |
 | `rbnx build` | 部署根 | 遍历 manifest 里所有 primitive/service/skill，依次跑各包的 `package_manifest.build` |
 | `rbnx build` | 单包 | 跑当前包的 `package_manifest.build` |
@@ -1507,6 +1509,6 @@ def asr_stream(request_iterator, ctx):
 | `[contract] version` | 字符串，从 `"1"` 起 |
 | `[contract] kind` | `primitive` / `service` / `skill` |
 | `[contract] idl` | 引用 IDL 文件，相对 `lib/` 根，例如 `chassis/srv/Move.srv` 或 `nav_msgs/msg/Odometry.msg` |
-| `[contract] description` | 契约级默认描述（自然语言）。declare 时若不另传 / 不写 docstring，consumer 端 fallback 到这条；详见 §14.9 三源合并 |
+| `[contract] description` | 能力约定级默认描述（自然语言）。declare 时若不另传 / 不写 docstring，consumer 端 fallback 到这条；详见 §14.9 三源合并 |
 | `[mode] type` | `rpc` / `rpc_server_stream` / `rpc_client_stream` / `rpc_bidirectional_stream` / `topic_in` / `topic_out` |
 
