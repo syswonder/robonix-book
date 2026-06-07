@@ -171,17 +171,17 @@ primitive:
 
 ### Primitive 的 driver 生命周期
 
-每个抽象硬件类别对应一个 driver contract（如 `robonix/primitive/lidar/lidar3d/driver`）。Driver 是普通的 RPC capability，按 `command` 字段区分四个操作 —— 同一组命令 service 和 skill 包也用，区别只在 rbnx 替哪一类自动发哪些。完整状态机见 [能力生命周期与状态机](../architecture/cap-lifecycle.md)。
+每个抽象硬件类别对应一个 driver contract（如 `robonix/primitive/lidar/driver`）。Driver 是普通的 RPC capability，按 `command` 字段区分四个操作 —— 同一组命令 service 和 skill 包也用，区别只在 rbnx 替哪一类自动发哪些。完整状态机见[开发者指南](../developer-guide.md)的“生命周期”一章。
 
-Driver IDL（共享）：`rust/crates/robonix-interfaces/lib/lifecycle/srv/Driver.srv`：
+Driver IDL（共享）：`capabilities/lib/lifecycle/srv/Driver.srv`：
 
 ```
-uint8 CMD_INIT     = 0   # 解析 config_json、resolve atlas 上的依赖
-uint8 CMD_SHUTDOWN = 1   # SIGTERM 之前的优雅退出（可选实现）
-uint8 CMD_ACTIVATE       = 2   # 申请热资源、起线程、订阅 ROS、加载模型
-uint8 CMD_DEACTIVATE     = 3   # 释放热资源；保留 atlas 注册（skill-only 才有意义）
+uint8 CMD_INIT       = 0   # 解析 config_json、resolve atlas 上的依赖
+uint8 CMD_ACTIVATE   = 1   # 申请热资源、起线程、订阅 ROS、加载模型
+uint8 CMD_DEACTIVATE = 2   # 释放热资源；保留 atlas 注册（skill-only 才有意义）
+uint8 CMD_SHUTDOWN   = 3   # SIGTERM 之前的优雅退出（可选实现）
 uint8 command
-string config_json       # 从 boot manifest 的 config: 块透传下来
+string config_json         # 从 boot manifest 的 config: 块透传下来
 ---
 bool ok
 string state             # REGISTERED | INACTIVE | ACTIVE | ERROR | TERMINATED
@@ -223,20 +223,22 @@ capabilities:
     path: capabilities/weird_thing.v1.toml
 ```
 
-TOML 字段格式跟官方 contract 一致（`[contract]` + `[io.srv]` / `[io.msg]` + `[mode]`），但 IDL 的**路径解析规则不同**：
+TOML 字段格式跟官方 contract 一致（`[contract]` 内含 `idl` + `[mode]`），但 IDL 的**路径解析规则不同**：
 
-- **官方 TOML**（在 robonix 源码仓库 `capabilities/` 里）：`[io.srv] srv = "lidar/srv/Foo"` → 去 `rust/crates/robonix-interfaces/lib/lidar/srv/Foo.srv` 找
-- **包内 TOML**（在自己 package 的 `capabilities/` 里）：`[io.srv] srv = "srv/Foo"` → 去**包的 `capabilities/srv/Foo.srv`** 找
+- **官方 TOML**（在 robonix 源码仓库 `capabilities/` 里）：`[contract] idl = "lidar/srv/Foo.srv"` → 去 `capabilities/lib/lidar/srv/Foo.srv` 找
+- **包内 TOML**（在自己 package 的 `capabilities/` 里）：`[contract] idl = "my_stack/srv/MyRequest.srv"` → 去**包的 `capabilities/lib/my_stack/srv/MyRequest.srv`** 找
 
 典型 skill 包 `capabilities/` 布局：
 
 ```
 capabilities/
 ├── weird_thing.v1.toml
-├── msg/
-│   └── MyStructure.msg
-└── srv/
-    └── MyRequest.srv
+└── lib/
+    └── my_stack/
+        ├── msg/
+        │   └── MyStructure.msg
+        └── srv/
+            └── MyRequest.srv
 ```
 
 `weird_thing.v1.toml`：
@@ -245,15 +247,13 @@ capabilities/
 id      = "robonix/skill/my_stack/weird_thing"
 version = "1"
 kind    = "skill"
-
-[io.srv]
-srv = "srv/MyRequest"    # 指向包内 capabilities/srv/MyRequest.srv
+idl     = "my_stack/srv/MyRequest.srv"   # 指向包内 capabilities/lib/my_stack/srv/MyRequest.srv
 
 [mode]
 type = "rpc"
 ```
 
-`rbnx codegen` 会把包内的 `capabilities/msg/*.msg` 和 `capabilities/srv/*.srv` 一起 codegen 到包的 `rbnx-build/codegen/`，跟引用官方 contract 时一样 import 使用。
+`rbnx codegen` 会把包内 `capabilities/lib/` 下的 `.msg` / `.srv` 一起 codegen 到包的 `rbnx-build/codegen/`，跟引用官方 contract 时一样 import 使用。
 
 ## 设计不变量 — 包里**不能**做的事
 
@@ -263,7 +263,7 @@ type = "rpc"
 
 如果你的包消费另一个包产出的数据（如导航服务订阅 SLAM 服务的占据栅格），用 `ATLAS.find_capability` + `connect_capability` 按对方 **contract** 查 endpoint。**不要**把字面 topic 名写在代码里当常量或 default。
 
-理由：同一个 nav service 要不改一行就跑在 webots（`/scanner_normalized`）、Mid360 真机（`/mid360/scan`）、turtlebot（`/scan`）上。任何一个 topic 硬编码，跨机就崩，抽象就假。
+理由：同一个 nav service 要做到不改一行即可运行在 webots（`/scanner_normalized`）、Mid360 真机（`/mid360/scan`）、turtlebot（`/scan`）上。任何一个 topic 硬编码，跨机部署即失效，抽象也就不成立。
 
 允许硬编码的例外：
 - 包内自用的 topic（如内部同步队列）
@@ -271,16 +271,16 @@ type = "rpc"
 
 ### 2. manifest 即运行时声明
 
-`package_manifest.yaml::capabilities` 列出的每条 contract **必须**在启动时真的 `DeclareCapability` 上去。占位条目（"以后实现 save_map"）会腐烂——让 `rbnx caps` 输出撒谎，下游 `ConnectCapability` 时才在 runtime 炸而不是部署解析时早暴露。**没实现，就不写进 manifest。**
+`package_manifest.yaml::capabilities` 列出的每条 contract **必须**在启动时真正 `DeclareCapability`。占位条目（例如尚未实现的 save_map）会成为陈旧声明——使 `rbnx caps` 输出与实际不符，故障被推迟到下游 `ConnectCapability` 的运行期才暴露，而非部署解析时即被发现。**未实现的能力不写进 manifest。**
 
 ### 3. 平台相关补丁住在 primitive 包里，不能进通用服务
 
-Webots 的 lidar 发反向角度的 scan、URDF link 名带空格（"Astra rgb"）跟 frame_id 不一致、轮编码器打滑时漂移——所有这类 fix-up **必须**在对应的 primitive 包里搞定（`tiago_lidar/scan_normalize.py`、`tiago_camera` 的静态 TF bridge 等），**不要**进 mapping / nav。
+Webots 的 lidar 发反向角度的 scan、URDF link 名带空格（"Astra rgb"）跟 frame_id 不一致、轮编码器打滑时漂移——所有这类 fix-up **必须**在对应的 primitive 包内处理（`tiago_lidar/scan_normalize.py`、`tiago_camera` 的静态 TF bridge 等），**不要**进 mapping / nav。
 
 通用服务绝不能写 "if 跑在 webots 上 do X" 这种代码。primitive 包通过自己的 atlas contract 输出干净的、合规的数据；下游服务信 contract。
 
 ### 4. 多算法 service 共享同一组 contract
 
-一个 service 支持多后端时（mapping 同时有 rtabmap / dlio / fastlio2；nav 未来会有 simple_nav / nav2-wrapper），**每个后端必须声明同一组 contract**。内部 topic 名可以不同——bridge 负责把 contract 映射到当前算法实际发的 topic。算法天生产不出某条契约输出时，launch 文件起一个 adapter 补上。
+一个 service 支持多后端时（mapping 同时有 rtabmap / dlio / fastlio2；nav 未来会有 simple_nav / nav2-wrapper），**每个后端必须声明同一组 contract**。内部 topic 名可以不同——bridge 负责把 contract 映射到当前算法实际发的 topic。算法天生产不出某条能力约定输出时，launch 文件起一个 adapter 补上。
 
 往 contract 集合里加新条目是**包的版本事件**——bump `package.version` + 更新所有后端。**不要**写 "这条 contract 只在算法 X 上有"——这破坏了消费者赖以为生的算法无关担保。

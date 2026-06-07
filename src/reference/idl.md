@@ -2,9 +2,7 @@
 
 > 由 robonix v0.1.0 · commit 953df33-dirty · 2026-06-05 自动生成，请勿手改。重新生成：`rbnx docs`。
 
-本页是 `capabilities/lib/` 下全部 ROS IDL（`.msg` / `.srv`）的原文，按 ROS 包分组（共 250 个文件）。[契约参考](contracts.md) 的载荷列链到这里对应的锚点。
-
-[toc]
+本页是 `capabilities/lib/` 下全部 ROS IDL（`.msg` / `.srv`）的原文，按 ROS 包分组（共 250 个文件）。[能力约定参考](contracts.md) 的载荷列链到这里对应的锚点。
 
 ## action_msgs
 

@@ -44,14 +44,14 @@ rbnx chat        # ratatui TUI，直连 Pilot
 
 ## `rbnx boot` 生命周期
 
-`rbnx boot` 主流程在 `rust/crates/robonix-cli/src/cmd/deploy.rs`，七步：
+`rbnx boot` 主流程在 `tools/rbnx/src/cmd/deploy.rs`，七步：
 
 1. **解析 manifest**：读 `robonix_manifest.yaml`，展开 `${VAR}` 环境变量，校验声明的 package 存在、capability 引用合法。
 2. **初始化日志目录**：默认 `<manifest-dir>/rbnx-boot/logs/`，每个组件一个 `<name>.log` 文件。可用 `--log-dir` 改路径。
-3. **起 system 块**：按 `system:` 下的字段顺序起 atlas → executor → pilot → liaison → memory → ……。
+3. **起 system 块**：按 `system:` 下的字段顺序起 atlas → scene → executor → pilot → liaison。
 4. **轮询 atlas 就绪**：调 `Query`（kind=Primitive，空过滤）直到返回非错（atlas 完全起来需 ~200 ms）。
 5. **逐个起 primitive / service / skill**：按 manifest 声明顺序，一条一条 spawn，**每条等它在 atlas 里完成 `RegisterPrimitive` / `RegisterService` / `RegisterSkill` 才进入下一条**。
-6. **driver init dance**：如果新注册的 provider 声明了 `*/driver` capability（如 `robonix/primitive/lidar/driver`），调一次 `LifecycleDriver.Driver(CMD_INIT, config_json)` 完成硬件初始化。
+6. **driver init dance**：如果新注册的 provider 声明了 `*/driver` capability（如 `robonix/primitive/lidar/driver`），调一次 `Driver(CMD_INIT, config_json)`（per-contract Driver gRPC 服务）完成硬件初始化。
 7. **守候**：sit-on-Ctrl-C/SIGTERM 循环，收到信号后向所有子进程发 SIGTERM、等回收，再退出。
 
 每个子进程的 stdout / stderr 重定向到 `<log-dir>/<name>.log`，前台终端只看 `[deploy]` 自己的状态行。组件 panic 或 register 超时时 `rbnx boot` 会打印失败摘要并指向对应 log 文件。
@@ -66,7 +66,7 @@ T+15s   T2: rbnx boot                 # 读 robonix_manifest.yaml
 T+15s   host: spawn robonix-atlas       # listen 50051
 T+16s   host: atlas RegisterService "robonix/system/atlas"   # self-register
 T+16s   host: spawn robonix-executor    # connect to atlas，RegisterService
-T+17s   host: spawn robonix-pilot       # discover vlm/memory providers from atlas
+T+17s   host: spawn robonix-pilot       # 加载 memory + LLM（VLM 由环境变量配置，非 atlas 注册）
 T+18s   host: docker exec sim python chassis_driver/driver.py
 T+19s   sim:  chassis driver RegisterPrimitive + DeclareCapability (state, move) MCP
 T+19s   host: deploy 收到 register 通知 → 进入下一条 primitive

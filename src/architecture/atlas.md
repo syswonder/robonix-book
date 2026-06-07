@@ -34,25 +34,25 @@ Atlas 不在乎传输细节，但它必须能把 provider 的 endpoint 完整告
 
 | 传输 | `TransportParams.kind` | 典型 endpoint | 用途 |
 |------|------------------------|---------------|------|
-| `Grpc` | `GrpcParams { proto_file, service_name, method }` | `host:port` | 系统服务（pilot / executor / vlm）、PRM 的二进制流式接口 |
+| `Grpc` | `GrpcParams { proto_file, service_name, method }` | `host:port` | 系统服务（pilot / executor）、原语的二进制流式接口 |
 | `Ros2` | `Ros2Params { qos_profile }` | 冲突时采用 `/rbnx/ch/<uuid>`，其他情况直接用 provider 提供的 endpoint | 容器内 ROS 节点间通信 |
 | `Mcp`  | `McpParams { description, input_schema_json }` | `host:port` (HTTP) 或 `stdio://cmd` | LLM 可调工具 |
 
 ## RPC 接口一览
 
-Atlas 服务定义在 `rust/crates/robonix-atlas/proto/atlas.proto`，关键 RPC：
+Atlas 服务定义在 `system/atlas/proto/atlas.proto`，关键 RPC：
 
 | RPC | 调用方 | 作用 |
 |-----|--------|------|
 | `RegisterPrimitive` / `RegisterService` / `RegisterSkill` | 能力提供者 | 登记 id + namespace + capability_md_path（按种类三个 typed RPC） |
 | `DeclareCapability` | 能力提供者 | 把一个 contract_id 绑到一种 transport+endpoint |
-| `Heartbeat` | 能力提供者 | 续约，超时（默认 30 s）后该 provider 被驱逐 |
+| `Heartbeat` | 能力提供者 | 续约；续约间隔约 30 s，超时阈值默认 90 s（约漏 3 次）后该 provider 被标记 `TERMINATED` 并驱逐（`ROBONIX_ATLAS_HEARTBEAT_TIMEOUT_MS` 可调） |
 | `Unregister` | 能力提供者 | 主动注销（也可以让心跳超时） |
 | `SetLifecycleState` | 能力提供者 | 推送当前状态（REGISTERED / INACTIVE / ACTIVE / ERROR / TERMINATED） |
 | `Query` | 消费者 | 按 `id` / `namespace_prefix` / `kind` / `contract_id` / `transport` 过滤检索 |
 | `ConnectCapability` | 消费者 | 提交"我要用 provider X 的 contract Y 走 Z 传输"，atlas 记录通道并返回 endpoint |
 | `DisconnectCapability` | 消费者 | 释放通道（atlas 仅做记账） |
-| `QueryContract` / `ListContracts` | 消费者 | 拉契约 IDL（字段定义、Request/Response 形状） |
+| `QueryContract` / `ListContracts` | 消费者 | 拉能力约定 IDL（字段定义、Request/Response 形状） |
 | `InspectAtlas` | 调试 | 一次性 dump 当前所有 providers + capabilities + channels（JSON） |
 
 `Connect` / `Disconnect` 只是 atlas 侧的记账：真正的数据面连接（gRPC dial、ROS topic sub、MCP HTTP 客户端）由 consumer 自己用拿到的 endpoint 建。

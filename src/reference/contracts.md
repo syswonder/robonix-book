@@ -1,15 +1,15 @@
-# 契约参考（自动生成）
+# 能力约定参考（自动生成）
 
 > 由 robonix v0.1.0 · commit 953df33-dirty · 2026-06-05 自动生成，请勿手改。重新生成：`rbnx docs`。
 
-本页罗列 `capabilities/` 下的所有标准契约（共 57 条）。
+本页罗列 `capabilities/` 下的所有标准能力约定（共 57 条）。
 载荷列链到对应的 [ROS IDL](idl.md)。概念与字段含义见 [接口目录](../interface-catalog/index.md)。
 
 [toc]
 
 ## primitive
 
-| 契约 ID | kind | mode | 载荷（IDL） | 契约 TOML |
+| 能力约定 ID | kind | mode | 载荷（IDL） | 能力约定 TOML |
 |---|---|---|---|---|
 | `robonix/primitive/audio/driver` | primitive | `rpc` | [`lifecycle/srv/Driver.srv`](idl.md#lifecycle-srv-driver-srv) | `primitive/audio/driver.v1.toml` |
 | `robonix/primitive/audio/list_devices` | primitive | `rpc` | [`audio/srv/ListAudioDevices.srv`](idl.md#audio-srv-listaudiodevices-srv) | `primitive/audio/list_devices.v1.toml` |
@@ -35,7 +35,7 @@
 
 ## service
 
-| 契约 ID | kind | mode | 载荷（IDL） | 契约 TOML |
+| 能力约定 ID | kind | mode | 载荷（IDL） | 能力约定 TOML |
 |---|---|---|---|---|
 | `robonix/service/map/driver` | service | `rpc` | [`lifecycle/srv/Driver.srv`](idl.md#lifecycle-srv-driver-srv) | `service/map/driver.v1.toml` |
 | `robonix/service/map/occupancy_grid` | service | `topic_out` | [`common_interfaces/nav_msgs/msg/OccupancyGrid.msg`](idl.md#common-interfaces-nav-msgs-msg-occupancygrid-msg) | `service/map/occupancy_grid.v1.toml` |
@@ -64,7 +64,7 @@
 
 ## system
 
-| 契约 ID | kind | mode | 载荷（IDL） | 契约 TOML |
+| 能力约定 ID | kind | mode | 载荷（IDL） | 能力约定 TOML |
 |---|---|---|---|---|
 | `robonix/system/executor` | service | `rpc_server_stream` | [`executor/srv/Execute.srv`](idl.md#executor-srv-execute-srv) | `system/executor.v1.toml` |
 | `robonix/system/liaison/submit` | system | `rpc_server_stream` | [`liaison/srv/SubmitTask.srv`](idl.md#liaison-srv-submittask-srv) | `system/liaison/submit.v1.toml` |
