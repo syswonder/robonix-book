@@ -2,9 +2,30 @@
 
 [toc]
 
-Robonix 把"操作系统"职责拆成 **12 个系统组件**，按角色划分（不是按实现语言）。每个组件在 `system/<name>/` 下有自己的目录和 README。
+Robonix 将操作系统职责拆分为 **12 个系统组件**，每个组件在 `system/<name>/` 下有独立目录与 README。
 
 本页描述的是 **dev 分支当前真实的实现状态**——哪些已落地、哪些还是 stub——而不是白皮书的目标蓝图。
+
+## 总体架构与运行流程
+
+![Robonix 总体架构](robonix-arch.png)
+
+Robonix 以 **能力（capability）** 为统一抽象。每个能力由 **契约（contract）** 定义：ROS IDL 描述其输入输出，契约同时指定通信模型（请求响应、单向输出流）与承载（gRPC、ROS 2、MCP）。调用方不依赖具体组件，而是按 `contract_id` 经 Atlas 查询能力、解析 endpoint 后调用。能力由三类提供者实现：原语 `primitive`、服务 `service`、技能 `skill`。
+
+### 任务流转
+
+一次任务是 Pilot 驱动的多轮闭环。
+
+1. **Liaison** 接收文本或语音输入。语音链路经声纹完成识别与准入，将输入封装为 **Task** 提交给 Pilot，并以事件流向用户回传过程与结果。
+2. **Pilot** 每轮以 Scene 的场景状态、Soma 的本体描述与对话历史为上下文调用 VLM，生成一棵 RTDL 动作树，展平为 **Plan** 提交给 Executor。
+3. **Executor** 解释 RTDL 算子（`sequence`、`parallel`、`do`），按 `contract_id` 经 Atlas 定位 provider 并调用能力。每次调用前由 **Sentinel** 依规则校验放行。同步能力直接返回终态，异步能力轮询 `status` 至终态；执行事件流式回传 Pilot。
+4. Pilot 依执行结果进入下一轮规划，直至 VLM 返回空方案，任务结束。
+
+### 三个层次
+
+- **基础设施**：Atlas（能力注册与发现）、Nexus（gRPC、MCP、ROS 2 通信）、Chronos（统一时钟与源头时间戳）、Scribe（结构化日志）。所有系统组件共用。
+- **支撑服务**：Keystone（用户身份、偏好、准入）、Vitals（电源与部件健康）。由 Pilot、Sentinel、Liaison 按需查询。
+- **本体层**：Soma 提供与厂商无关的本体描述；`primitive` 将厂商 SDK 封装为统一能力（底盘、机械臂、相机、雷达、音频）；`skill` 封装模型类能力，如 VLA 动作策略。
 
 ## 12 个组件
 
