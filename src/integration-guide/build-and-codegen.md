@@ -137,3 +137,23 @@ $(rbnx path robonix-api)
 ```
 
 合法 path key：`root` / `rust` / `capabilities` / `interfaces-lib` / `runtime-proto` / `robonix-api`。
+
+## rbnx update 同步远端 provider
+
+部署 manifest 里用 `url:` 引入的 provider（如 `mapping`、`nav2`、`explore`）在第一次 `rbnx boot` / `rbnx build` 时被 clone 到 `<manifest 目录>/rbnx-boot/cache/<name>/`，之后一直**复用这份 checkout、不会自己更新**——所以上游仓库更新后，本地可能在跑一份过时的代码而不自知。
+
+`rbnx boot` 和 `rbnx build` 每次都会检查所有已 clone 的远端 provider，若本地落后于远端分支，会打印一条**非阻塞**提示（落后几个 commit、远端最新 commit 的日期与一行简介），并给出更新命令。要同步到最新用 `rbnx update`（本质就是对各 checkout 做一次 fast-forward `git pull`）：
+
+```bash
+# 在部署目录（有 robonix_manifest.yaml）：更新该部署的所有远端 provider
+rbnx update                     # 先打印每个包的落后概览，再问 y/N 才拉
+
+# 只更新某一个包：-p 指定目录，或在该包 checkout 里直接运行
+rbnx update -p examples/webots/rbnx-boot/cache/nav2
+cd examples/webots/rbnx-boot/cache/mapping && rbnx update
+
+# 指定别的部署 manifest
+rbnx update -f path/to/robonix_manifest.yaml
+```
+
+更新前一定会打印 overview（当前 commit、远端 commit、落后数、最新 commit 简介）并等 `y` 确认；本地有分叉（diverged）的 checkout 只提示、跳过，不会强制 reset。这样上游仓库更新后，每个使用方都能自己决定更不更新。

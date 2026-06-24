@@ -16,4 +16,8 @@
 
 `pose` 是 **map 帧**的机器人位姿（融合定位结果）——和底盘原语的 `odom`（odom 帧、未消除漂移）分工不同：要 map 帧位姿找 `service/map/pose`，要瞬时里程找 `primitive/chassis/odom`（见 [底盘](../primitive/chassis.md)）。
 
-输入侧：map 服务消费 `primitive/lidar/lidar3d` + `primitive/imu/imu`（或 2D `lidar` + `chassis/odom`），通过 atlas 按能力约定发现，不硬编码 topic 名。
+输入侧：map 服务消费 `primitive/lidar/lidar3d` + `primitive/imu/imu`（或 2D `lidar` + `chassis/odom`，可选 `camera/rgb` + `camera/depth` 做视觉融合），通过 atlas 按能力约定发现，不硬编码 topic 名。
+
+参考实现：[`mapping_rbnx`](https://github.com/enkerewpo/mapping_rbnx)（上游仓库）——默认走 rtabmap 图优化 SLAM（也支持 dlio / fastlio2）；`config:` 里 `sensors:` 声明本体有哪些传感器（`lidar2d`/`lidar3d`/`rgb`/`depth`/`imu`/`odom`，全部按能力约定经 atlas 解析），`map_id` 开启命名地图持久化（rtabmap.db + 离线可预览的 pgm/png/pcd），`map_mode: localization` 加载已存地图重定位、保证 map 帧原点跨重启稳定（供 scene 按 `map_id` 重锚语义对象）。
+
+> 文档参考：[README（部署 + 3 种构建目标）](https://github.com/enkerewpo/mapping_rbnx/blob/main/README.md) · [CAPABILITY.md（`config:` / `sensors:` 字段 + 地图持久化）](https://github.com/enkerewpo/mapping_rbnx/blob/main/CAPABILITY.md)
