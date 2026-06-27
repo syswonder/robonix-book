@@ -16,6 +16,7 @@
 - [命名空间与能力约定](architecture/namespace-and-contracts.md)
 - [Atlas 能力目录](architecture/atlas.md)
 - [系统部署与启动流程](architecture/deployment-and-startup.md)
+- [多平台部署（x86 / Jetson arm64）](architecture/multiplatform-deployment.md)
 
 ---
 - [接口目录](interface-catalog/index.md)
