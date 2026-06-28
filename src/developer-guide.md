@@ -1375,6 +1375,8 @@ def navigate_cancel(req: CancelNavigation_Request) -> CancelNavigation_Response:
 
 三个都拼给 LLM。最常用就是 docstring——FastMCP 也认；显式覆盖时写 `@service.mcp("...", description="...")`。
 
+`CAPABILITY.md` 的格式只有一条硬要求：文件开头一段 YAML frontmatter，**里面只有 `description` 一个键**（单行包级摘要）；正文随便写。**不要**在 frontmatter 写 `kind` / `provider`——provider 的种类和 id 由注册（`Primitive`/`Service`/`Skill`）决定、atlas 权威保存，Pilot 从 atlas 取，手写一份只会漂移。完整说明见《Robonix 包与部署配置规范》的 “CAPABILITY.md” 一节。
+
 codegen 生成的 dataclass 命名是 `<SrvName>_Request` / `<SrvName>_Response`（按 ROS srv 文件名）；msg 文件直接是 `<MsgName>`。每个能力提供者一个 FastMCP HTTP server（自动选端口），所有 `@service.mcp` 都挂在同一 server 上。MCP server 端的工具名固定 = `contract_id` 末段（跟 executor dispatch 那一侧用同一个推导），所以**装饰器不暴露 `name=` kwarg**——避免函数名 / 工具名漂移撞 executor。
 
 #### `@service.grpc(contract_id, *, description="")` — gRPC 方法 handler

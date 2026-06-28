@@ -265,6 +265,28 @@ type = "rpc"
 
 `rbnx codegen` 会把包内 `capabilities/lib/` 下的 `.msg` / `.srv` 一起 codegen 到包的 `rbnx-build/codegen/`，跟引用官方 contract 时一样 import 使用。
 
+## CAPABILITY.md — 给 LLM 看的包级手册
+
+包根可以放一个 `CAPABILITY.md`：它是**整个包共享的一份自然语言手册**，注册时随包上报到 atlas，Pilot 把所有带 `CAPABILITY.md` 的 provider 列进系统提示，LLM 需要时再用 `read_capability_doc` 按需拉全文。正文随便写（用法、约束、示例、注意事项都行）。
+
+**唯一的格式要求：文件开头一段 YAML frontmatter，里面只有 `description` 一个键。**
+
+```markdown
+---
+description: <一句话，说明这个包是干嘛的、什么时候该用它>
+---
+
+# 标题随意
+
+正文随便写……
+```
+
+- `description`：单行字符串，包级一句话摘要。Pilot 把它放进能力索引，供 LLM 判断相关性，不用读全文。
+- **不要写 `kind` / `provider` 等字段。** provider 的种类（primitive / service / skill）和 id 在注册时就由 `Primitive()` / `Service()` / `Skill()` 决定、atlas 权威保存，Pilot 从 atlas 取——在手写 markdown 里再写一遍只会和注册信息漂移（写了也不会被读）。frontmatter 只承载 atlas 没有的那一样东西：这句人话描述。
+- 没有 frontmatter、或没有 `description:` 键都不致命：provider 照样出现在索引里，只是暂时没有这句摘要。
+
+> 单一事实源：**种类/身份看注册（atlas），一句话描述看 frontmatter，详细用法看正文。** 三者各管一摊，不重复。
+
 ## 设计不变量 — 包里**不能**做的事
 
 下面这些不是"建议"，是**正确性约束**。违反任意一条都会让包失去跨机器人 / 跨仿真 / 跨硬件版本的可移植性，未来 CI 会强制检查。
