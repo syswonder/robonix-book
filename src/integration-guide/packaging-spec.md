@@ -21,7 +21,7 @@ rbnx start -p ./service/slam_fastlio2
 
 `rbnx boot` 的流程：
 1. 展开 `${VAR}` 环境变量
-2. 起 `system:` 服务（atlas / executor / pilot / liaison 是 Rust 二进制；memory / scene / speech 是 Python 包）
+2. 起 `system:` 服务（atlas / executor / pilot / liaison 是 Rust 二进制；scene 是 Python 包）
 3. 对每个 `primitive` / `service` / `skill` 条目：`rbnx start -p <path>` 拉起包进程，等它在 atlas 上注册完，然后调一次 gRPC `Driver(CMD_INIT, config_json=<manifest 里 config 块 JSON 化>)`。`on_init(cfg: dict)` 在包里接到这个 dict，没有 env、没有文件
 4. 日志落到 `rbnx-boot/logs/<component>.log`
 5. Ctrl-C 统一 kill
@@ -40,7 +40,8 @@ env:
   ROS_DISTRO: humble
 
 # system 服务（atlas / executor / pilot / liaison 是 Rust 二进制；
-# memory / scene / speech 是 Python 包）的 config 直接写在 key 下面。
+# scene 是 Python 包）的 config 直接写在 key 下面。memory / speech 等
+# 不是 system，它们是 service，写在下面的 service: 列表里。
 # 每个 key 的 config 是包自己消费的任意字典，rbnx 把它 JSON 序列化后
 # 通过 Driver(CMD_INIT, config_json) 透传。
 system:
@@ -59,12 +60,7 @@ system:
       api_key:  ${VLM_API_KEY}
       model:    ${VLM_MODEL}
       api_format: openai
-  memory:   { backend: sqlite, log: info }
   scene:    { log: info }
-  speech:
-    log: info
-    disable_whisper: true             # 节省一份 Whisper-large 权重
-    tts_voice: zh-CN-XiaoxiaoNeural
 
 # 硬件。每个条目是一个 instance（设备）。
 primitive:
@@ -76,6 +72,20 @@ primitive:
 
 # 场景服务。path 是本地路径；url 是 git 地址（首次 clone 到 rbnx-boot/cache/）。
 service:
+  # memory / speech 是 robonix 自带的 service 包（曾经放在 system 下，现已归位 service）。
+  # 自带 service 在 robonix 源码树里，path 用源码绝对路径——部署目录可以在任意
+  # 位置，不能用 ../../ 这种相对源码树的写法。
+  - name: memory
+    path: /path/to/robonix/services/memsearch
+    config:
+      backend: sqlite
+
+  - name: speech
+    path: /path/to/robonix/services/speech
+    config:
+      disable_whisper: true           # 节省一份 Whisper-large 权重
+      tts_voice: zh-CN-XiaoxiaoNeural
+
   - name: mapping
     url: https://github.com/enkerewpo/mapping_rbnx
     branch: main
@@ -197,8 +207,8 @@ string error
 | 层 | contract 在哪 | 说明 |
 |---|---|---|
 | **primitive** | robonix 源码仓库的 `capabilities/primitive/` | 官方标准，接入新硬件按已有 contract 实现；缺接口提 PR 新增 |
-| **service** | `capabilities/service/`（多数）+ 少量包内 | 场景服务大多复用官方 contract（mapping / navigation / scene 等），明确私有的才自定义 |
-| **system** | `capabilities/system/` | 仓库内置（atlas / pilot / executor / liaison / memory / scene / speech），不外开 |
+| **service** | `capabilities/service/`（多数）+ 少量包内 | 场景服务大多复用官方 contract（map / navigation / memory / speech / voiceprint 等），明确私有的才自定义 |
+| **system** | `capabilities/system/` | 仓库内置（atlas / pilot / executor / liaison / scene），不外开 |
 | **skill** | **全部在包内** | skill 是 agent 层，每个包自己定义，不进主仓库 |
 
 ### Primitive / Service 包：实现官方 contract
