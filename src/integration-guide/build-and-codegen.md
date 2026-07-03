@@ -80,7 +80,7 @@ echo "[build] done."
 | Package | 路径 | 额外步骤 |
 |---|---|---|
 | `tiago_chassis` / `tiago_camera` / `tiago_lidar` / `audio_driver` | `examples/webots/primitives/` | 无 |
-| `simple_nav` | `examples/webots/services/simple_nav` | 无 |
+| `nav2` | manifest 远端包 `nav2_wrapper_rbnx` | ROS 2/Nav2 wrapper 构建 |
 | `scene` | `system/scene` | docker compose build（perception 容器内跑 YOLO-World + MobileSAM）|
 | `memory`（memsearch） | `services/memsearch` | 无 |
 | `speech` | `services/speech` | 无（首次跑会下 FunASR / TTS 权重）|

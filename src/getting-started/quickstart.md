@@ -10,6 +10,7 @@
 
 - Linux x86_64 + Rust stable + Python ≥ 3.10
 - Docker + Compose v2（仿真容器）
+- `uv`（Python 包构建/运行环境管理，`python3 -m pip install --user uv`）
 - 一个 OpenAI 兼容的 VLM API key（Qwen / GPT-4o / Gemini / Claude via 兼容网关 都行）
 
 推荐：NVIDIA GPU + `nvidia-container-toolkit`（Webots 3D 渲染）；只跑对话不跑仿真可跳过 Docker。
@@ -27,6 +28,18 @@ make install
 - 自动登记当前 clone 为 robonix 源码根目录，让其他位置的包做 codegen 时能找到 contracts/IDL（见 [Build 与 Codegen](../integration-guide/build-and-codegen.md)）
 
 > Python 依赖按包内的 `package_manifest.yaml` 自行管理；`rbnx start` 在 spawn driver 子进程前会把包的 `rbnx-build/codegen/proto_gen` 加进 `PYTHONPATH`。
+
+默认 ROS 2 RMW 是 Zenoh：
+
+```bash
+export RMW_IMPLEMENTATION=rmw_zenoh_cpp
+```
+
+需要对比 Fast DDS 时可以显式切回：
+
+```bash
+export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+```
 
 ## 3. 配 VLM
 
@@ -56,6 +69,11 @@ export VLM_MODEL=qwen3-vl-plus
 export DISPLAY=:0
 bash examples/webots/sim/start.sh
 
+# 可选：仅 CI/headless 调试时打开浏览器 stream；普通 quickstart 默认用上面的 Webots GUI。
+# export ROBONIX_SIM_STREAM=1
+# export WEBOTS_HEADLESS_MODE=auto
+# bash examples/webots/sim/start.sh
+
 # T2：Robonix 系统服务 + 系统/服务/技能包
 export VLM_BASE_URL=https://api.openai.com/v1
 export VLM_API_KEY=sk-...
@@ -66,11 +84,11 @@ rbnx boot
 
 T1 不是 Robonix 包——它就是个 docker compose 栈。Robonix 不管它的生命周期。
 
-T2 的 `rbnx boot` 读 `examples/webots/robonix_manifest.yaml`，按声明顺序拉起所有组件。当前 webots 部署一共 13 个：
+T2 的 `rbnx boot` 读 `examples/webots/robonix_manifest.yaml`，按声明顺序拉起所有组件。当前 webots 部署一共 15 个：
 
 - `system` 块（5）：`atlas` + `scene` + `executor` + `pilot` + `liaison`
 - `primitive` 块（4）：`tiago_chassis` + `tiago_camera` + `tiago_lidar` + `audio_driver`
-- `service` 块（3）：`mapping`（rtabmap 2D + RGBD fusion）+ `simple_nav`（Robonix 自家 A* + Pure-Pursuit，已替代 Nav2）+ `memory`（向量记忆检索）
+- `service` 块（5）：`mapping`（rtabmap 2D + RGBD fusion）+ `nav2`（ROS 2 Nav2 导航）+ `memory`（向量记忆检索）+ `speech` + `voiceprint`
 - `skill` 块（1）：`explore`（frontier 自主探索）
 
 driver 进程跑在仿真容器里（`docker exec`），系统服务（scene、mapping）跑在它们各自的 docker 容器里加入主机 DDS 总线。host 上不需要 ROS 2 环境。
@@ -157,7 +175,7 @@ rbnx inspect                 # 完整 runtime 快照（JSON）
 
 ## 常见问题
 
-**Webots 没显示 GUI**：确认 `echo $DISPLAY` 非空，运行 `xhost +local:docker`。
+**Webots 没显示 GUI**：本地桌面确认 `echo $DISPLAY` 非空，运行 `xhost +local:docker`。`ROBONIX_SIM_STREAM=1` 只用于 CI/headless 调试；普通用户 quickstart 不需要打开 stream。
 
 **Webots 卡顿**：确认 `nvidia-smi` 可用且装了 `nvidia-container-toolkit`；否则跑在纯 CPU 软光栅上性能会显著下降。
 

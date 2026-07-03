@@ -17,14 +17,22 @@
 `examples/webots/` 是仓库内置的端到端样例——驱动在仿真容器里跑，Robonix 系统服务和 Pilot 在主机上跑。部署 layout 见 [快速上手](../getting-started/quickstart.md)。整个栈分两个终端启动：
 
 ```bash
-# T1：仿真环境（Ctrl-C 停）
+# T1：仿真环境（默认本地 Webots GUI，Ctrl-C 停）
+export DISPLAY=:0
 bash examples/webots/sim/start.sh
+
+# 可选：仅 CI/headless 调试时打开 stream；普通 quickstart 默认用 Webots GUI
+# export ROBONIX_SIM_STREAM=1
+# export WEBOTS_HEADLESS_MODE=auto
+# bash examples/webots/sim/start.sh
 
 # T2：Robonix（atlas + executor + pilot + 4 个 driver + nav2）
 cd examples/webots
+export RMW_IMPLEMENTATION=rmw_zenoh_cpp
 export VLM_BASE_URL=https://api.openai.com/v1
 export VLM_API_KEY=sk-...
 export VLM_MODEL=gpt-5.5
+rbnx build
 rbnx boot
 ```
 
