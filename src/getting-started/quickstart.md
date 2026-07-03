@@ -35,11 +35,19 @@ make install
 export RMW_IMPLEMENTATION=rmw_zenoh_cpp
 ```
 
-需要对比 Fast DDS 时可以显式切回：
+这不是把系统绑死在 Zenoh。Webots 容器、mapping、nav2、explore、scene、camera/lidar/chassis primitives 都读取同一个 `RMW_IMPLEMENTATION`；默认是 `rmw_zenoh_cpp`，需要对比时可以切回 Fast DDS：
 
 ```bash
 export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 ```
+
+默认选 Zenoh RMW 的原因：Webots demo / CI 是单机多容器 ROS graph，TF、RGB-D、lidar、map、Nav2、scene 都是高频 topic。Fast DDS 在这个拓扑里主要问题是发现和跨容器通信不稳定，且 DDS discovery/state 开销偏重。Zenoh RMW 的运行模型不同：ROS 2 API 不变，底层走 Zenoh；默认使用本机 `rmw_zenohd` router daemon 负责 discovery 和 routed traffic，节点间数据仍可 peer-to-peer。Webots sim 容器在 `RMW_IMPLEMENTATION=rmw_zenoh_cpp` 时会自动启动 router，普通 quickstart 不需要手动起 daemon。
+
+依据：
+
+- [`rmw_zenoh` design](https://github.com/ros2/rmw_zenoh/blob/rolling/docs/design.md)：说明 `rmw_zenoh_cpp` 如何映射 ROS 2 RMW API，并依赖本机 Zenoh router 做 discovery / host-to-host 通信。
+- Chovet et al., ["Performance Comparison of ROS2 Middlewares for Multi-robot Mesh Networks in Planetary Exploration"](https://link.springer.com/article/10.1007/s10846-024-02211-2)：Table 4 报告 Zenoh 相对其他 RMW 在动态 mesh 实验中 reachability 提升 146.93% / 58.17%，单消息 data overhead 降低 47.82% / 25.93%，CPU usage 降低 41.27% / 39.76%；代价是 RAM usage 增加。
+- Liang et al., ["A Performance Study on the Throughput and Latency of Zenoh, MQTT, Kafka, and DDS"](https://arxiv.org/abs/2303.09419)：以 throughput 和 latency 比较 Zenoh、DDS 等协议，实验结果显示 Zenoh 在该测试设置下优于 DDS。
 
 ## 3. 配 VLM
 
@@ -78,6 +86,7 @@ bash examples/webots/sim/start.sh
 export VLM_BASE_URL=https://api.openai.com/v1
 export VLM_API_KEY=sk-...
 export VLM_MODEL=gpt-5.5
+export RMW_IMPLEMENTATION=rmw_zenoh_cpp
 cd examples/webots
 rbnx boot
 ```
@@ -99,7 +108,12 @@ driver 进程跑在仿真容器里（`docker exec`），系统服务（scene、m
 >
 > 之后打开 <http://localhost:50107/> 看 scene 的 3 栏实时面板：左 = 2D occupancy + 物体定位，中 = 3D 点云 + bbox + Tiago 本体，右 = 相机 RGB + 深度直播流。
 
-> **cache 注意**：`rbnx boot` 第一次会把 `mapping`、`explore` 这些 URL 远端包克隆到 `examples/webots/rbnx-boot/cache/`，以后默认走 cache。如果这两个仓库上游有更新，你需要手动 `cd examples/webots/rbnx-boot/cache/<pkg> && git pull`，或者直接 `rm -rf rbnx-boot/cache` 让下一次 boot 重新克隆——目前 boot 不会主动 fetch（`--build` / `--no-fetch` flag 在 backlog 上）。
+> **cache 注意**：`rbnx boot` 第一次会把 `mapping`、`nav2`、`explore` 这些 `url:` 远端包克隆到 `examples/webots/rbnx-boot/cache/`，之后复用这份 checkout。`rbnx boot` / `rbnx build` 会提示本地 cache 是否落后于上游；需要同步时不要手动删 cache，直接运行：
+>
+> ```bash
+> rbnx update                  # 更新当前部署里的所有远端包，会询问确认
+> rbnx update -p <package dir>  # 只更新某个包
+> ```
 
 ## 5. 跟机器人对话
 
@@ -137,6 +151,16 @@ rbnx ask "请彻底探索整个房间，调用 explore 后等待其完成，每 
 - `scene` 的 3 栏 web UI 实时反映：物体进 registry、点云累计、地图扩张
 
 默认 Tiago/Webots 场景完成一次完整探索（约 6 个 frontier hops）约需 3–4 分钟。`rbnx ask` 默认 timeout 30 s，长任务用 `timeout 240 rbnx ask "..."` 延长超时，或改用 `rbnx chat` 交互式运行。
+
+## CI Webots 怎么工作
+
+CI 不复用服务器上已有的 Webots，也不复用其他 PR 的 sim 容器。每次 Webots integration run 都会在 self-hosted GPU runner 上按当前 checkout 独立完成：
+
+1. 初始化 submodule 和远端包 cache，构建 Webots 部署镜像/组件。
+2. 启动一套新的 Webots Tiago 仿真容器。CI/headless 模式才打开 Webots stream；普通 quickstart 默认是本地 GUI。
+3. 启动 deterministic fake VLM。它只替代 LLM 规划随机性，返回固定 RTDL tree；Webots、ROS topics、TF、camera/lidar、mapping、Nav2、scene、explore、executor/pilot 都走真实代码路径。
+4. `rbnx boot` 当前 checkout，等待组件注册和 ACTIVE，再跑 interface checks、mapping occupancy grid readiness、scenario suite。
+5. 生成 HTML report，内嵌 scenario JSONL、provider logs、sim/ROS logs、环境元数据和可选 LLM 分析；push、PR、manual dispatch、`@robonix-ci test` 都生成同样结构的 report，并发布到 Pages 历史目录。
 
 清栈：
 
