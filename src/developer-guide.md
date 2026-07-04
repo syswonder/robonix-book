@@ -1093,7 +1093,7 @@ front = next((c for c in capabilities if c.provider_id == "tiago_camera_front"),
 | `contract_id` | `str` | 接口 id |
 | `transport` | `Transport` | gRPC / ROS2 / MCP |
 | `params` | `GrpcParams \| Ros2Params \| McpParams` | transport-specific（gRPC service+method / ROS 2 qos\_profile / MCP description+schema）|
-| `description` | `str` | 来源合并：contract toml + declare 时传入 + 包根 `CAPABILITY.md`（给 Pilot 看的）|
+| `description` | `str` | 动态注册的 provider/capability 实例描述，给 Pilot / 调试工具看；不等同于 contract TOML 的标准接口说明。|
 
 `Transport` 是 `IntEnum`：`UNSPECIFIED` / `GRPC` / `ROS2` / `MCP`；`Kind` 是 `IntEnum`：`UNSPECIFIED` / `PRIMITIVE` / `SERVICE` / `SKILL`。
 
@@ -1204,7 +1204,7 @@ service.declare_ros2_topic(
 | `contract_id` | `str` | 这个 publisher 满足的 contract |
 | `topic` | `str` | ROS topic 名 |
 | `qos` | `str` | QoS preset 字符串（见下表，默认 `best_effort`）|
-| `description` | `str?` | 这条 capability 的自然语言描述。ROS 2 没有 docstring-as-description 的惯例，建议显式传——三源合并规则同 `@service.mcp`（contract toml + 这里 + `CAPABILITY.md`）|
+| `description` | `str?` | 这条动态注册 capability 实例的自然语言描述。ROS 2 没有 docstring-as-description 的惯例，建议显式传；这属于 provider/runtime 层描述，不是 contract TOML 的抽象接口说明。|
 
 **QoS preset**（字符串）跟 ROS 2 官方 `rmw` builtin profile 一致：
 
@@ -1367,13 +1367,12 @@ def navigate_cancel(req: CancelNavigation_Request) -> CancelNavigation_Response:
     return CancelNavigation_Response(accepted=True, detail="cancel requested")
 ```
 
-**description（给 Pilot LLM 看的自然语言）的三源合并**：
+**description（给 Pilot LLM 看的自然语言）当前来自 provider/runtime 层**：
 
-1. contract toml 的 `[contract].description`（能力约定级默认；同一 contract 所有实现共用）
-2. **装饰器的 `description=` kwarg；没传就 fallback 到 `fn.__doc__`**（MCP 生态惯例：docstring 即 tool description）
-3. 包根的 `CAPABILITY.md`（能力提供者级长文档，整个包共享）
+1. 装饰器的 `description=` kwarg；没传就 fallback 到 `fn.__doc__`（MCP 生态惯例：docstring 即 tool description）。
+2. 包根的 `CAPABILITY.md`（能力提供者级长文档，整个包共享）。
 
-三个都拼给 LLM。最常用就是 docstring——FastMCP 也认；显式覆盖时写 `@service.mcp("...", description="...")`。
+contract TOML 的 `[contract].description` 是标准抽象接口说明，只属于文档层；`rbnx docs` 用它生成接口参考。它和动态注册的 provider description 不是一回事，不参与运行时 fallback、合并或大模型工具描述。
 
 `CAPABILITY.md` 的格式只有一条硬要求：文件开头一段 YAML frontmatter，**里面只有 `description` 一个键**（单行包级摘要）；正文随便写。**不要**在 frontmatter 写 `kind` / `provider`——provider 的种类和 id 由注册（`Primitive`/`Service`/`Skill`）决定、atlas 权威保存，Pilot 从 atlas 取，手写一份只会漂移。完整说明见《Robonix 包与部署配置规范》的 “CAPABILITY.md” 一节。
 
@@ -1385,7 +1384,7 @@ codegen 生成的 dataclass 命名是 `<SrvName>_Request` / `<SrvName>_Response`
 
 **机制**：codegen 给每条带 gRPC transport 的 contract 生成 `<PascalContractId>Servicer` 抽象类（在 `<pkg>/rbnx-build/codegen/proto_gen/robonix_contracts_pb2_grpc.py`）。装饰器把你的函数包成这个 servicer 的子类，挂到能力提供者共享的 gRPC server 上。**handler 函数的形态由 contract 的 `[mode] type` 决定**——下面这张表列了所有 6 种 mode 对应的 handler 写法。
 
-**description**：gRPC 生态本身没有"docstring 当工具说明"的惯例，建议在装饰器里**显式**传 `description="..."`（不传时框架仍会 fallback 到 `fn.__doc__`，但 gRPC 调用方一般不读 docstring，最好别赖这个）。三源合并规则同 `@service.mcp`（contract toml + 装饰器 `description=` / docstring + `CAPABILITY.md`，三者拼给 Pilot）。
+**description**：gRPC 生态本身没有"docstring 当工具说明"的惯例，建议在装饰器里**显式**传 `description="..."`（不传时框架仍会 fallback 到 `fn.__doc__`，但 gRPC 调用方一般不读 docstring，最好别赖这个）。这是动态 provider description；contract TOML 级说明只应描述标准接口抽象。
 
 ```python
 import chassis_pb2  # codegen 出来的 protobuf 类
@@ -1564,5 +1563,5 @@ def asr_stream(request_iterator, ctx):
 | `[contract] version` | 字符串，从 `"1"` 起 |
 | `[contract] kind` | `primitive` / `service` / `skill` |
 | `[contract] idl` | 引用 IDL 文件，相对 `lib/` 根，例如 `chassis/srv/Move.srv` 或 `nav_msgs/msg/Odometry.msg` |
-| `[contract] description` | 能力约定级默认描述（自然语言）。declare 时若不另传 / 不写 docstring，consumer 端 fallback 到这条；详见 §14.9 三源合并 |
+| `[contract] description` | 能力约定级文档字段：只描述这个标准抽象接口是什么意思，供 `rbnx docs` / 接口参考展示；不参与运行时 fallback，也不进入大模型工具描述。|
 | `[mode] type` | `rpc` / `rpc_server_stream` / `rpc_client_stream` / `rpc_bidirectional_stream` / `topic_in` / `topic_out` |

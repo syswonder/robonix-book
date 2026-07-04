@@ -1,6 +1,6 @@
 # 导航 robonix/service/navigation
 
-导航服务承担**目标式**运动：消费方给一个 map 帧目标，服务内部做路径规划 + 避障，组合调用底盘原语（`primitive/chassis/move` / `twist_in`）把机器人送到位。和底盘原语的瞬时速度严格分层——LLM 永远走导航服务，不直接控速。
+导航服务承担**目标式**运动：消费方给一个 map 帧目标，服务内部做路径规划 + 避障，并通过底盘原语的 `primitive/chassis/twist_in` 连续发布速度命令把机器人送到位。`primitive/chassis/move` 是低层离散/调试控制面，不是导航服务的主路径。和底盘原语的瞬时速度严格分层——LLM 永远走导航服务，不直接控速。
 
 能力约定 TOML 在 `capabilities/service/navigation/`，IDL 在 `capabilities/lib/navigation/`。
 

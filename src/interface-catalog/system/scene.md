@@ -16,4 +16,4 @@ Scene 维护**世界状态**：把感知（相机 + 深度 + VLM 检测）融合
 
 `list_objects` 不带过滤——返回注册表里所有对象，LLM 每轮调一次接地世界模型，按 label / 距离等在客户端筛（比把这些 knob 烤进 schema 便宜）。`goal_near` 把"到 X 附近"翻成一个可导航的 map 帧目标，喂给 [导航服务](../service/navigation.md)。
 
-输入侧：scene 消费 `primitive/camera/{rgb,depth}` + `service/map/pose`，跑 VLM 检测做数据关联。参考实现：`system/scene`。
+输入侧：scene 消费相机 RGB/depth、相机内外参、2D/3D lidar、map pose/odom/occupancy_grid 等标准能力约定，跑感知、数据关联和场景图更新。当前实现公开的是只读查询面；语义地图持久化、对象手工 add/edit/delete 等写接口应作为后续 scene map API 补齐。参考实现：`system/scene`。
