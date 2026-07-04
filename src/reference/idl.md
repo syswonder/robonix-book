@@ -1,8 +1,10 @@
 # ROS IDL 参考（自动生成）
 
-> 由 robonix v0.1.0 · commit 953df33-dirty · 2026-06-05 自动生成，请勿手改。重新生成：`rbnx docs`。
+> 由 robonix v0.1.0 · commit 76671168-dirty · 2026-07-04 自动生成，请勿手改。重新生成：`rbnx docs`。
 
-本页是 `capabilities/lib/` 下全部 ROS IDL（`.msg` / `.srv`）的原文，按 ROS 包分组（共 250 个文件）。[能力约定参考](contracts.md) 的载荷列链到这里对应的锚点。
+本页收录从 IDL 包含根（`rbnx docs --include`，默认 `capabilities/lib/`）收集的全部 ROS IDL（`.msg` / `.srv`）原文，按 ROS 包分组（共 261 个文件）。[能力约定参考](contracts.md) 的载荷列链到这里对应的锚点。
+
+[toc]
 
 ## action_msgs
 
@@ -681,39 +683,14 @@ DiagnosticStatus[] status
 
 ## executor
 
-<a id="executor-msg-batchcomplete-msg"></a>
-### BatchComplete `msg`
+<a id="executor-srv-cancelall-srv"></a>
+### CancelAll `srv`
 
-`executor/msg/BatchComplete.msg`
-
-```rosidl
-# Correlates with Plan.plan_id.
-string plan_id
-bool any_failed
-```
-
-<a id="executor-msg-capabilitycallevent-msg"></a>
-### CapabilityCallEvent `msg`
-
-`executor/msg/CapabilityCallEvent.msg`
+`executor/srv/CancelAll.srv`
 
 ```rosidl
-# event_kind: 0=started 1=result 2=complete
-uint32 event_kind
-CapabilityCallStarted started
-pilot/CapabilityCallResult result
-BatchComplete complete
-```
-
-<a id="executor-msg-capabilitycallstarted-msg"></a>
-### CapabilityCallStarted `msg`
-
-`executor/msg/CapabilityCallStarted.msg`
-
-```rosidl
-string call_id
-string provider_id
-string contract_id
+---
+bool success
 ```
 
 <a id="executor-msg-capabilityspec-msg"></a>
@@ -738,7 +715,42 @@ string input_schema_json
 ```rosidl
 pilot/Plan plan
 ---
-executor/CapabilityCallEvent event
+executor/RtdlEvent event
+```
+
+<a id="executor-msg-rtdlevent-msg"></a>
+### RtdlEvent `msg`
+
+`executor/msg/RtdlEvent.msg`
+
+```rosidl
+uint32 event_kind
+uint32 PLAN_STARTED=0
+uint32 NODE_STATE=1
+uint32 PLAN_COMPLETE=2
+RtdlPlanStarted plan_started
+pilot/RtdlNodeState node_state
+RtdlPlanComplete plan_complete
+```
+
+<a id="executor-msg-rtdlplancomplete-msg"></a>
+### RtdlPlanComplete `msg`
+
+`executor/msg/RtdlPlanComplete.msg`
+
+```rosidl
+# Correlates with Plan.plan_id.
+string plan_id
+bool any_failed
+```
+
+<a id="executor-msg-rtdlplanstarted-msg"></a>
+### RtdlPlanStarted `msg`
+
+`executor/msg/RtdlPlanStarted.msg`
+
+```rosidl
+string plan_id
 ```
 
 ## geometry_msgs
@@ -1562,6 +1574,157 @@ State start_state
 State goal_state
 ```
 
+## map
+
+<a id="map-srv-deletemap-srv"></a>
+### DeleteMap `srv`
+
+`map/srv/DeleteMap.srv`
+
+```rosidl
+# robonix/service/map/delete_map — permanently delete a saved map by id (RPC).
+# Removes {MAPPING_MAPS_DIR}/<map_id>/ (rtabmap.db + preview artifacts) from
+# disk. Does NOT affect the live running map unless <map_id> is the one
+# currently loaded. Irreversible — back up first if unsure.
+string map_id      # id of the saved map to delete
+---
+bool ok
+string map_id      # sanitized id acted on
+string detail
+```
+
+<a id="map-srv-getmode-srv"></a>
+### GetMode `srv`
+
+`map/srv/GetMode.srv`
+
+```rosidl
+# robonix/service/map/get_mode — read the SLAM mode currently in effect (RPC).
+# Complements switch_mode (which sets it): lets a UI / LLM reflect the REAL
+# runtime mode instead of guessing from the startup config's map_mode.
+---
+bool ok
+string mode        # "mapping" (build/extend) | "localization" (read-only)
+string detail
+```
+
+<a id="map-srv-getpose-srv"></a>
+### GetPose `srv`
+
+`map/srv/GetPose.srv`
+
+```rosidl
+# robonix/service/map/get_pose — read the robot's current pose in the MAP frame (RPC).
+# Returns x/y (metres) + theta (yaw, radians) in the SLAM map frame, taken from
+# the live pose the mapping service publishes. Read-only; complements
+# pose_estimate (which SEEDS a pose for relocalization). Use it to record a
+# named waypoint, report the robot's position, or branch on location.
+---
+bool ok
+float64 x
+float64 y
+float64 theta       # yaw, radians
+string frame_id     # map frame id (usually "map")
+string detail
+```
+
+<a id="map-srv-loadmap-srv"></a>
+### LoadMap `srv`
+
+`map/srv/LoadMap.srv`
+
+```rosidl
+# robonix/service/map/load_map — switch SLAM onto a previously-saved map (RPC).
+# Loads <map_id>'s rtabmap database and, in localization mode, freezes the
+# graph so the robot relocalizes against the saved map and the map frame
+# becomes stable across runs (scene keys its objects to that frame). With
+# has_initial_pose set, the pose guess below is seeded before relocalizing so
+# convergence is fast and unambiguous in repetitive spaces.
+string map_id      # which saved map to load (must already exist on disk)
+string mode        # "localization" (default) | "mapping" (resume building it)
+bool has_initial_pose   # true → use x/y/theta below as the starting guess
+float64 x          # initial pose guess, map frame, meters
+float64 y          # initial pose guess, map frame, meters
+float64 theta      # initial yaw, map frame, radians
+---
+bool ok
+string detail      # human-readable status / error
+```
+
+<a id="map-srv-poseestimate-srv"></a>
+### PoseEstimate `srv`
+
+`map/srv/PoseEstimate.srv`
+
+```rosidl
+# robonix/service/map/pose_estimate — seed rtabmap with a known pose (RPC).
+# Publishes an initial pose estimate so rtabmap's localization re-converges:
+# global relocalization, kidnapped-robot recovery, or "I know I'm roughly
+# here, go figure out exactly where". The pose is in the map frame, same as
+# load_map; rtabmap then refines it to the true map pose via scan/ICP matching.
+float64 x          # pose guess, map frame, meters
+float64 y          # pose guess, map frame, meters
+float64 theta      # yaw guess, map frame, radians
+float64 cov_xy     # optional 1-sigma position uncertainty, meters; 0 → default
+float64 cov_theta  # optional 1-sigma yaw uncertainty, radians; 0 → default
+---
+bool ok
+string detail      # human-readable status / error
+```
+
+<a id="map-srv-resetmap-srv"></a>
+### ResetMap `srv`
+
+`map/srv/ResetMap.srv`
+
+```rosidl
+# robonix/service/map/reset_map — clear the LIVE SLAM map and start rebuilding
+# from the robot's current pose (RPC). Calls rtabmap's reset; the map-frame
+# origin moves to the current pose. Does NOT delete any saved map on disk
+# (use delete_map for that) — only wipes the in-memory/working map.
+---
+bool ok
+string detail
+```
+
+<a id="map-srv-savemap-srv"></a>
+### SaveMap `srv`
+
+`map/srv/SaveMap.srv`
+
+```rosidl
+# robonix/service/map/save_map — snapshot the current SLAM map to disk (RPC).
+# Persists the live rtabmap database plus portable preview artifacts
+# (occupancy pgm/png, cloud pcd, meta.yaml) under {MAPPING_MAPS_DIR}/<map_id>/.
+# The database keeps receiving updates after the call — this is a durable,
+# loadable checkpoint, not a stop. Reuse the same <map_id> with load_map and
+# with scene's semantic map so the spatial and semantic maps stay aligned.
+string map_id      # stable id; sanitized to a filesystem-safe directory name
+string note        # optional human note recorded in meta.yaml (may be empty)
+---
+bool ok
+string map_id          # sanitized id actually written
+string database_path   # absolute path of the saved rtabmap.db
+string detail          # human-readable status / error
+```
+
+<a id="map-srv-switchmode-srv"></a>
+### SwitchMode `srv`
+
+`map/srv/SwitchMode.srv`
+
+```rosidl
+# robonix/service/map/switch_mode — flip the running SLAM between building and
+# localizing on the CURRENT map, without loading a different one (RPC).
+# The config's map_mode is only the startup pre-selection; this switches it at
+# runtime: build a map, switch to localization to test/use it, switch back to
+# mapping to extend it — all without re-deploying.
+string mode        # "mapping" (build/extend) | "localization" (relocalize, read-only)
+---
+bool ok
+string detail
+```
+
 ## memory
 
 <a id="memory-srv-compact-srv"></a>
@@ -1810,14 +1973,13 @@ bool success
 `navigation/srv/CancelNavigation.srv`
 
 ```rosidl
-# robonix/service/navigation/cancel — request cancellation of a
-# navigation goal (RPC). Empty `goal_id` cancels the current active
-# goal. The response uses the same `status_message` field name as
-# Navigate.srv for naming consistency across the namespace.
-string goal_id
+# robonix/service/navigation/navigate/cancel — request cancellation of a
+# navigation goal (RPC). Empty `run_id` cancels the current active
+# goal.
+string run_id
 ---
 bool accepted
-string status_message
+string detail
 ```
 
 <a id="navigation-srv-getnavigationstatus-srv"></a>
@@ -1826,12 +1988,12 @@ string status_message
 `navigation/srv/GetNavigationStatus.srv`
 
 ```rosidl
-# robonix/service/navigation/status — query status of a navigation goal (RPC)
-string goal_id
+# robonix/service/navigation/navigate/status — query status of a navigation goal (RPC)
+string run_id
 ---
 bool known
-string status
-bool terminal
+string state
+string detail
 ```
 
 <a id="navigation-srv-navigate-srv"></a>
@@ -1841,15 +2003,15 @@ bool terminal
 
 ```rosidl
 # robonix/service/navigation/navigate — goal-based navigation (RPC).
-# Returns the provider-allocated `goal_id` so callers can address the
-# goal in the sibling `status` / `cancel` contracts. status_message is
-# a free-form, human-readable description of accept/reject — never a
-# JSON envelope (callers should NOT parse it).
+# Returns an optional provider-allocated `run_id` so callers can address the
+# goal in the async sub-contracts `navigate/status` and `navigate/cancel`.
+# Empty run_id means those sub-contracts should target the most recent
+# navigation call.
 geometry_msgs/PoseStamped goal
 ---
 bool accepted
-string goal_id
-string status_message
+string run_id
+string detail
 ```
 
 <a id="navigation-msg-navigationstatus-msg"></a>
@@ -1902,7 +2064,9 @@ string plan_id
 string session_id
 
 uint32 round
-CapabilityCallResult[] results
+# Every node that reached a terminal state in this round (leaf and non-leaf),
+# as a full RtdlNodeState record — not just the leaf capability-call results.
+RtdlNodeState[] results
 bool any_failed
 ```
 
@@ -1954,6 +2118,7 @@ SessionInfo[] sessions
 
 ```rosidl
 # event_kind: 0=text_chunk 1=plan 2=batch_result 3=status 4=final_text
+#             5=node_state 6=task_state
 uint32 event_kind
 string session_id
 string text_chunk
@@ -1961,6 +2126,8 @@ Plan plan
 BatchResult batch_result
 SessionStatusEvent status
 string final_text
+RtdlNodeState node_state
+TaskStateEvent task_state
 ```
 
 <a id="pilot-msg-plan-msg"></a>
@@ -1994,6 +2161,39 @@ uint32[] children
 
 # Capability call payload for do nodes. Sequence and parallel leave this empty.
 CapabilityCall call
+
+# Stable identifier for this RTDL node, generated by Pilot from the RTDL plan.
+string op_id
+
+# Human-readable intent for this RTDL node.
+string description
+```
+
+<a id="pilot-msg-rtdlnodestate-msg"></a>
+### RtdlNodeState `msg`
+
+`pilot/msg/RtdlNodeState.msg`
+
+```rosidl
+string plan_id
+uint32 node_index
+uint32 node_kind
+uint32 state
+uint32 PENDING=0
+uint32 RUNNING=1
+uint32 SUCCEEDED=2
+uint32 FAILED=3
+uint32 CANCELED=4
+uint32 TIMEOUT=5
+uint32 PAUSED=6
+# RTDL non-leaf node result, like sequence or parallel.
+string operator_detail
+# RTDL leaf node result.
+CapabilityCallResult leaf_result
+# Stable identifier copied from Plan.nodes[node_index].
+string op_id
+# Human-readable intent copied from Plan.nodes[node_index].
+string description
 ```
 
 <a id="pilot-msg-sessioninfo-msg"></a>
@@ -2065,6 +2265,19 @@ string text
 uint8[] audio_data
 string context_json
 uint64 timestamp_ms
+```
+
+<a id="pilot-msg-taskstateevent-msg"></a>
+### TaskStateEvent `msg`
+
+`pilot/msg/TaskStateEvent.msg`
+
+```rosidl
+# The pilot's current overall task, forwarded to the chat for live display.
+# status: "in_progress" | "done" (empty until the LLM first sets a task).
+string goal
+string success_criterion
+string status
 ```
 
 ## rcl_interfaces

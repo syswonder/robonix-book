@@ -26,7 +26,7 @@ bash examples/webots/sim/start.sh
 # export WEBOTS_HEADLESS_MODE=auto
 # bash examples/webots/sim/start.sh
 
-# T2：Robonix（atlas + executor + pilot + 4 个 driver + nav2）
+# T2：Robonix 系统服务 + primitives / services / skills
 cd examples/webots
 export RMW_IMPLEMENTATION=rmw_zenoh_cpp
 export VLM_BASE_URL=https://api.openai.com/v1
@@ -38,7 +38,7 @@ rbnx boot
 
 > 仿真容器（Webots + ROS 2）不是 Robonix 包，它就是个 docker compose 栈。Robonix 不管它的生命周期；T1 终端 Ctrl-C 即可停。
 >
-> driver 进程（chassis、camera、lidar、nav2）跑在仿真容器**里面**——`rbnx boot` 通过 `docker exec robonix_tiago_sim ...` 把 Python driver 起在容器进程空间，让它们与 Webots 共享同一份 DDS graph。host 上不需要 ROS 2 环境。
+> driver 进程（chassis、camera、lidar、audio）跑在仿真容器**里面**——`rbnx boot` 通过 `docker exec robonix_tiago_sim ...` 把 Python driver 起在容器进程空间，让它们与 Webots 共享同一个 ROS 2 graph。mapping、nav2、scene 等服务可在各自容器里加入这个 graph；底层通信由 `RMW_IMPLEMENTATION` 选择的 RMW transport 承载（默认 Zenoh）。host 上不需要 ROS 2 环境。
 
 整个栈起来后开第三个终端：
 
@@ -69,17 +69,17 @@ rbnx chat        # ratatui TUI，直连 Pilot
 
 ```
 T+0     T1: bash sim/start.sh           # docker compose up，Webots GUI 弹出
-T+10s   sim:  Webots + ROS 2 + Nav2 全部 up，DDS graph 准备好
+T+10s   sim:  Webots + ROS 2 graph 就绪，RMW transport 准备好
 T+15s   T2: rbnx boot                 # 读 robonix_manifest.yaml
 T+15s   host: spawn robonix-atlas       # listen 50051
 T+16s   host: atlas RegisterService "robonix/system/atlas"   # self-register
 T+16s   host: spawn robonix-executor    # connect to atlas，RegisterService
 T+17s   host: spawn robonix-pilot       # 加载 memory + LLM（VLM 由环境变量配置，非 atlas 注册）
 T+18s   host: docker exec sim python chassis_driver/driver.py
-T+19s   sim:  chassis driver RegisterPrimitive + DeclareCapability (state, move) MCP
-T+19s   host: deploy 收到 register 通知 → 进入下一条 primitive
-T+20s   ...重复 camera / lidar / nav2...
-T+24s   host: ✓ 7 component(s) up
+T+19s   sim:  chassis driver RegisterPrimitive + DeclareCapability
+T+19s   host: deploy 收到 register 通知 → Driver(CMD_INIT/ACTIVATE) → 下一条 primitive
+T+20s   ...重复 camera / lidar / audio，然后启动 mapping / nav2 / memory / speech / voiceprint / explore...
+T+60s   host: 全部 manifest 组件 up（首次构建或冷启动会更久）
 T+25s   T3: rbnx caps                  # 看到全部能力
 T+25s   T3: rbnx chat                  # 直连 pilot SubmitTask
 T+26s   user: "what can you see?"      # → pilot → vlm → tool_calls
@@ -87,4 +87,4 @@ T+27s   pilot: read_file CAPABILITY.md（懒加载） → camera_snapshot →
                  executor → docker exec MCP HTTP → driver → image
 ```
 
-第一次部署慢主要在仿真容器拉镜像 + Webots 启动。后续 deploy 在已有容器上 docker exec，从 `rbnx boot` 到全部 ready 通常 5–8 秒。
+第一次部署慢主要在仿真容器拉镜像、Webots 启动、远端包构建和 scene 镜像/权重缓存。后续在镜像与 cache 已就绪时，`rbnx boot` 主要是启动进程、注册 capability、驱动 lifecycle，并等待 ROS 2 / service readiness。
