@@ -177,7 +177,7 @@ capabilities:
   - name: robonix/primitive/chassis/odom
 ```
 
-`package.name`（如 `com.vendor.my_chassis`）是包的发行标识，与运行时的原语 ID 无关，可保持骨架默认值。
+`package.name`（如 `robonix.primitive.acme.ranger_mini.chassis`）是包的发布名，与运行时的原语 ID 无关。准备提交到社区 catalog 的包还需要在 `package` 段填写 `version`、`description`、`tags`、`maintainers`；`maintainers` 每项使用 `Name <email@domain>` 格式。
 
 ---
 

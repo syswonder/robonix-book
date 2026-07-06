@@ -52,4 +52,5 @@
   - [本体接入指南](integration-guide/vendor-onboarding.md)
   - [开发者指南](developer-guide.md)
   - [Package 与部署规范](integration-guide/packaging-spec.md)
+  - [Package Catalog 发布流程](integration-guide/package-catalog.md)
   - [Package 构建与代码生成](integration-guide/build-and-codegen.md)

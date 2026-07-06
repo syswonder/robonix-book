@@ -113,7 +113,7 @@ rbnx chat             # 试 "say hello to alice"
 
 **静态构建/分发单元**——目录、manifest、（可选）docker。运行时启动为一个能力提供者。
 
-`package.name` 用反向域名（`com.org.foo`）做发布身份；能力提供者 id 是运行时身份，由 Python 源里 `Primitive/Service/Skill(id="...")` 声明。两者不必相同。rbnx boot 在 spawn 包之后 poll atlas 拿到新注册的能力提供者，跟 `robonix_manifest.yaml` 里挂这个包的 `name:` 对账（两处必须一致）。包结构详见 §6。
+`package.name` 是 package 的发布名（例如 `robonix.service.navigation` 或 `robonix.primitive.intel.realsense_d435i.camera`）；能力提供者 id 是运行时身份，由 Python 源里 `Primitive/Service/Skill(id="...")` 声明。两者不必相同。rbnx boot 在 spawn 包之后 poll atlas 拿到新注册的能力提供者，跟 `robonix_manifest.yaml` 里挂这个包的 `name:` 对账（两处必须一致）。包结构详见 §6。
 
 ### 3.4 Atlas 目录服务
 
@@ -274,9 +274,12 @@ primitive 包的目录形态和 service 一样。**怎么把硬件 / 厂商 SDK 
 ```yaml
 manifestVersion: 1
 package:
-  name: com.example.template.my_navigate    # 反向域名，发布身份；与运行时 id 是两码事
+  name: robonix.service.navigation.example  # 发布名；与运行时 id 是两码事
   version: 0.1.0
-  vendor: example
+  description: Example navigation service package.
+  tags: [service, navigation, example]
+  maintainers:
+    - Example Maintainer <maintainer@example.com>
   license: MIT
 build: bash scripts/build.sh
 start: bash scripts/start.sh
@@ -692,8 +695,12 @@ if __name__ == "__main__":
 ```yaml
 manifestVersion: 1
 package:
-  name: com.org.my_navigate
+  name: robonix.service.navigation.example
   version: 0.1.0
+  description: Example navigation service package.
+  tags: [service, navigation, example]
+  maintainers:
+    - Example Maintainer <maintainer@example.com>
 build: bash scripts/build.sh
 start: bash scripts/start.sh
 # 全部从 robonix 全局 capabilities/ 引用，自己不再 declare 新 contract
@@ -1521,9 +1528,11 @@ def asr_stream(request_iterator, ctx):
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---|---|
 | `manifestVersion` | int | 是 | 当前 `1` |
-| `package.name` | string | 是 | 反向域名 |
+| `package.name` | string | 是 | package 发布名，例如 `robonix.service.navigation` |
 | `package.version` | string | 是 | semver |
-| `package.vendor` | string | 否 | |
+| `package.description` | string | 是 | catalog 和文档展示用的一句话描述 |
+| `package.tags` | list[string] | 是 | catalog 过滤标签 |
+| `package.maintainers` | list[string] | 是 | 每项格式为 `Name <email@domain>` |
 | `package.license` | string | 否 | SPDX |
 | `build` | string | 是 | shell 命令 |
 | `start` | string | 是 | shell 命令 |

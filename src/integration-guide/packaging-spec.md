@@ -120,10 +120,12 @@ skill:
 manifestVersion: 1
 
 package:
-  name: com.robonix.service.slam.fastlio2
+  name: robonix.service.mapping.fastlio2
   version: 0.1.0
-  vendor: syswonder
   description: FASTLIO2 3D LiDAR-Inertial SLAM + PGO
+  tags: [service, mapping, slam, fastlio2, ros2]
+  maintainers:
+    - wheatfox <wheatfox17@icloud.com>
   license: MulanPSL-2.0
 
 build: bash scripts/build.sh     # build 入口
@@ -136,13 +138,27 @@ capabilities:
   - name: robonix/service/map/save_map
   - name: robonix/service/map/switch_mode
 
-depends: # 库依赖，即需要用到另一个库的代码/数据（如model）
-  - name: com.robonix.primitive.sensor.lidar3d.mid360
+depends: # 库依赖，即需要用到另一个库的代码/数据（如 model）
+  - name: robonix.primitive.livox.mid360.lidar
     path: ../primitive/sensor_lidar3d_mid360
-  - name: com.robonix.system.xx
+  - name: robonix.system.example
     url: https://github.com/syswonder/robonix-xx.git
     branch: v0.1
 ```
+
+`package` 段是包的发布元数据。准备进入社区 catalog 的包必须填写：
+
+| 字段 | 必填 | 说明 |
+|---|---|---|
+| `package.name` | 是 | package 发布名，必须与 catalog 的 `name` 一致 |
+| `package.version` | 是 | package 版本 |
+| `package.description` | 是 | catalog 页面和 README 表格的一句话描述 |
+| `package.tags` | 是 | 字符串列表，用于 catalog 过滤和分类 |
+| `package.maintainers` | 是 | 字符串列表，每项格式为 `Name <email@domain>` |
+| `package.license` | 否 | SPDX license 字符串 |
+
+旧字段 `package.vendor` 和顶层 `capability_id` 不再使用。维护者写
+`package.maintainers`；能力身份由 `capabilities[].name` 明确列出。
 
 ### 包里读 config
 
