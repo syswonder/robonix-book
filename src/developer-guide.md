@@ -896,7 +896,7 @@ service:
       max_linear: 0.5
 
   - name: mapping                    # 远程 git 包：rbnx build 阶段克隆到 rbnx-boot/cache/
-    url: https://github.com/enkerewpo/mapping_rbnx
+    url: https://github.com/syswonder/service-map-rbnx
     branch: main
     config:
       algo: rtabmap
@@ -904,7 +904,7 @@ service:
 # ─── skill: LLM/状态机触发的复合任务 ───
 skill:
   - name: explore
-    url: https://github.com/enkerewpo/explore_rbnx
+    url: https://github.com/syswonder/skill-explore-rbnx
     branch: main
     config:
       timeout_s: 600

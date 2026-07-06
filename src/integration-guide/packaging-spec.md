@@ -87,7 +87,7 @@ service:
       tts_voice: zh-CN-XiaoxiaoNeural
 
   - name: mapping
-    url: https://github.com/enkerewpo/mapping_rbnx
+    url: https://github.com/syswonder/service-map-rbnx
     branch: main
     config:
       algo: rtabmap
@@ -101,7 +101,7 @@ service:
 
 skill:
   - name: explore
-    url: https://github.com/enkerewpo/explore_rbnx
+    url: https://github.com/syswonder/skill-explore-rbnx
     branch: main
     config:
       explore_mode: frontier

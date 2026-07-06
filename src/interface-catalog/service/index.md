@@ -6,8 +6,8 @@
 
 | 域 | 覆盖 | 能力约定数 | 默认参考实现 | 文档参考 |
 |----|------|--------|---------|---------|
-| [空间地图 map](map.md) | SLAM 输出：占据栅格、位姿、点云、里程 | 5 | [`mapping_rbnx`](https://github.com/enkerewpo/mapping_rbnx)（上游，rtabmap） | [README](https://github.com/enkerewpo/mapping_rbnx/blob/main/README.md) · [CAPABILITY](https://github.com/enkerewpo/mapping_rbnx/blob/main/CAPABILITY.md) |
-| [导航 navigation](navigation.md) | 目标式导航：下发目标、查状态、取消 | 4 | [`nav2_wrapper_rbnx`](https://github.com/enkerewpo/nav2_wrapper_rbnx)（上游，封装 Nav2） | [README](https://github.com/enkerewpo/nav2_wrapper_rbnx/blob/main/README.md) · [CAPABILITY](https://github.com/enkerewpo/nav2_wrapper_rbnx/blob/main/CAPABILITY.md) |
+| [空间地图 map](map.md) | SLAM 输出：占据栅格、位姿、点云、里程 | 5 | [`service-map-rbnx`](https://github.com/syswonder/service-map-rbnx)（上游，rtabmap） | [README](https://github.com/syswonder/service-map-rbnx/blob/main/README.md) · [CAPABILITY](https://github.com/syswonder/service-map-rbnx/blob/main/CAPABILITY.md) |
+| [导航 navigation](navigation.md) | 目标式导航：下发目标、查状态、取消 | 4 | [`service-navigation-rbnx`](https://github.com/syswonder/service-navigation-rbnx)（上游，封装 Nav2） | [README](https://github.com/syswonder/service-navigation-rbnx/blob/main/README.md) · [CAPABILITY](https://github.com/syswonder/service-navigation-rbnx/blob/main/CAPABILITY.md) |
 | [语音 speech](speech.md) | ASR / TTS / 对话，一元与流式 | 8 | `services/speech` | [README](https://github.com/syswonder/robonix/blob/main/services/speech/README.md) |
 | [声纹 voiceprint](voiceprint.md) | 注册、识别、列举、删除 | 4 | `services/voiceprint` | [README](https://github.com/syswonder/robonix/blob/main/services/voiceprint/README.md) |
 | [记忆 memory](memory.md) | 长期记忆的检索、写入、压缩归纳 | 3 | `services/memsearch` | [README](https://github.com/syswonder/robonix/blob/main/services/memsearch/README.md) |

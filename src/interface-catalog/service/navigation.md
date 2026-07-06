@@ -15,6 +15,6 @@
 
 `navigate(goal: geometry_msgs/PoseStamped)` 返回 provider 分配的 `run_id`，消费方拿它去 `navigate/status` / `navigate/cancel` 寻址同一个目标。`detail` 只是一句人类可读的说明（接受/拒绝的原因），不是结构化数据，消费方别去解析它的内容。
 
-参考实现：[`nav2_wrapper_rbnx`](https://github.com/enkerewpo/nav2_wrapper_rbnx)（上游仓库）——封装标准 [Nav2](https://navigation.ros.org/) 栈，把 `navigate`/`navigate/status`/`navigate/cancel` 接到 Nav2 的 `navigate_to_pose` action；输入话题（`/map`、`/odom`、`/scan`）全部按能力约定经 atlas 发现，不硬编码本体。`sim` 参数 profile 在 odom 帧用滚动窗口 costmap 导航，只需 odom + 2D 雷达、不依赖 SLAM 的 `map→odom` TF，因此能直接在 webots 跑通；带 SLAM 定位的部署用 `slam`/`default` profile（map 帧 + AMCL）。
+参考实现：[`service-navigation-rbnx`](https://github.com/syswonder/service-navigation-rbnx)（上游仓库）——封装标准 [Nav2](https://navigation.ros.org/) 栈，把 `navigate`/`navigate/status`/`navigate/cancel` 接到 Nav2 的 `navigate_to_pose` action；输入话题（`/map`、`/odom`、`/scan`）全部按能力约定经 atlas 发现，不硬编码本体。`sim` 参数 profile 在 odom 帧用滚动窗口 costmap 导航，只需 odom + 2D 雷达、不依赖 SLAM 的 `map→odom` TF，因此能直接在 webots 跑通；带 SLAM 定位的部署用 `slam`/`default` profile（map 帧 + AMCL）。
 
-> 文档参考：[README（完整部署指南：3 种部署目标 / 生命周期 / params profile / DDS·rmem 调优）](https://github.com/enkerewpo/nav2_wrapper_rbnx/blob/main/README.md) · [CAPABILITY.md（能力面 + `config:` 字段）](https://github.com/enkerewpo/nav2_wrapper_rbnx/blob/main/CAPABILITY.md)
+> 文档参考：[README（完整部署指南：3 种部署目标 / 生命周期 / params profile / DDS·rmem 调优）](https://github.com/syswonder/service-navigation-rbnx/blob/main/README.md) · [CAPABILITY.md（能力面 + `config:` 字段）](https://github.com/syswonder/service-navigation-rbnx/blob/main/CAPABILITY.md)
