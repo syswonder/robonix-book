@@ -59,11 +59,6 @@ capabilities:
 | `package.maintainers` | 是 | 字符串列表，每项必须是 `Name <email@domain>` |
 | `package.license` | 否 | SPDX license 字符串 |
 
-不要再写旧字段：
-
-- `package.vendor`：已废弃。维护者和联系方式使用 `package.maintainers`。
-- `capability_id`：已废弃。能力由 `capabilities[].name` 明确列出。
-
 ## 向 catalog 提交
 
 Catalog 的人工输入只有 `catalog.yaml`：
