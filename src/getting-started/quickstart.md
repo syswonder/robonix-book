@@ -92,6 +92,47 @@ rbnx build
 rbnx boot
 ```
 
+仿真启动脚本现在支持多个内置 world，可直接切换：
+
+```bash
+bash examples/webots/sim/start.sh --world office.wbt
+bash examples/webots/sim/start.sh --world apartment.wbt
+bash examples/webots/sim/start.sh --world complete_apartment.wbt
+bash examples/webots/sim/start.sh --world break_room.wbt
+bash examples/webots/sim/start.sh --world kitchen.wbt
+```
+
+也可以提前导出环境变量：
+
+```bash
+export ROBONIX_WEBOTS_WORLD=break_room.wbt
+bash examples/webots/sim/start.sh
+```
+
+`office.wbt` 是默认 quickstart world，镜像里已经带了它需要的 Webots
+asset seed。切到 `apartment.wbt`、`complete_apartment.wbt`、`break_room.wbt`
+或 `kitchen.wbt` 前，建议先显式下载一次 Cyberbotics 官方完整离线 asset
+包：
+
+```bash
+ROBONIX_WEBOTS_DOWNLOAD_ALL_ASSETS=1 \
+  bash examples/webots/sim/start.sh --world apartment.wbt
+```
+
+这会从 Webots GitHub release 下载 `assets-R2025a.zip`，默认通过
+`https://ghfast.top/` 加速，并解压到持久化的 `webots_cache` Docker volume。
+下载完成后会写 marker，后续切换非 office world 会直接复用缓存，不再重复下载。
+如需换源，可设置 `ROBONIX_WEBOTS_ASSETS_MIRROR` 或
+`ROBONIX_WEBOTS_ASSETS_URL`。
+
+当前内置 world 及缩略图如下：
+
+|  |  |
+|---|---|
+| `office.wbt`<br>![office](https://raw.githubusercontent.com/syswonder/robonix/dev/examples/webots/sim/thumbnails/office.jpg) | `apartment.wbt`<br>![apartment](https://raw.githubusercontent.com/syswonder/robonix/dev/examples/webots/sim/thumbnails/apartment.jpg) |
+| `complete_apartment.wbt`<br>![complete apartment](https://raw.githubusercontent.com/syswonder/robonix/dev/examples/webots/sim/thumbnails/complete_apartment.jpg) | `break_room.wbt`<br>![break room](https://raw.githubusercontent.com/syswonder/robonix/dev/examples/webots/sim/thumbnails/break_room.jpg) |
+| `kitchen.wbt`<br>![kitchen](https://raw.githubusercontent.com/syswonder/robonix/dev/examples/webots/sim/thumbnails/kitchen.jpg) |  |
+
 T1 不是 Robonix 包——它就是个 docker compose 栈。Robonix 不管它的生命周期。
 
 T2 的 `rbnx boot` 读 `examples/webots/robonix_manifest.yaml`，按声明顺序拉起所有组件。当前 webots 部署一共 15 个：
