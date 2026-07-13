@@ -115,7 +115,7 @@ IDL 路径解析规则：
 - **官方 TOML**（在 robonix 源码 `capabilities/` 里）：`[contract] idl = "lidar/srv/Foo.srv"` → 去 `capabilities/lib/lidar/srv/Foo.srv` 找
 - **包内 TOML**（在你 package 的 `capabilities/` 里）：`[contract] idl = "my_custom/srv/Foo.srv"` → 去**包的 `capabilities/lib/my_custom/srv/Foo.srv`** 找
 
-atlas 对包内 contract id **不强制**校验前缀；只要 namespace 跟能力提供者的 namespace 一致（`DeclareCapability` 会校验），随便用 `myorg/...` 前缀都行——atlas 只在 contract 注册表里找不到时 log 一条 debug，不影响功能。
+能力提供者的 namespace 是主分类，不是授权边界。普通 contract id 应使用该 namespace 前缀；`DeclareCapability` 对不一致会接受并记录 warning。共享 contract 可在 TOML 中设置 `cross_namespace = true`，由不同 namespace 的能力提供者实现而不产生提示。
 
 ## 常用命令速查
 

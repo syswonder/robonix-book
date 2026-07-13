@@ -11,7 +11,7 @@ Atlas 是 Robonix 的**唯一控制平面**——所有进程（不管是 Roboni
 能力提供者字段：
 
 - `id`：能力提供者在 atlas 里的唯一 id（如 `tiago_chassis` / `mapping` / `explore`）。空值时 atlas 分配 `com.robonix.ephemeral.<uuid>`。
-- `namespace`：归属命名空间前缀（如 `robonix/primitive/chassis`）。该 provider 提供的所有 capability 的 `contract_id` 必须在此前缀下，atlas 强制校验。
+- `namespace`：主命名空间前缀（如 `robonix/primitive/chassis`），用于分类、过滤和诊断，不是授权边界。普通 capability 应在此前缀下；共享 contract 可声明 `cross_namespace = true`。其它不一致会被接受并标记 `namespace_mismatch`，不会阻断运行。
 - `capability_md_path`：可选。指向包根 `CAPABILITY.md` 的绝对路径。Pilot 把 path 列入 system prompt，LLM 通过 executor `read_file` 按需懒加载。
 
 **capability** 是能力提供者暴露的一条接口：`(contract_id, transport, endpoint, params, description)`。capability 没有自己的 id，反向通过 `(provider_id, contract_id, transport)` 唯一寻址。`provider_id` / `provider_kind` 直接拷在每条 capability 上，consumer 拿到 flat list 时不需要回查 provider 也能立刻定位。
@@ -83,7 +83,7 @@ ATLAS.declare_capability(
 # 心跳由 robonix_api Provider 框架后台维护
 ```
 
-contract_id（`robonix/primitive/chassis/move`、`robonix/primitive/chassis/odom`）必须在 namespace `robonix/primitive/chassis` 前缀下，atlas 在 `DeclareCapability` 时会校验。
+普通 contract_id（`robonix/primitive/chassis/move`、`robonix/primitive/chassis/odom`）应在 namespace `robonix/primitive/chassis` 前缀下。`DeclareCapability` 对不一致只记录 warning 并返回诊断；设置了 `cross_namespace = true` 的共享 contract 不产生该提示。
 
 ## capability 文档懒加载
 
