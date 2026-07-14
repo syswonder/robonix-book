@@ -594,7 +594,7 @@ exec docker run --rm --network host --ipc host \
 
 到这里你交付的是一个原语包。把它跑起来还需要一份部署清单 `robonix_manifest.yaml`——它列出"这台机器上要启动哪些系统组件、哪些设备、哪些服务"，由 `rbnx init`（步骤 2）在项目根目录生成。
 
-如果这份整机部署还要发布到 Package Catalog，请在部署清单顶层填写 `catalog.name`、`catalog.version`、`catalog.description`、`catalog.tags` 和 `catalog.maintainers`。整机部署不需要额外创建 `package_manifest.yaml`；完整格式和提交流程见 [Package Catalog 发布流程](package-catalog.md)。
+如果这份整机部署还要发布到 Package Catalog，请在部署清单顶层填写 `catalog.name`、`catalog.version`、`catalog.description`、`catalog.license`、`catalog.tags` 和 `catalog.maintainers`。整机部署不需要额外创建 `package_manifest.yaml`；完整格式和提交流程见 [Package Catalog 发布流程](package-catalog.md)。
 
 > 谁来写这份清单？ 通常是集成方/部署方（把你的包和其它组件组装成一台完整机器人的人），而不是只交付一个设备驱动的硬件厂商。作为厂商你只需提供原语包 + 告诉集成方"在 `primitive:` 下加一条指向我的包"。本步是为了让你能在本地自测，也让你看清自己的包在部署里长什么样。
 

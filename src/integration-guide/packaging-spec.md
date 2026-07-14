@@ -41,6 +41,7 @@ catalog:
   name: robonix.robot.example.my_robot
   version: 0.1.0
   description: Robonix deployment for My Robot.
+  license: Apache-2.0
   tags: [robot, deploy, example]
   maintainers:
     - Example Maintainer <maintainer@example.com>
@@ -69,7 +70,10 @@ system:
       api_key:  ${VLM_API_KEY}
       model:    ${VLM_MODEL}
       api_format: openai
-  scene:    { log: info }
+  scene:
+    log: info
+    # 多相机部署：此 provider 必须同时提供 camera/rgb 与 camera/depth。
+    camera_provider_id: front_rgbd_camera
 
 # 硬件。每个条目是一个 instance（设备）。
 primitive:
