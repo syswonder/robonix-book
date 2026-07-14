@@ -215,12 +215,12 @@ bash examples/webots/sim/stop.sh   # 一键 kill 容器内 driver + rbnx boot + 
 这不是 quickstart 主流程，只用于开发者调试单个包或接入外部已运行的系统服务。
 
 ```bash
-# 跳过 system 块：要求 atlas / executor / pilot / liaison 等已经由外部进程启动
+# 跳过 system 块：要求 atlas / executor / soma / vitals / pilot / liaison 等已经由外部进程启动
 rbnx boot --skip-system
 
 # 单独起一个包：要求 atlas 已运行；config 与 robonix_manifest.yaml 里的 config 块同形
 rbnx start -p ./primitives/tiago_chassis --config tiago_chassis.local.yaml
-rbnx start -p ./primitives/tiago_chassis --set can_port=/dev/can0 --set max_speed=0.4
+rbnx start -p ./primitives/tiago_chassis --set odom_topic=/odom --set twist_in_topic=/cmd_vel
 ```
 
 `rbnx start` 会运行该包的 `start` 命令；如果包注册了 `*/driver` capability，并且传入了 `--config` / `--set`，配置会作为 `Driver(CMD_INIT, config_json)` 注入 provider。

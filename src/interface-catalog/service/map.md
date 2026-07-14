@@ -26,6 +26,8 @@
 
 输入侧：map 服务消费 `primitive/lidar/lidar3d` + `primitive/imu/imu`（或 2D `lidar` + `chassis/odom`，可选 `camera/rgb` + `camera/depth` 做视觉融合），通过 atlas 按能力约定发现，不硬编码 topic 名。
 
-参考实现：[`service-map-rbnx`](https://github.com/syswonder/service-map-rbnx)（上游仓库）——默认走 rtabmap 图优化 SLAM（也支持 dlio / fastlio2）；`config:` 里 `sensors:` 声明本体有哪些传感器（`lidar2d`/`lidar3d`/`rgb`/`depth`/`imu`/`odom`，全部按能力约定经 atlas 解析），`map_id` 开启命名地图持久化（rtabmap.db + 离线可预览的 pgm/png/pcd），`map_mode: localization` 加载已存地图重定位、保证 map 帧原点跨重启稳定（供 scene 按 `map_id` 重锚语义对象）。
+参考实现：[`service-map-rbnx`](https://github.com/syswonder/service-map-rbnx)（上游仓库）默认运行 RTAB-Map 图优化 SLAM。Robot deployment 保存完整 `config/rtabmap_params.yaml`，在 Mapping 条目的 `config.params_file` 中引用；共享仓库只提供 `config/rtabmap_params.template.yaml`。`sensor_providers` 按角色绑定 `lidar2d`/`lidar3d`/`rgb`/`depth`/`imu`/`odom` provider，避免多传感器本体选错实例。`map_id` 开启命名地图持久化，`map_mode: localization` 加载已存地图重定位并保持 map 帧原点跨重启稳定。
 
-> 文档参考：[README（部署 + 3 种构建目标）](https://github.com/syswonder/service-map-rbnx/blob/main/README.md) · [CAPABILITY.md（`config:` / `sensors:` 字段 + 地图持久化）](https://github.com/syswonder/service-map-rbnx/blob/main/CAPABILITY.md)
+> 文档参考：[README（部署、`params_file`、传感器绑定与兼容迁移）](https://github.com/syswonder/service-map-rbnx/blob/main/README.md) · [`config.spec`（全部 instance 配置、类型、默认值与约束）](https://github.com/syswonder/service-map-rbnx/blob/main/config.spec) · [CAPABILITY.md（能力面与地图持久化）](https://github.com/syswonder/service-map-rbnx/blob/main/CAPABILITY.md)
+
+RTAB-Map 参数名、默认值和上游说明以 [`Parameters.h`](https://github.com/introlab/rtabmap/blob/master/corelib/include/rtabmap/core/Parameters.h) 为准。以 service 提供的 template 为起点，在 deployment 的 YAML 中增加或修改本体所需参数；运行时只读取这份 deployment 文件，不隐式叠加上游配置。

@@ -610,6 +610,7 @@ primitive:
 
 - 一条 = 一台设备。 同一个包可以被列多条来描述多台同型号设备——各用不同的 `name` 和 `config`（例如两台底盘 `chassis_left` / `chassis_right`，串口不同）。这就是"硬件实例"在清单里的表达方式。
 - `config` 是这台实例的私有参数（串口、设备号、速度上限等），启动时序列化成 JSON、经 `Driver(CMD_INIT, config_json)` 注入到你 `on_init(cfg)` 的字典。放什么由你的包决定。
+- 在 `package_manifest.yaml` 旁增加 `config.spec`，用 YAML 逐字段写清可接受配置的类型、单位、运行时默认值、含义和约束。它是给集成方和工具阅读的说明，不参与运行时解析；没有配置字段时写 `config: {}`。可直接参考 [`template-rbnx`](https://github.com/syswonder/template-rbnx) 中 Primitive、Service 和 Skill 的三份示例。
 - 唯一的硬性一致要求：条目的 `name` 必须与 `main.py` 里 `Primitive(id=...)` 完全相同——`rbnx boot` 据此确认进程注册成功，不一致会启动失败。`package_manifest.yaml` 的 `package.name` 与此无关。
 
 构建、启动、验证：

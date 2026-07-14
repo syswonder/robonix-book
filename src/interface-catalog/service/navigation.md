@@ -15,6 +15,8 @@
 
 `navigate(goal: geometry_msgs/PoseStamped)` 返回 provider 分配的 `run_id`，消费方拿它去 `navigate/status` / `navigate/cancel` 寻址同一个目标。`detail` 只是一句人类可读的说明（接受/拒绝的原因），不是结构化数据，消费方别去解析它的内容。
 
-参考实现：[`service-navigation-rbnx`](https://github.com/syswonder/service-navigation-rbnx)（上游仓库）——封装标准 [Nav2](https://navigation.ros.org/) 栈，把 `navigate`/`navigate/status`/`navigate/cancel` 接到 Nav2 的 `navigate_to_pose` action；输入话题（`/map`、`/odom`、`/scan`）全部按能力约定经 atlas 发现，不硬编码本体。`sim` 参数 profile 在 odom 帧用滚动窗口 costmap 导航，只需 odom + 2D 雷达、不依赖 SLAM 的 `map→odom` TF，因此能直接在 webots 跑通；带 SLAM 定位的部署用 `slam`/`default` profile（map 帧 + AMCL）。
+参考实现：[`service-navigation-rbnx`](https://github.com/syswonder/service-navigation-rbnx)（上游仓库）封装标准 [Nav2](https://navigation.ros.org/) 栈，把 `navigate`/`navigate/status`/`navigate/cancel` 接到 Nav2 的 `navigate_to_pose` action；输入（map、odom、scan）按能力约定和 `provider_ids` 解析。Robot deployment 保存完整 `config/nav2_params.yaml`，通过 `config.params_file` 引用，并可用 `bt_xml_file` 指定本体自己的 BehaviorTree。共享仓库只保留 `config/nav2_params.example.yml`，不保存机器人型号 profile。
 
-> 文档参考：[README（完整部署指南：3 种部署目标 / 生命周期 / params profile / DDS·rmem 调优）](https://github.com/syswonder/service-navigation-rbnx/blob/main/README.md) · [CAPABILITY.md（能力面 + `config:` 字段）](https://github.com/syswonder/service-navigation-rbnx/blob/main/CAPABILITY.md)
+> 文档参考：[README（部署目标、`params_file`、BehaviorTree 与兼容迁移）](https://github.com/syswonder/service-navigation-rbnx/blob/main/README.md) · [`config.spec`（全部 instance 配置、类型、默认值与约束）](https://github.com/syswonder/service-navigation-rbnx/blob/main/config.spec) · [CAPABILITY.md（能力面与工具接口）](https://github.com/syswonder/service-navigation-rbnx/blob/main/CAPABILITY.md)
+
+各 server/plugin 参数见 Nav2 官方 [Configuration Guide](https://docs.nav2.org/configuration/index.html)，本体尺寸、footprint、costmap、planner/controller 等实机调优见 [Tuning Guide](https://docs.nav2.org/tuning/index.html)。

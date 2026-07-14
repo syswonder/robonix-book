@@ -18,7 +18,7 @@
 底盘有两个运动入口，分工明确：
 
 - `move`（gRPC，单发离散命令）：一次 `forward_m` / `rotate_deg`，或带 `duration_sec` 封顶的速度命令。驱动收到后在 `cmd_vel` 上发一小段 `Twist` 再停——适合"前进 1 m""转 30°"这种离散动作（snapshot → reason → move → snapshot）。`move` 刻意不暴露为 MCP：它下发的是未经避障的瞬时速度，不挂到大模型工具列表上；要带路径规划的运动，走 `service/navigation/navigate`。
-- `twist_in`（ROS 2 topic，`geometry_msgs/Twist`）：连续速度流入口。导航控制器（`simple_nav` 的 nav 节点、Nav2 controller）和 teleop 把 `cmd_vel` 发到这里，底盘连续跟随。注意导航**不是**通过 gRPC 调 `move`，而是往 `twist_in` 发 `Twist`。
+- `twist_in`（ROS 2 topic，`geometry_msgs/Twist`）：连续速度流入口。导航控制器（例如 Nav2 controller）和 teleop 把 `cmd_vel` 发到这里，底盘连续跟随。注意导航**不是**通过 gRPC 调 `move`，而是往 `twist_in` 发 `Twist`。
 
 > **历史变更**：早期版本有 `robonix/primitive/chassis/state` 能力约定，返回一个 `RobotState` 巨型消息（`base_pose + joint_state + tcp_pose + gripper`）。`base_pose` 字段实际上是 AMCL 的输出，让底盘原语去依赖一个上层定位服务——这是分层倒置（原语应该是叶子节点）。该能力约定已删除，消费者改为：
 >
