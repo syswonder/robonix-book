@@ -26,10 +26,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      # The robonix commit the API docs are generated from. Bump this to the
-      # robonix commit these docs target — ideally the same commit stamped
-      # into reference/contracts.md (run `rbnx docs` there).
-      ROBONIX_REF: 953df33651e639ce40b8b824726da6e9d67073da
+      # Developer documentation follows the active integration branch.
+      ROBONIX_REF: dev-next
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust + mdBook toolchain

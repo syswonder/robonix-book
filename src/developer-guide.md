@@ -2,7 +2,7 @@
 
 [toc]
 
-**本指南内容所对应的上游 robonix 仓库 commit**：[`syswonder/robonix:dev@0ba783d`](https://github.com/syswonder/robonix/commit/0ba783d)（2026-05-12 dev 分支 HEAD）。
+**本指南对应的开发分支**：[`syswonder/robonix:dev-next`](https://github.com/syswonder/robonix/tree/dev-next)。接口和配置以该分支当前实现为准。
 
 **面向**：写 service / skill / primitive 的开发者。
 
@@ -283,12 +283,20 @@ package:
   license: MIT
 build: bash scripts/build.sh
 start: bash scripts/start.sh
+stop: bash scripts/stop.sh                  # 可选：包自有的优雅清理命令
 capabilities:                                # 要 declare 的 contract（全 / 本地都可，codegen 合并搜索）
   - name: robonix/service/navigation/driver
   - name: robonix/service/navigation/navigate
   - name: robonix/service/navigation/navigate/status
   - name: robonix/service/navigation/navigate/cancel
+
+depends:                                     # 可选：构建或导入时使用的包依赖
+  - name: robonix.primitive.example.chassis
+    url: https://github.com/example/primitive-example-chassis-rbnx
+    branch: main
 ```
+
+旧 manifest 中的 `package.vendor` 在 `dev-next` 继续兼容，但新 package 不需要填写。Catalog 的归属与维护信息由 `package.name`、`package.tags` 和 `package.maintainers` 表达。
 
 skill 会同时引用全局 lifecycle contract 和自定义 contract——见 `skills/say_hello/package_manifest.yaml`。
 
@@ -701,6 +709,7 @@ package:
   tags: [service, navigation, example]
   maintainers:
     - Example Maintainer <maintainer@example.com>
+  license: MIT
 build: bash scripts/build.sh
 start: bash scripts/start.sh
 # 全部从 robonix 全局 capabilities/ 引用，自己不再 declare 新 contract
@@ -846,7 +855,16 @@ template_rbnx/
 
 ```yaml
 manifestVersion: 1
-name: my-robot                       # 部署名（任意）
+name: my-robot                       # 运行时部署名
+
+# 发布到 Package Catalog 时使用的整机元数据。
+catalog:
+  name: robonix.robot.example.my_robot
+  version: 0.1.0
+  description: Robonix deployment for My Robot.
+  tags: [robot, deploy, example]
+  maintainers:
+    - Example Maintainer <maintainer@example.com>
 
 env:                                 # 可选：部署级 env（一般留空，env 在外层 export）
 
@@ -898,6 +916,7 @@ service:
   - name: mapping                    # 远程 git 包：rbnx build 阶段克隆到 rbnx-boot/cache/
     url: https://github.com/syswonder/service-map-rbnx
     branch: main
+    manifest: package_manifest.jetson-native.yaml # 可选：选择包内的目标平台 manifest
     config:
       algo: rtabmap
 
@@ -909,6 +928,8 @@ skill:
     config:
       timeout_s: 600
 ```
+
+`name` 是本次运行的部署名；`catalog.name` 是整机部署仓库发布到 Package Catalog 时的稳定名称。Robot deployment 不需要额外创建 `package_manifest.yaml`。完整发布流程见 [Package Catalog 发布流程](integration-guide/package-catalog.md)。
 
 字段速查见 §16。
 
@@ -1534,10 +1555,13 @@ def asr_stream(request_iterator, ctx):
 | `package.description` | string | 是 | catalog 和文档展示用的一句话描述 |
 | `package.tags` | list[string] | 是 | catalog 过滤标签 |
 | `package.maintainers` | list[string] | 是 | 每项格式为 `Name <email@domain>` |
-| `package.license` | string | 否 | SPDX |
-| `build` | string | 是 | shell 命令 |
+| `package.license` | string | 是 | SPDX license 字符串 |
+| `package.vendor` | string | 否 | 旧 manifest 兼容字段；新 package 不需要填写，也不作为 Catalog 元数据来源 |
+| `build` | string | 否 | 构建 shell 命令；预构建包可省略 |
 | `start` | string | 是 | shell 命令 |
-| `capabilities[]` | list | 是 | `[{name: "robonix/.../X"}]` |
+| `stop` | string | 否 | 包自有的优雅清理 shell 命令 |
+| `capabilities[]` | list | 否 | 对外声明的 contract；每项至少包含 `name`，包内自定义 contract 可加 `path` |
+| `depends[]` | list | 否 | 构建/导入依赖；每项包含 `name`，并可选 `path` 或 `url` + `branch` |
 
 ### 16.2 `robonix_manifest.yaml`
 
@@ -1546,7 +1570,13 @@ def asr_stream(request_iterator, ctx):
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `manifestVersion` | int | `1` |
-| `name` | string | 部署名（任意） |
+| `name` | string | 运行时部署名 |
+| `catalog` | object | Robot deployment 的发布元数据；发布到 Package Catalog 时填写 |
+| `catalog.name` | string | Catalog 中的稳定整机名称，例如 `robonix.robot.agilex.ranger_mini_v3` |
+| `catalog.version` | string | 整机部署版本 |
+| `catalog.description` | string | 一句话说明该部署适配的机器人 |
+| `catalog.tags` | list[string] | Catalog 分类标签 |
+| `catalog.maintainers` | list[string] | 维护者列表，每项格式为 `Name <email@domain>` |
 | `env` | object | 部署级环境变量（一般留空） |
 | `system` | map | system 服务的配置块；key 是固定 system 名（atlas/executor/pilot/liaison/scene），value 透传给该 system 服务的 on\_init。memory/speech 等是 service，不在这里 |
 | `primitive` | list | primitive 包列表 |
@@ -1561,6 +1591,7 @@ def asr_stream(request_iterator, ctx):
 | `path` | string | 本地包目录（相对部署根） — 与 `url` 二选一 |
 | `url` | string | 远程 git 仓库；`rbnx build` 阶段克隆到 `rbnx-boot/cache/` |
 | `branch` | string | 远程包分支；与 `url` 配套 |
+| `manifest` | string | 可选的包 manifest 文件名，例如 `package_manifest.jetson-native.yaml`；默认 `package_manifest.yaml` |
 | `config` | object | 整段以 JSON 化形式喂给该包的 `on_init(cfg)` |
 
 启动顺序：`system` 区块先按固定顺序起 → 然后 `primitive` → `service` → `skill`，**每段内部按 manifest 写入顺序**。当前 dev 不解析跨条目的 `depends_on`；要让 A 先于 B 起就把 A 写在前面。

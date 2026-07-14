@@ -70,6 +70,8 @@ Catalog 读取字段：
 | `package.maintainers` | 是 | 字符串列表，每项必须是 `Name <email@domain>` |
 | `capabilities[].name` | 否 | package 声明的 Robonix contract ID |
 
+旧 package manifest 中的 `package.vendor` 仍可由 `dev-next` 读取，以保证已有 package 能继续构建和启动；Catalog 不使用该字段。新 package 使用 `package.name`、`package.tags` 和 `package.maintainers` 表达名称、分类和维护归属。
+
 ## Robot deployment metadata
 
 Robot deployment 仓库是整机部署配置仓库，核心文件是 `robonix_manifest.yaml`。它不需要额外的 `package_manifest.yaml`。
