@@ -911,7 +911,7 @@ primitive:
 # ─── service: 算法 / 应用层服务 ───
 service:
   - name: memory                     # robonix 自带 service（曾在 system 下，现归位 service）
-    path: /path/to/robonix/services/memsearch  # 自带 service 在 robonix 源码树里，用源码绝对路径（部署目录在任意位置，不能用 ../../）
+    path: ${ROBONIX_SOURCE_PATH}/services/memsearch  # rbnx 根据已登记的 Robonix 源码树自动展开
     config:
       backend: sqlite
 

@@ -86,15 +86,15 @@ primitive:
 # 场景服务。path 是本地路径；url 是 git 地址（首次 clone 到 rbnx-boot/cache/）。
 service:
   # memory / speech 是 robonix 自带的 service 包（曾经放在 system 下，现已归位 service）。
-  # 自带 service 在 robonix 源码树里，path 用源码绝对路径——部署目录可以在任意
-  # 位置，不能用 ../../ 这种相对源码树的写法。
+  # make install 会登记 Robonix 源码树；rbnx 加载部署清单时自动展开
+  # ROBONIX_SOURCE_PATH，因此部署目录不需要知道源码树的绝对路径。
   - name: memory
-    path: /path/to/robonix/services/memsearch
+    path: ${ROBONIX_SOURCE_PATH}/services/memsearch
     config:
       backend: sqlite
 
   - name: speech
-    path: /path/to/robonix/services/speech
+    path: ${ROBONIX_SOURCE_PATH}/services/speech
     config:
       disable_whisper: true           # 节省一份 Whisper-large 权重
       tts_voice: zh-CN-XiaoxiaoNeural
