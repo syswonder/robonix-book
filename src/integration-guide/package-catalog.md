@@ -66,9 +66,12 @@ Catalog 读取字段：
 | `package.name` | 是 | package 发布名，必须与 `catalog.yaml` 的 `packages[].name` 一致 |
 | `package.version` | 是 | package 版本 |
 | `package.description` | 是 | 一句话说明这个 package 做什么 |
+| `package.license` | 是 | SPDX license 字符串 |
 | `package.tags` | 是 | 字符串列表，用于页面显示和过滤 |
 | `package.maintainers` | 是 | 字符串列表，每项必须是 `Name <email@domain>` |
 | `capabilities[].name` | 否 | package 声明的 Robonix contract ID |
+
+旧 package manifest 中的 `package.vendor` 仍可由 `dev-next` 读取，以保证已有 package 能继续构建和启动；Catalog 不使用该字段。新 package 使用 `package.name`、`package.tags` 和 `package.maintainers` 表达名称、分类和维护归属。
 
 ## Robot deployment metadata
 
@@ -84,6 +87,7 @@ catalog:
   name: robonix.robot.agilex.ranger_mini_v3
   version: 0.1.0
   description: Robonix deploy manifest for the AgileX Ranger Mini v3 robot.
+  license: Apache-2.0
   tags: [robot, deploy, agilex, ranger_mini_v3]
   maintainers:
     - wheatfox <wheatfox17@icloud.com>
@@ -98,6 +102,8 @@ service:
     url: https://github.com/syswonder/service-map-rbnx
     branch: main
 ```
+
+Robot 的 `catalog` 块使用与普通 package 相同的发布元数据字段：`name`、`version`、`description`、`license`、`tags` 和 `maintainers`。
 
 Catalog 会解析 `primitive:`、`service:`、`skill:` 下的 `url` / `branch` / `name`，生成 `deploy_dependencies[]`，并在 robot 详情页展示“这个整机部署由哪些普通 package 组成”。如果依赖仓库也已收录在 catalog 中，页面会自动链接到对应 package 详情页。
 
