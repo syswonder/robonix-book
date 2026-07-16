@@ -109,6 +109,15 @@ jobs:
     continue-on-error: ${{ github.event_name == 'schedule' }}
     steps:
       - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Build documentation routes
+        run: |
+          npm ci
+          npm run build
       - name: Report source drift
         run: |
           pinned=$(tr -d '[:space:]' < ROBONIX_SOURCE_REVISION)
@@ -124,7 +133,7 @@ jobs:
           args: >-
             --no-progress
             --exclude-loopback
-            --exclude '^/'
+            --root-dir '${{ github.workspace }}/build'
             --max-retries 2
             --timeout 20
             'docs/**/*.md'
