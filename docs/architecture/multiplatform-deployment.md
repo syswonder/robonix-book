@@ -43,34 +43,32 @@ system:
 manifestVersion: 1
 
 package:
-  name: robonix.service.navigation
+  name: com.robonix.system.scene
   version: 0.1.0
-  description: Nav2 service wrapper exposing service/navigation/* over gRPC.
-  tags: [service, navigation, nav2, ros2]
-  maintainers:
-    - wheatfox <wheatfox17@icloud.com>
-  license: Apache-2.0
+  vendor: robonix
+  description: Scene — semantic + geometric live map (Jetson + native host-ROS2 target).
+  license: MulanPSL-2.0
 
 build: RBNX_BUILD_TARGET=jetson-native bash scripts/build.sh
-start: ROBONIX_NAV2_FORCE=native bash scripts/start.sh
-stop: ROBONIX_NAV2_FORCE=native bash scripts/stop.sh
+start: ROBONIX_SCENE_FORCE=native bash scripts/start.sh
 
 capabilities:
-  - name: robonix/service/navigation/driver
-  - name: robonix/service/navigation/navigate
-  - name: robonix/service/navigation/navigate/status
-  - name: robonix/service/navigation/navigate/cancel
-
-depends: []
+  - name: robonix/system/scene/list_objects
+  - name: robonix/system/scene/get_robot_context
+  - name: robonix/system/scene/goal_near
+  - name: robonix/system/scene/goal_room
+  - name: robonix/system/scene/get_scene_graph
+  - name: robonix/system/scene/get_object_context
+  - name: robonix/system/scene/list_relations
 ```
 
-`RBNX_BUILD_TARGET`、`ROBONIX_NAV2_FORCE` 等变量是软件包脚本自己的实现约定。`rbnx` 只执行清单中的 shell 命令，不解释这些变量。
+这段内容直接摘自当前 Scene 的 Jetson 本机清单。`RBNX_BUILD_TARGET`、`ROBONIX_SCENE_FORCE` 是 Scene 脚本自己的实现约定；`rbnx` 只执行清单中的 shell 命令，不解释这些变量。
 
 ## 本机与容器的边界
 
 ### 本机软件包
 
-本机软件包直接使用宿主机的系统库、ROS 2、设备文件和 GPU 运行时。它的目标清单应在 `build:` 中验证必要依赖。使用 Robonix ROS 2 类型时，构建和启动脚本都必须先加载目标平台的系统 ROS 2 环境，再加载 `rbnx codegen --ros2` 生成并构建的叠加工作区；系统发行版提供客户端库与中间件，Robonix 叠加工作区提供能力约定规定的消息和服务类型。
+本机软件包直接使用宿主机的系统库、ROS 2、设备文件和 GPU 运行时。它的目标清单应在 `build:` 中验证必要依赖。使用 Robonix ROS 2 类型时，构建脚本应先加载目标平台的系统 ROS 2，再生成并用 colcon 构建 `rbnx codegen --ros2` 产物。运行时需要加载系统 ROS 2 和已安装的叠加工作区；`rbnx start` 只会自动加载 `<package>/rbnx-build/ws/install/setup.bash`，使用其他输出路径的软件包必须在自己的 `start:` 命令中加载对应叠加层。
 
 适合本机运行的情况包括：
 
@@ -126,7 +124,7 @@ service:
     config:
       params_file: config/rtabmap_params.yaml
       sensor_providers:
-        lidar3d: roof_lidar
+        lidar2d: front_lidar
         rgb: front_camera
         depth: front_camera
         odom: base_chassis
@@ -138,10 +136,10 @@ service:
       provider_ids:
         map: mapping
         odom: base_chassis
-        scan: roof_lidar
+        scan: front_lidar
 ```
 
-`rbnx` 把 `params_file` 等软件包配置当作不透明值，通过 `Driver(CMD_INIT, config_json)` 传给提供方，不会代替软件包解析任意文件路径。软件包应在自己的 `on_init` 中明确它相对于部署目录、软件包目录还是其他基准目录。因此，上游外部包的 profile 兼容性和路径约定应以该软件包当前实现为准。
+`rbnx` 把 `params_file` 等软件包配置当作不透明值，不会代替软件包解析任意文件路径。只有声明 `*/driver` 能力约定的提供方会通过 `Driver(CMD_INIT, config_json)` 收到这份配置，并应在 `on_init` 中明确相对路径以部署目录、软件包目录还是其他目录为基准。没有 driver 的软件包不会从这条路径收到 `config:`，必须在自己的启动实现中定义配置入口。上游外部包的 profile 兼容性和路径约定应以该软件包当前实现为准。
 
 ## ROS 2、RMW 与 Zenoh
 
@@ -158,6 +156,96 @@ rbnx boot -f robonix_manifest.yaml
 
 使用 `rmw_zenoh_cpp` 时，还需要一个所有参与者都能到达的 `rmw_zenohd` 路由器。Webots 示例在仿真容器中启动路由器。真实机器人可以在宿主机或网络中的固定节点启动，但同一通信图不应由每个软件包各自盲目启动一份路由器。
 
+在使用 ROS 官方二进制仓库的目标机上，安装与当前 ROS 发行版一致的软件包，并确认路由器入口存在：
+
+```bash
+export ROS_DISTRO=humble  # 改为目标机实际安装的 ROS 2 发行版
+source "/opt/ros/$ROS_DISTRO/setup.bash"
+sudo apt update
+sudo apt install -y "ros-$ROS_DISTRO-rmw-zenoh-cpp"
+test -x "/opt/ros/$ROS_DISTRO/lib/rmw_zenoh_cpp/rmw_zenohd"
+```
+
+由机器人 deployment 的启动脚本统一拉起路由器。下面是最小宿主机流程：保存 PID、等待默认 TCP `7447` 就绪，并把日志留在本次部署目录。
+
+```bash
+set -euo pipefail
+mkdir -p rbnx-boot/logs
+ZENOH_ROUTER_BIN="/opt/ros/$ROS_DISTRO/lib/rmw_zenoh_cpp/rmw_zenohd"
+ZENOH_ROUTER_PID_FILE="rbnx-boot/rmw_zenohd.pid"
+ZENOH_ROUTER_EXPECTED="$(readlink -f "$ZENOH_ROUTER_BIN")"
+
+stop_started_router() {
+  test -f "$ZENOH_ROUTER_PID_FILE" || return 0
+  pid="$(cat "$ZENOH_ROUTER_PID_FILE")"
+  if [[ "$pid" =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null; then
+    actual="$(readlink -f "/proc/$pid/exe" 2>/dev/null || true)"
+    test "$actual" = "$ZENOH_ROUTER_EXPECTED" || {
+      echo "refusing to stop PID $pid: executable is $actual" >&2
+      return 1
+    }
+    kill -TERM "$pid"
+    for _ in $(seq 1 20); do
+      kill -0 "$pid" 2>/dev/null || break
+      sleep 0.1
+    done
+    kill -KILL "$pid" 2>/dev/null || true
+  fi
+  rm -f "$ZENOH_ROUTER_PID_FILE"
+}
+
+trap stop_started_router EXIT INT TERM
+"$ZENOH_ROUTER_BIN" >rbnx-boot/logs/rmw_zenohd.log 2>&1 &
+echo "$!" >"$ZENOH_ROUTER_PID_FILE"
+
+ready=0
+for _ in $(seq 1 20); do
+  if python3 - <<'PY'
+import socket
+with socket.create_connection(("127.0.0.1", 7447), timeout=0.2):
+    pass
+PY
+  then
+    ready=1
+    break
+  fi
+  sleep 0.25
+done
+kill -0 "$(cat "$ZENOH_ROUTER_PID_FILE")"
+test "$ready" -eq 1 || {
+  tail -n 80 rbnx-boot/logs/rmw_zenohd.log
+  exit 1
+}
+trap - EXIT INT TERM
+```
+
+关闭 deployment 时重新核对 PID 对应的可执行文件，只终止这一个路由器；PID 文件过期或被复用时不会误杀其他进程：
+
+```bash
+ZENOH_ROUTER_BIN="/opt/ros/$ROS_DISTRO/lib/rmw_zenoh_cpp/rmw_zenohd"
+ZENOH_ROUTER_PID_FILE="rbnx-boot/rmw_zenohd.pid"
+if test -f "$ZENOH_ROUTER_PID_FILE"; then
+  pid="$(cat "$ZENOH_ROUTER_PID_FILE")"
+  expected="$(readlink -f "$ZENOH_ROUTER_BIN")"
+  actual="$(readlink -f "/proc/$pid/exe" 2>/dev/null || true)"
+  if kill -0 "$pid" 2>/dev/null; then
+    test "$actual" = "$expected" || {
+      echo "refusing to stop PID $pid: executable is $actual" >&2
+      exit 1
+    }
+    kill -TERM "$pid"
+    for _ in $(seq 1 20); do
+      kill -0 "$pid" 2>/dev/null || break
+      sleep 0.1
+    done
+    kill -KILL "$pid" 2>/dev/null || true
+  fi
+  rm -f "$ZENOH_ROUTER_PID_FILE"
+fi
+```
+
+如果 `apt` 仓库没有目标 ROS 发行版的 `rmw_zenoh_cpp`，应按该发行版的[官方构建说明](https://github.com/ros2/rmw_zenoh)构建并安装到独立工作区，再在启动所有 ROS 2 进程前加载该工作区的 `install/setup.bash`。不要混用为另一 ROS 发行版构建的二进制。
+
 部分软件包支持以下可选变量，用于为容器生成 Zenoh 会话文件：
 
 ```text
@@ -167,6 +255,17 @@ ROBONIX_ZENOH_LISTEN
 ```
 
 它们不是第二个 RMW 选择器。`RMW_IMPLEMENTATION` 选择 ROS 2 中间件；上述变量只描述 `rmw_zenoh_cpp` 如何连接路由器。软件包入口脚本最终将生成的文件写入 `ZENOH_SESSION_CONFIG_URI`。
+
+路由器位于宿主机或另一台固定节点、而 ROS 2 package 在容器中运行时，可在 deployment 顶层统一提供会话参数：
+
+```yaml
+env:
+  RMW_IMPLEMENTATION: rmw_zenoh_cpp
+  ROBONIX_ZENOH_MODE: client
+  ROBONIX_ZENOH_ROUTER: tcp/192.168.1.10:7447
+```
+
+只有明确支持这些变量的软件包入口脚本才会据此生成会话文件；其他容器必须在自己的 `start:` 实现中把等价配置写入容器并设置 `ZENOH_SESSION_CONFIG_URI`。先从容器内确认路由器地址和 TCP `7447` 可达，再检查 ROS 2 topic/service 发现。
 
 ## 验证目标选择
 
@@ -182,4 +281,4 @@ rbnx caps -v
 rg -n "RBNX_BUILD_TARGET|mode=|ERROR|FAIL" rbnx-boot/logs
 ```
 
-验收时至少确认：实际架构正确、软件包使用了预期清单、ROS 2 参与者能互相发现、Atlas 中提供方为 `ACTIVE`，以及设备、GPU 和持久化目录在运行环境中可访问。
+验收时至少确认：实际架构正确、软件包使用了预期清单、ROS 2 参与者能互相发现，以及设备、GPU 和持久化目录在运行环境中可访问。Atlas 生命周期状态应按类别检查：已完成启动的常驻原语和服务应为 `ACTIVE`；技能在启动后可以保持 `INACTIVE`，首次调用并由 Executor 激活后再检查 `ACTIVE`。提供方暴露健康接口时还应调用该接口；没有健康接口时，以业务接口和软件包日志验证运行状态。

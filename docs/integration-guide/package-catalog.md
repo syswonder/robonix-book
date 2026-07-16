@@ -179,7 +179,7 @@ const detail = await fetch(`${base}/package/${encodeURIComponent(ranger.name)}.j
 | `kind` | string | `primitive` / `service` / `skill` / `robot` |
 | `catalog_type` | string | `package` 或 `robot` |
 | `manifest` | string | 索引的源文件，通常是 `package_manifest.yaml` 或 `robonix_manifest.yaml` |
-| `preview_image_url` | string \| null | Catalog 卡片使用的预览图 URL；机器人仓库通常来自 `assets/robot.jpg` |
+| `preview_image_url` | string | Catalog 卡片使用的预览图 URL；机器人仓库通常来自 `assets/robot.jpg`，缺失时为空字符串 |
 | `capabilities` | string[] | 普通 package 声明的 Robonix contract ID |
 | `deploy_dependencies` | object[] | robot deployment 依赖的 primitive / service / skill 条目 |
 | `readme_url` | string | 被索引分支上的 README URL |

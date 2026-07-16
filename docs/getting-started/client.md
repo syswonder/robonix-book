@@ -25,10 +25,13 @@ primitive:
   - name: audio_client_bridge
     url: https://github.com/syswonder/primitive-audio-client-bridge-rbnx
     branch: main
-    config: {}
+    config:
+      transport: reverse
+      listen_host: 0.0.0.0
+      listen_port: 60002
 ```
 
-该软件包提供反向音频桥：客户端主动连接机器人，机器人清单不保存客户端 IP，也不需要在 Client 中猜测固定桥接端口。客户端通过 Atlas 的 `bridge_info` 能力查询 `audio_client_bridge` 公布的 WebSocket 端点，再用同一条连接传输麦克风和扬声器音频。
+该软件包提供反向音频桥：客户端主动连接机器人，机器人清单不保存客户端 IP，也不需要在 Client 中猜测固定桥接端口。客户端通过 Atlas 的 `bridge_info` 能力查询 `audio_client_bridge` 公布的 WebSocket 端点，再用同一条连接传输麦克风和扬声器音频。这里的“反向”只改变连接发起方，不会绕过网络；客户端仍须通过可信局域网或 Tailscale 访问机器人 TCP `60002`，并且不应把该端口暴露到公网。修改 `listen_port` 时，网络策略和客户端可达性必须同步调整。
 
 ## 2. 安装
 

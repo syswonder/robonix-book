@@ -2,7 +2,7 @@
 
 > 由 `rbnx docs` 自动生成，请勿手改。
 
-本页罗列 `capabilities/` 下的所有标准能力约定（共 95 条）。
+本页罗列 `capabilities/` 下的所有标准能力约定（共 97 条）。
 载荷列链到对应的 [ROS IDL](idl.md)。概念与字段含义见 [接口目录](../interface-catalog/index.md)。
 
 ## primitive
@@ -61,6 +61,7 @@
 | `robonix/service/map/save_map` | Persist the current map under a stable map id. | service | `rpc` | [`map/srv/SaveMap.srv`](idl.md#map-srv-savemap-srv) | `service/map/save_map.v1.toml` |
 | `robonix/service/map/switch_mode` | Switch the running map service between mapping and localization modes. | service | `rpc` | [`map/srv/SwitchMode.srv`](idl.md#map-srv-switchmode-srv) | `service/map/switch_mode.v1.toml` |
 | `robonix/service/memory/compact` | Compact long-term memory into a shorter summary. | service | `rpc` | [`memory/srv/Compact.srv`](idl.md#memory-srv-compact-srv) | `service/memory/compact.v1.toml` |
+| `robonix/service/memory/driver` | Lifecycle control interface for memory service providers. | service | `rpc` | [`lifecycle/srv/Driver.srv`](idl.md#lifecycle-srv-driver-srv) | `service/memory/driver.v1.toml` |
 | `robonix/service/memory/save` | Persist a fact, preference, or note into long-term memory. | service | `rpc` | [`memory/srv/Save.srv`](idl.md#memory-srv-save-srv) | `service/memory/save.v1.toml` |
 | `robonix/service/memory/search` | Search long-term memory for entries relevant to a query. | service | `rpc` | [`memory/srv/Search.srv`](idl.md#memory-srv-search-srv) | `service/memory/search.v1.toml` |
 | `robonix/service/navigation/driver` | Lifecycle control interface for navigation service providers. | service | `rpc` | [`lifecycle/srv/Driver.srv`](idl.md#lifecycle-srv-driver-srv) | `service/navigation/driver.v1.toml` |
@@ -77,6 +78,7 @@
 | `robonix/service/speech/tts_stream` | Streaming text-to-speech synthesis that returns audio chunks. | service | `rpc_server_stream` | [`tts/srv/SynthesizeStream.srv`](idl.md#tts-srv-synthesizestream-srv) | `service/speech/tts_stream.v1.toml` |
 | `robonix/service/speech/wake_word` | Detect a configured wake phrase from a client-streamed PCM audio source. | service | `rpc_client_stream` | [`speech/srv/DetectWakeWord.srv`](idl.md#speech-srv-detectwakeword-srv) | `service/speech/wake_word.v1.toml` |
 | `robonix/service/voiceprint/delete` | Delete an enrolled speaker identity from the voiceprint database. | service | `rpc` | [`voiceprint/srv/DeleteEnrolled.srv`](idl.md#voiceprint-srv-deleteenrolled-srv) | `service/voiceprint/delete.v1.toml` |
+| `robonix/service/voiceprint/driver` | Lifecycle and per-instance configuration for Voiceprint providers. | service | `rpc` | [`lifecycle/srv/Driver.srv`](idl.md#lifecycle-srv-driver-srv) | `service/voiceprint/driver.v1.toml` |
 | `robonix/service/voiceprint/enroll` | Enroll a speaker identity from voice samples. | service | `rpc` | [`voiceprint/srv/Enroll.srv`](idl.md#voiceprint-srv-enroll-srv) | `service/voiceprint/enroll.v1.toml` |
 | `robonix/service/voiceprint/identify` | Identify whether an audio sample matches an enrolled speaker. | service | `rpc` | [`voiceprint/srv/Identify.srv`](idl.md#voiceprint-srv-identify-srv) | `service/voiceprint/identify.v1.toml` |
 | `robonix/service/voiceprint/list` | List enrolled speaker identities known to the voiceprint service. | service | `rpc` | [`voiceprint/srv/ListEnrolled.srv`](idl.md#voiceprint-srv-listenrolled-srv) | `service/voiceprint/list.v1.toml` |

@@ -2,14 +2,13 @@
 # Sphinx config for the Robonix Python API reference (robonix_api).
 #
 # Output is gitignored and served at /api/python; CI builds it fresh into
-# book/api/python (so the book repo never carries generated HTML).
+# build/api/python (so the book repo never carries generated HTML).
 import os
 import sys
 
-# Source roots for the documented packages must be importable. Locally we
-# add them directly (defaults below); CI overrides via the env vars and
-# mocks heavy deps it doesn't install (ROBONIX_SPHINX_MOCKS).
-_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
+# This configuration lives in the standalone Book repository, not under the
+# Robonix source tree. Require explicit source roots so a misplaced command
+# cannot silently publish empty autosummary pages.
 
 
 def _add(p):
@@ -17,12 +16,19 @@ def _add(p):
         sys.path.insert(0, p)
 
 
+_api_src = os.environ.get("ROBONIX_API_SRC", "")
+_scene = os.environ.get("ROBONIX_SCENE_SRC", "")
+if not os.path.isdir(_api_src) or not os.path.isdir(_scene):
+    raise RuntimeError(
+        "Set ROBONIX_API_SRC and ROBONIX_SCENE_SRC to directories in the "
+        "pinned Robonix source checkout; see docs/reference/api.md."
+    )
+
 # robonix_api SDK.
-_add(os.environ.get("ROBONIX_API_SRC", os.path.join(_ROOT, "pylib/robonix-api")))
+_add(_api_src)
 # scene service + its codegen-generated stubs (semantic_map_mcp / *_pb2),
-# which scene_service.mcp_tools imports. Generate them with `rbnx codegen
-# -p system/scene` first (CI does this before sphinx-build).
-_scene = os.environ.get("ROBONIX_SCENE_SRC", os.path.join(_ROOT, "system/scene"))
+# which scene_service.mcp_tools imports when available. CI and the documented
+# lightweight local build mock those optional imports.
 _add(_scene)
 _add(os.path.join(_scene, "rbnx-build/codegen/robonix_mcp_types"))
 _add(os.path.join(_scene, "rbnx-build/codegen/proto_gen"))
@@ -46,8 +52,8 @@ autodoc_default_options = {
 napoleon_google_docstring = True
 napoleon_numpy_docstring = True
 
-# Heavy deps to mock when not installed (CI sets this; locally they're
-# present so the list is empty). Comma-separated module names.
+# Heavy optional dependencies to mock when they are not installed. CI and the
+# lightweight local procedure both pass a comma-separated module list.
 autodoc_mock_imports = [
     m.strip() for m in os.environ.get("ROBONIX_SPHINX_MOCKS", "").split(",") if m.strip()
 ]

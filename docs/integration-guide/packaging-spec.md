@@ -159,7 +159,7 @@ Provider 的 id、kind 和 namespace 由 Atlas 注册信息负责，不在 Markd
 
 ## 3. 机器人部署清单
 
-`robonix_manifest.yaml` 是一台机器人或一个仿真场景的启动入口：
+`robonix_manifest.yaml` 是一台机器人或一个仿真场景的启动入口。下面的 `acme` 仓库地址是结构占位符，接入时必须替换为实际发布的软件包及其目标清单；示例中的实例名保持自洽，展示 Mapping 和 Navigation 如何绑定同一组传感器提供方：
 
 ```yaml
 manifestVersion: 1
@@ -207,6 +207,18 @@ primitive:
     config:
       can_port: can0
 
+  - name: front_camera
+    url: https://github.com/acme/primitive-acme-rover-camera-rbnx
+    branch: main
+    manifest: package_manifest.jetson-native.yaml
+    config: {}
+
+  - name: front_lidar
+    url: https://github.com/acme/primitive-acme-rover-lidar-rbnx
+    branch: main
+    manifest: package_manifest.jetson-native.yaml
+    config: {}
+
 service:
   - name: memory
     path: ${ROBONIX_SOURCE_PATH}/services/memsearch
@@ -219,7 +231,7 @@ service:
     config:
       params_file: config/rtabmap_params.yaml
       sensor_providers:
-        lidar3d: roof_lidar
+        lidar2d: front_lidar
         odom: base_chassis
         rgb: front_camera
         depth: front_camera
@@ -233,7 +245,7 @@ service:
       provider_ids:
         map: mapping
         odom: base_chassis
-        scan_cloud: roof_lidar
+        scan: front_lidar
 
 skill:
   - name: explore
@@ -322,7 +334,7 @@ robot-acme-rover/
 
 Mapping 上游的 `config/rtabmap_params.template.yaml` 只作为复制起点，运行时不会自动加载。Mapping 会把相对 `params_file` 按部署目录解析，并允许 `rtabmap_params` 做少量最终覆盖。旧 `rtabmap_profile` 和 `sensors` 仍可兼容读取并输出迁移提示。
 
-Navigation 同样从部署目录解析相对 `params_file`。该文件必须包含完整的 Nav2 参数；可选的 `bt_xml_file` 选择部署仓库内的行为树。使用三维雷达时，通过 `provider_ids.scan_cloud` 绑定点云提供者，并显式配置 `scan_projection`；原生二维激光雷达则使用 `provider_ids.scan`，不需要投影配置。
+Navigation 同样从部署目录解析相对 `params_file`。该文件必须包含完整的 Nav2 参数。使用自定义行为树时，将 `bt_xml_file` 指向部署仓库内的 XML，并在 Nav2 参数文件对应的 BehaviorTree 路径中写入 `__ROBONIX_BT_XML__`；Navigation 只会在该 token 出现时注入 `bt_xml_file`，仅设置字段不会切换行为树。使用三维雷达时，通过 `provider_ids.scan_cloud` 绑定点云提供者，并显式配置 `scan_projection`；原生二维激光雷达则使用 `provider_ids.scan`，不需要投影配置。
 
 `params_profile`、`rtabmap_profile` 等旧字段只用于已有部署迁移。兼容代码会继续读取已知旧值并打印迁移提示；新部署应保存本体参数文件并使用 `params_file`。
 

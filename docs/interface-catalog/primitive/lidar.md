@@ -1,3 +1,6 @@
+---
+title: 激光雷达
+---
 <span id="激光雷达-robonixprimitivelidar"></span>
 # 激光雷达
 

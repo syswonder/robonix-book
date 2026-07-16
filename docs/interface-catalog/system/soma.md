@@ -1,3 +1,6 @@
+---
+title: 本体服务
+---
 <span id="soma-robonixsystemsoma"></span>
 # 本体服务（Soma）
 
@@ -19,8 +22,8 @@
 | `robonix/system/soma/get_health` | `rpc` | [`soma/GetHealth`](../../reference/idl.md#soma-srv-gethealth-srv) | `system/soma/get_health.v1.toml` |
 | `robonix/system/soma/health` | `rpc_server_stream` | [`soma/StreamHealth`](../../reference/idl.md#soma-srv-streamhealth-srv) | `system/soma/health.v1.toml` |
 
-上表是当前标准能力树的 7 条约定。内置 `robonix-soma` 当前实际声明 `get_yaml`、`get_urdf`、`footprint`、`get_health` 与 `health` 5 条 gRPC 能力；`description` 和 `sensor_extrinsics` 虽仍存在于能力树，但未进入该软件包的代码生成、gRPC 服务或 Atlas 声明，当前不能调用。`sensor_extrinsics` 是准备删除的旧接口，新部署不要实现它；相机外参应来自完整 URDF 发布的 TF。
+上表是当前标准能力树的 7 条约定。内置 `robonix-soma` 当前实际声明 `get_yaml`、`get_urdf`、`footprint`、`get_health` 与 `health` 5 条 gRPC 能力；`description` 和 `sensor_extrinsics` 虽仍存在于能力树，但未进入该软件包的代码生成、gRPC 服务或 Atlas 声明，当前不能调用。`sensor_extrinsics` 是 [Issue #156](https://github.com/syswonder/robonix/issues/156) 提议删除的旧接口，新部署不要实现它；Scene 的当前主路径是地图位姿与 `robonix/primitive/camera/extrinsics` 的组合。
 
-导航服务的 footprint 当前来自部署自己的 Nav2 参数文件。场景服务的机器人位姿来自地图服务，传感器外参应优先来自 TF。不要把这两条运行路径写成对本体服务的隐式依赖。
+导航服务的 footprint 当前来自部署自己的 Nav2 参数文件。场景服务的机器人位姿来自地图服务。该 issue 的目标是让传感器外参优先来自完整 URDF 发布的 TF；当前实现仍优先使用 `camera/extrinsics`。不要把这些运行路径写成对本体服务的隐式依赖。
 
 `get_health` / `health` 对外提供当前运行状态快照；[健康服务](vitals.md)消费该流、执行阈值评估，并提供规范化健康快照。仓库虽然已有 `health.rs` 的原语健康流聚合器，但当前 `main.rs` 没有调用它，所以电机温度、电源、安全状态和故障等健康原语事实尚未进入这条本体服务输出链路。

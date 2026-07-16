@@ -1,7 +1,10 @@
+---
+title: 语音
+---
 <span id="语音-robonixservicespeech"></span>
 # 语音
 
-语音服务提供 ASR（识别）、TTS（合成）和唤醒词检测。一元与流式都有：`asr` / `tts` 是一元 RPC，`asr_stream` / `tts_stream` / `dialog` / `wake_word` 是流式。Robonix `8c2551ce` 中的 `dialog` 虽已注册，但实现既不处理 VAD、ASR、轮次或音频，也构造了不符合 `DialogEvent` IDL 的响应，当前不可调用；实际语音 pipeline 由 [Liaison](../system/liaison.md) 编排。
+语音服务提供 ASR（识别）、TTS（合成）和唤醒词检测。一元与流式都有：`asr` / `tts` 是一元 RPC，`asr_stream` / `tts_stream` / `dialog` / `wake_word` 是流式。当前 `dialog` 虽已注册，但实现既不处理 VAD、ASR、轮次或音频，也构造了不符合 `DialogEvent` IDL 的响应，暂不可调用；实际语音链路由 [Liaison](../system/liaison.md) 编排。
 
 能力约定 TOML 在 `capabilities/service/speech/`；直接和嵌套 IDL 位于 `capabilities/lib/{speech,asr,tts,audio,lifecycle}/`。
 
@@ -21,6 +24,6 @@
 
 `speak` 是“合成并直接播放”的 MCP 入口；其 `target` 填 `list_speakers` 返回的扬声器 `provider_id`，留空时使用部署配置的默认扬声器，否则取第一个可用提供方。`tts` 返回完整音频缓冲区，`tts_stream` 返回音频分块，两者都由调用方播放。`list_speakers` 列出的是播放目标，不是 TTS 音色。流式能力约定只能走 gRPC（ROS 2 不原生支持流式 RPC）。
 
-参考实现：Robonix [`8c2551ce`](https://github.com/syswonder/robonix/tree/8c2551ce402b7afe77245a4bd4e87c9ebbc2e4c7/services/speech) 中的 `services/speech`。`local` profile 使用 Whisper 单次识别、FunASR 流式识别和 Edge TTS；其中 ASR 模型在本机运行，Edge TTS 仍需要访问 Microsoft 服务。部署也可选择 Tencent 或自定义后端。某个后端初始化失败时，对应的 ASR、TTS 或唤醒词调用会返回 `UNAVAILABLE`。
+参考实现：Robonix 源码中的 [`services/speech`](https://github.com/syswonder/robonix/tree/9a68b2918717c0421faff690eb7bc05e1c8f2a64/services/speech)。`local` profile 使用 Whisper 单次识别、FunASR 流式识别和 Edge TTS；其中 ASR 模型在本机运行，Edge TTS 仍需要访问 Microsoft 服务。部署也可选择 Tencent 或自定义后端。某个后端初始化失败时，对应的 ASR、TTS 或唤醒词调用会返回 `UNAVAILABLE`。
 
-> 实现依据：[package manifest](https://github.com/syswonder/robonix/blob/8c2551ce402b7afe77245a4bd4e87c9ebbc2e4c7/services/speech/package_manifest.yaml) · [gRPC / MCP 注册](https://github.com/syswonder/robonix/blob/8c2551ce402b7afe77245a4bd4e87c9ebbc2e4c7/services/speech/speech_service/service.py) · [`DialogEvent` IDL](https://github.com/syswonder/robonix/blob/8c2551ce402b7afe77245a4bd4e87c9ebbc2e4c7/capabilities/lib/speech/msg/DialogEvent.msg)
+> 实现依据：[package manifest](https://github.com/syswonder/robonix/blob/9a68b2918717c0421faff690eb7bc05e1c8f2a64/services/speech/package_manifest.yaml) · [gRPC / MCP 注册](https://github.com/syswonder/robonix/blob/9a68b2918717c0421faff690eb7bc05e1c8f2a64/services/speech/speech_service/service.py) · [`DialogEvent` IDL](https://github.com/syswonder/robonix/blob/9a68b2918717c0421faff690eb7bc05e1c8f2a64/capabilities/lib/speech/msg/DialogEvent.msg)

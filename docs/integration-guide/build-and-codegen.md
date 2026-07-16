@@ -219,16 +219,15 @@ cd /path/to/robot-deploy
 rbnx build -f robonix_manifest.yaml
 ```
 
-部署项的 `manifest:` 会同时选择 package 的构建与运行变体：
+部署项的 `manifest:` 会同时选择 package 的构建与运行变体。下面的机器人描述原语在本机 ROS 2 环境中运行，因此选择仓库提供的 native 目标：
 
 ```yaml
-service:
-  - name: nav2
-    url: https://github.com/syswonder/service-navigation-rbnx
+primitive:
+  - name: robot_description
+    url: https://github.com/syswonder/primitive-robot-description-rbnx
     branch: main
-    manifest: package_manifest.jetson-native.yaml
-    config:
-      params_file: config/nav2_params.yaml
+    manifest: package_manifest.native.yaml
+    config: {}
 ```
 
 `rbnx` 把包含 `robonix_manifest.yaml` 的目录记录为本次启动目录。软件包可通过 `RBNX_INVOCATION_CWD` 解析部署仓库中的相对文件；Navigation 与 Mapping 的 `params_file` 都使用这一基准。参数文件归机器人部署仓库所有，上游软件包只提供可复制的示例或模板。

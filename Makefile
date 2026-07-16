@@ -2,7 +2,7 @@ NPM ?= npm
 HOST ?= 127.0.0.1
 PORT ?= 3000
 
-.PHONY: help install dev typecheck build check serve version translations clean
+.PHONY: help install dev typecheck build check serve reference clean
 
 help:
 	@printf '%s\n' \
@@ -12,8 +12,7 @@ help:
 	  'make build      Type-check and create the production site in build/' \
 	  'make check      Run every local pre-commit check' \
 	  'make serve      Build and serve the production site locally' \
-	  'make version VERSION=x.y  Freeze the current handbook as a release version' \
-	  'make translations LOCALE=en  Generate translation messages for a configured locale' \
+	  'make reference ROBONIX_SOURCE=/path/to/robonix  Regenerate pinned contract and IDL pages' \
 	  'make clean      Remove Docusaurus caches and generated site files'
 
 install:
@@ -36,13 +35,25 @@ check: build
 serve: build
 	$(NPM) run serve -- --host $(HOST) --port $(PORT)
 
-version:
-	@test -n "$(VERSION)" || { echo 'VERSION is required, for example: make version VERSION=0.2'; exit 2; }
-	$(NPM) run docs:version -- $(VERSION)
-
-translations:
-	@test -n "$(LOCALE)" || { echo 'LOCALE is required, for example: make translations LOCALE=en'; exit 2; }
-	$(NPM) run write-translations -- --locale $(LOCALE)
+reference:
+	@test -n "$(ROBONIX_SOURCE)" || { echo 'ROBONIX_SOURCE is required, for example: make reference ROBONIX_SOURCE=/path/to/robonix'; exit 2; }
+	@test -f "$(ROBONIX_SOURCE)/Cargo.toml" || { echo 'ROBONIX_SOURCE must point to a Robonix source checkout'; exit 2; }
+	@set -eu; \
+	  expected=$$(tr -d '[:space:]' < ROBONIX_SOURCE_REVISION); \
+	  actual=$$(git -C "$(ROBONIX_SOURCE)" rev-parse HEAD); \
+	  test "$$actual" = "$$expected" || { echo "Robonix source is at $$actual, expected $$expected"; exit 2; }; \
+	  test -z "$$(git -C "$(ROBONIX_SOURCE)" status --porcelain)" || { echo 'ROBONIX_SOURCE must be a clean checkout'; exit 2; }; \
+	  CARGO_TARGET_DIR="$(ROBONIX_SOURCE)/target" cargo build --manifest-path "$(ROBONIX_SOURCE)/Cargo.toml" --locked --release -p robonix-cli; \
+	  scratch=$$(mktemp -d); \
+	  trap 'rm -rf "$$scratch"' EXIT HUP INT TERM; \
+	  export ROBONIX_HOME="$$scratch/robonix-home"; \
+	  "$(ROBONIX_SOURCE)/target/release/rbnx" setup "$(ROBONIX_SOURCE)"; \
+	  generated="$$scratch/generated-reference"; \
+	  mkdir -p "$$generated"; \
+	  "$(ROBONIX_SOURCE)/target/release/rbnx" docs --out-dir "$$generated"; \
+	  python3 scripts/normalize-reference.py "$$generated/contracts.md" "$$generated/idl.md"; \
+	  install -m 0644 "$$generated/contracts.md" docs/reference/contracts.md; \
+	  install -m 0644 "$$generated/idl.md" docs/reference/idl.md
 
 clean:
 	$(NPM) run clear

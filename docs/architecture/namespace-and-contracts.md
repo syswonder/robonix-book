@@ -75,16 +75,16 @@ capabilities/lib/chassis/srv/ExecuteMoveCommand.srv
 
 支持的模式：
 
-| 模式 | IDL | 含义 |
-|---|---|---|
-| `rpc` | `.srv` | 一元请求与响应 |
-| `rpc_server_stream` | `.srv` | 一次请求，服务端流式响应 |
-| `rpc_client_stream` | `.srv` | 客户端流式请求，一次响应 |
-| `rpc_bidirectional_stream` | `.srv` | 双向流 |
-| `topic_out` | `.msg` | 提供方发布消息 |
-| `topic_in` | `.msg` | 提供方接收消息 |
+| 模式 | IDL | 含义 | 当前可用传输 |
+|---|---|---|---|
+| `rpc` | `.srv` | 一元请求与响应 | gRPC、MCP、ROS 2 |
+| `rpc_server_stream` | `.srv` | 一次请求，服务端流式响应 | gRPC |
+| `rpc_client_stream` | `.srv` | 客户端流式请求，一次响应 | gRPC |
+| `rpc_bidirectional_stream` | `.srv` | 双向流 | gRPC |
+| `topic_out` | `.msg` | 提供方发布消息 | gRPC、ROS 2 |
+| `topic_in` | `.msg` | 提供方接收消息 | gRPC、ROS 2 |
 
-能力约定描述文件不绑定传输方式。同一能力约定可以由不同提供方通过 ROS 2、gRPC 或 MCP 实现。
+能力约定描述文件不固定某一种传输，但提供方只能在该模式当前支持的传输范围内选择。例如，`rpc` 可以使用 ROS 2、gRPC 或 MCP；`topic_in` 和 `topic_out` 不能声明为 MCP。
 
 ## 软件包内能力约定
 

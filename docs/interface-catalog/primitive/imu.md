@@ -1,3 +1,6 @@
+---
+title: 惯性测量单元
+---
 <span id="imu-robonixprimitiveimu"></span>
 # 惯性测量单元（IMU）
 

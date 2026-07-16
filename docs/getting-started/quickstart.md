@@ -11,7 +11,7 @@
 
 ## 1. 检查主机
 
-需要本地图形桌面、Git、Make、Python 3.10+、Rust stable、uv、Docker Engine 和 Compose v2。只有在验证机器人主机的本地音频时，才需要可由 ALSA 枚举的录音或播放设备。本页使用模拟语音后端验证文本任务链路，因此不要求 NVIDIA GPU；没有 GPU 时 Webots 使用 CPU 渲染，速度会明显降低。
+需要本地图形桌面、Git、Make、Python 3.10+、Rust stable、uv、Docker Engine 和 Compose v2。当前 Webots 清单即使使用模拟语音后端，也会启动本地 `audio_driver`；可用 `arecord -l` 和 `aplay -l` 预先检查 ALSA 设备。无声卡的 CI 或远程测试机可在构建和启动前设置 `AUDIO_MIC_DEVICE=null` 与 `AUDIO_SPEAKER_DEVICE=null`，使用 ALSA 的空设备完成非音频链路验证。本页不要求 NVIDIA GPU；没有 GPU 时 Webots 使用 CPU 渲染，速度会明显降低。
 
 在 Ubuntu / Debian 上安装基础工具：
 
@@ -238,7 +238,8 @@ docker ps --filter name=robonix_tiago_sim
 
 ```bash
 ls -1 rbnx-boot/logs
-tail -n 120 rbnx-boot/logs/<provider_id>.log
+provider_id=tiago_lidar
+tail -n 120 "rbnx-boot/logs/${provider_id}.log"
 ```
 
 ### 远程软件包不是最新版本
