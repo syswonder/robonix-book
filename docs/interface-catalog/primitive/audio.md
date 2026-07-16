@@ -6,7 +6,7 @@ title: 音频
 
 音频原语覆盖麦克风采集与扬声器播放，是[交互服务](../system/liaison.md)语音处理链路的两端。`mic`（`topic_out`）持续输出音频块，`speaker`（`topic_in`）接收音频块播放。多设备提供方可以实现 `list_devices` / `select_device`，客户端音频桥可以实现 `bridge_info` 来发布反向 WebSocket 访问地址；这三个接口都不是所有音频提供方的必选项。
 
-能力约定 TOML 在 `capabilities/primitive/audio/`，IDL 在 `capabilities/lib/audio/`。
+能力约定 TOML 在 `capabilities/primitive/audio/`，接口定义语言（Interface Definition Language，IDL）文件在 `capabilities/lib/audio/`。
 
 ## 接口
 

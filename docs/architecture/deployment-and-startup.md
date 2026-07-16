@@ -16,11 +16,9 @@
 system:
   scene:
     manifest: package_manifest.jetson-native.yaml
-    camera_frame: front_camera_rgb_optical_frame
-    camera_provider_id: front_camera
 ```
 
-这里的 `manifest:` 选择该软件包目录中的软件包清单文件。文件不存在时，构建和启动都会直接报错，不会回退到默认清单。
+这里的 `manifest:` 选择该软件包目录中的软件包清单文件。文件不存在时，构建和启动都会直接报错，不会回退到默认清单。Scene 当前不会读取 `system.scene` 中除 `manifest` 以外的运行参数；相机提供方、`web_port` 等配置必须通过下文的 `RBNX_CONFIG_FILE` 启动包装脚本传入。
 
 ## 构建阶段
 
@@ -33,12 +31,12 @@ rbnx build -f robonix_manifest.yaml
 `rbnx build` 会完成以下工作：
 
 1. 解析部署清单并展开其中的环境变量。
-2. 将 `url:` 软件包克隆到 `<deploy>/rbnx-boot/cache/<repository-name>/`；已有代码检出会被复用。
+2. 将 `url:` 软件包克隆到 `<deploy>/rbnx-boot/cache/<repository-name>/`；已有源码检出会被复用。
 3. 对每个软件包读取部署项选定的软件包清单。
 4. 在软件包根目录执行该清单的 `build:` 命令。
 5. 构建成功后写入 `<package>/rbnx-build/.rbnx-built`。
 
-`rbnx boot` 发现缺少 checkout 或 build sentinel 时会警告并尝试补做克隆和构建。这是首次启动的容错路径，不应代替显式的 `rbnx build`。
+`rbnx boot` 发现缺少源码检出或构建完成标记时会警告并尝试补做克隆和构建。这是首次启动的容错路径，不应代替显式的 `rbnx build`。
 
 ## 启动阶段
 
@@ -74,7 +72,7 @@ rbnx build -f robonix_manifest.yaml
 
 没有生命周期驱动能力约定的软件包必须自行完成就绪判断与状态上报。启动器看到提供方注册后会直接显示 `ACTIVE (no driver)`；这个标签只证明注册成功，不证明其服务接口已经可调用。此类软件包必须提供自己的健康检查，并在验收时单独调用。
 
-某个非内置 package 启动失败时，`rbnx boot` 会将它列入最终 `failures` 段，并保留其他已成功启动的组件。内置系统组件的启动前校验或进程创建失败会终止本次启动并清理已启动的子进程。除 Soma 的第一阶段就绪检查外，当前启动器不会统一等待每个内置组件的业务健康接口，因此“进程已创建”不等于“业务已就绪”。
+某个非内置软件包启动失败时，`rbnx boot` 会将它列入最终 `failures` 段，并保留其他已成功启动的组件。内置系统组件的启动前校验或进程创建失败会终止本次启动并清理已启动的子进程。除 Soma 的第一阶段就绪检查外，当前启动器不会统一等待每个内置组件的业务健康接口，因此“进程已创建”不等于“业务已就绪”。
 
 ### 4. 本体服务启动技能
 
@@ -86,7 +84,7 @@ rbnx build -f robonix_manifest.yaml
 
 `rbnx` 直接管理的非内置系统软件包和服务会在 `<deploy>/rbnx-boot/instances/<provider-id>.json` 保存一份实例配置，供诊断使用；该文件路径不会传给提供方。本体服务直接管理的原语和技能从部署清单内存值发送配置，当前不依赖该实例文件。
 
-单独调试 package 时，可使用：
+单独调试软件包时，可使用：
 
 ```bash
 rbnx start -p /path/to/package \
@@ -96,6 +94,23 @@ rbnx start -p /path/to/package \
 ```
 
 `--set` 覆盖 `--config` 中的同名字段；两者最终仍通过 `Driver(CMD_INIT)` 发送。
+
+Scene 当前没有 Driver 配置通道，是上述规则的例外。把运行参数保存在部署仓库的 `config/scene.yaml`：
+
+```yaml
+camera_provider_id: front_camera
+web_port: 50107
+```
+
+再由部署仓库的启动包装脚本导出绝对路径：
+
+```bash
+DEPLOY_DIR="$(cd "$(dirname "$0")" && pwd)"
+export RBNX_CONFIG_FILE="$DEPLOY_DIR/config/scene.yaml"
+exec rbnx boot -f "$DEPLOY_DIR/robonix_manifest.yaml" "$@"
+```
+
+不要把 `camera_provider_id`、`web_port` 等字段写进 `system.scene` 并假定它们会生效。
 
 ## 日志与状态
 
@@ -161,4 +176,4 @@ rbnx shutdown
 bash examples/webots/sim/stop.sh
 ```
 
-该脚本清理仿真容器、RViz 和示例软件包可能遗留的进程。真实机器人部署应优先使用 `rbnx shutdown`，并由各软件包的 `stop:` 或关闭处理函数释放硬件资源。
+该脚本只停止 Webots 示例自己的 Compose 项目和启动脚本记录的 RViz2 进程，不停止 Atlas、Pilot、能力提供方或其他 Robonix 进程，因此不能代替 `rbnx shutdown`。真实机器人部署应使用 `rbnx shutdown`，并由各软件包的 `stop:` 或关闭处理函数释放硬件资源。

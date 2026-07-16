@@ -15,8 +15,8 @@ This repository uses Chinese for the user-facing book. Keep identifiers, command
 
 - Verify commands with the target commit's CLI help or actual execution.
 - Verify configuration fields against the parser, `config.spec`, manifest schema, or standard contract.
-- Use the same term for the same concept throughout the book. Prefer `Primitive`, `Service`, `Skill`, `Contract`, `Package`, `robot deployment`, `provider_id`, and `RTDL` as defined by Robonix.
-- Define an abbreviation or Robonix-specific term on first use.
+- Use the same term for the same concept throughout the book. In Chinese prose, use the Chinese term first and add the canonical English name in parentheses on first use, for example 原语（Primitive）、服务（Service）、技能（Skill）、能力约定（Contract）、软件包（Package）和机器人部署仓库（Robot Deployment）。
+- Keep code identifiers and abbreviations such as `provider_id` and RTDL in their canonical form, and define each Robonix-specific abbreviation on first use.
 - Avoid conversational history, rhetorical questions, marketing superlatives, and instructions aimed at a particular colleague.
 
 ## Format commands and examples

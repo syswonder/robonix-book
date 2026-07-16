@@ -1,8 +1,8 @@
 # 设备健康
 
-健康原语把具体设备的健康数据统一为按需快照和服务端流。按需调用方使用 `state`，持续监测方使用 `stream`。Soma 源码中已有发现并聚合 `stream` 提供方的收集器，但当前入口没有启动它；因此设备健康流尚未进入 Soma 提供给 Vitals 的运行链，部署方不能把这条计划中的聚合路径当作现成功能。
+健康原语把具体设备的健康数据统一为按需快照和服务端流。按需调用方使用 `state`，持续监测方使用 `stream`。当前版本尚未把这些原语健康流聚合到 Soma 与 Vitals 的标准运行链；需要健康监控的部署必须分别验证设备健康提供方和 Vitals 实际接收到的数据。
 
-能力约定 TOML 在 `capabilities/primitive/health/`，IDL 在 `capabilities/lib/health/`。
+能力约定 TOML 在 `capabilities/primitive/health/`，接口定义语言（Interface Definition Language，IDL）文件在 `capabilities/lib/health/`。
 
 ## 接口
 

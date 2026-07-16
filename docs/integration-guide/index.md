@@ -11,7 +11,7 @@
   <a class="task-card" href="/developer-guide">
     <span class="task-card__eyebrow">软件包</span>
     <span class="task-card__title">开发原语、服务或技能</span>
-    <span class="task-card__description">从 template-rbnx 的可运行软件包开始，实现标准契约或定义新的技能契约。</span>
+    <span class="task-card__description">从已验证的 template-rbnx 可运行软件包开始，实现标准能力约定或定义新的技能能力约定。</span>
   </a>
   <a class="task-card" href="/integration-guide/packaging-spec">
     <span class="task-card__eyebrow">部署</span>
@@ -57,8 +57,8 @@ robot-<vendor>-<model>/
 
 ## 推荐完成顺序
 
-1. 用 [template-rbnx](https://github.com/syswonder/template-rbnx) 在目标计算平台跑通一个无真实硬件的最小部署。
-2. 建立完整 URDF 与 Soma 描述，先让系统能准确识别本体结构和能力提供者。
+1. 用 [template-rbnx](https://github.com/syswonder/template-rbnx/tree/60dc85834c2714022b1821e6fce6c629c0314699) 在目标计算平台跑通一个无真实硬件的最小部署。
+2. 建立完整 URDF 与 Soma 描述，先让系统能准确识别本体结构和能力提供方。
 3. 逐个接入原语，并分别验证数据、坐标系、生命周期和停止行为。
 4. 把本体专属建图与导航参数放入部署仓库的 `config/`，再接入对应服务。
 5. 依次完成仿真、架空/台架、低速空场和真实场景验证。

@@ -128,11 +128,11 @@ cd /path/to/robonix
 bash examples/webots/sim/start.sh --world office.wbt
 ```
 
-脚本会启动仿真容器，等待 ROS 2 topics 就绪，并在容器内启动 RViz2。它默认使用 `rmw_zenoh_cpp`；同一 deployment 的 ROS 2 进程必须使用相同的 `RMW_IMPLEMENTATION`。Webots 容器会为该示例启动 `rmw_zenohd`，普通 quickstart 不需要另起 router，也不需要设置第二个 Robonix 专用 RMW 变量。
+脚本会启动仿真容器，等待 ROS 2 话题就绪，并在容器内启动 RViz2。它默认使用 ROS 中间件实现（ROS Middleware Implementation，RMW）`rmw_zenoh_cpp`；同一部署中的 ROS 2 进程必须使用相同的 `RMW_IMPLEMENTATION`。Webots 容器会为该示例启动 `rmw_zenohd`，本快速上手流程不需要另起路由器，也不需要设置第二个 Robonix 专用 RMW 变量。
 
 **预期结果：** 终端出现 `[sim/start] ros up (... topics)` 和 RViz2 日志路径；Webots 与 RViz2 窗口可见。
 
-### 终端 2：Robonix stack
+### 终端 2：Robonix 系统
 
 ```bash
 export PATH="$HOME/.cargo/bin:$PATH"
@@ -148,14 +148,14 @@ rbnx boot
 
 Webots 部署清单配置以下系统组件和软件包：
 
-- System：Atlas、Soma、Vitals、Scene、Executor、Pilot、Liaison
-- Primitive：Tiago chassis、RGB-D camera、2D lidar，以及通过独立仓库取得的 ALSA audio 和 client audio bridge
-- Service：Memory、Speech、Voiceprint、Mapping、Navigation
-- Skill：Explore；启动后保持 `INACTIVE`，第一次被调用时由 Executor 激活
+- 系统：Atlas、Soma、Vitals、Scene、Executor、Pilot、Liaison
+- 原语：Tiago 底盘、RGB-D 相机、二维激光雷达，以及通过独立仓库取得的 ALSA 音频和客户端音频桥
+- 服务：记忆、语音、声纹、建图、导航
+- 技能：探索；启动后保持 `INACTIVE`，第一次被调用时由 Executor 激活
 
 **预期结果：** 启动摘要中没有 `failures`，系统组件显示监听地址，原语与服务为 `ACTIVE`，Explore 为 `INACTIVE`。终端最后显示组件已启动以及 `rbnx-boot/logs` 路径。
 
-Scene 调试页默认位于 [http://127.0.0.1:50107/](http://127.0.0.1:50107/)。页面同时显示 2D occupancy、语义对象、机器人位姿、3D 点云和相机流；这些数据只有在相应 provider 已经启动并发布后才会出现。
+Scene 调试页默认位于 [http://127.0.0.1:50107/](http://127.0.0.1:50107/)。页面同时显示二维占据栅格、语义对象、机器人位姿、三维点云和相机流；这些数据只有在相应提供方已经启动并发布后才会出现。
 
 ## 6. 提交第一条任务
 
@@ -178,13 +178,13 @@ Explore the current room and report what you find.
 What tasks are currently running?
 ```
 
-`Esc` 中断当前交互回合，`Ctrl+C` 退出 TUI。
+`Esc` 中断当前交互回合，`Ctrl+C` 退出文本用户界面（Text User Interface，TUI）。
 
-**预期结果：** 终端界面显示用户输入、规划状态、RTDL 能力调用与最终回复；Explore 被调用时会从 `INACTIVE` 转为 `ACTIVE`，其 provider 日志是 `rbnx-boot/logs/explore.log`。
+**预期结果：** 终端界面显示用户输入、规划状态、机器人任务描述语言（Robot Task Description Language，RTDL）能力调用与最终回复；Explore 被调用时会从 `INACTIVE` 转为 `ACTIVE`，其提供方日志是 `rbnx-boot/logs/explore.log`。
 
-## 7. 选择其他 Webots world
+## 7. 选择其他 Webots 场景
 
-回到 Robonix 仓库根目录选择内置 world：
+回到 Robonix 仓库根目录选择内置场景：
 
 ```bash
 cd /path/to/robonix
@@ -197,11 +197,11 @@ bash examples/webots/sim/start.sh --world kitchen.wbt
 
 |  |  |
 |---|---|
-| `office.wbt`<br />![office](https://raw.githubusercontent.com/syswonder/robonix/dev/examples/webots/sim/thumbnails/office.jpg) | `apartment.wbt`<br />![apartment](https://raw.githubusercontent.com/syswonder/robonix/dev/examples/webots/sim/thumbnails/apartment.jpg) |
-| `complete_apartment.wbt`<br />![complete apartment](https://raw.githubusercontent.com/syswonder/robonix/dev/examples/webots/sim/thumbnails/complete_apartment.jpg) | `break_room.wbt`<br />![break room](https://raw.githubusercontent.com/syswonder/robonix/dev/examples/webots/sim/thumbnails/break_room.jpg) |
-| `kitchen.wbt`<br />![kitchen](https://raw.githubusercontent.com/syswonder/robonix/dev/examples/webots/sim/thumbnails/kitchen.jpg) |  |
+| `office.wbt`<br />![Webots 办公室场景预览](/img/webots/office.jpg) | `apartment.wbt`<br />![Webots 公寓场景预览](/img/webots/apartment.jpg) |
+| `complete_apartment.wbt`<br />![Webots 完整公寓场景预览](/img/webots/complete_apartment.jpg) | `break_room.wbt`<br />![Webots 休息室场景预览](/img/webots/break_room.jpg) |
+| `kitchen.wbt`<br />![Webots 厨房场景预览](/img/webots/kitchen.jpg) |  |
 
-`office.wbt` 使用镜像内的 asset seed。第一次运行其他内置 world 前，先下载一次 Cyberbotics 官方离线 asset 包；后续启动会复用持久化缓存：
+`office.wbt` 使用镜像内的资源种子。第一次运行其他内置场景前，先下载一次 Cyberbotics 官方离线资源包；后续启动会复用持久化缓存：
 
 ```bash
 ROBONIX_WEBOTS_DOWNLOAD_ALL_ASSETS=1 \
@@ -210,7 +210,7 @@ ROBONIX_WEBOTS_DOWNLOAD_ALL_ASSETS=1 \
 
 ## 8. 停止并清理运行进程
 
-先在运行 `rbnx boot` 的终端按 `Ctrl+C`，等待 Robonix 关闭。也可以从另一个终端在部署目录执行 `rbnx shutdown`。然后运行仿真的配套停止脚本，它会停止 Webots Compose 项目、RViz2，以及该示例启动的残留 Robonix 进程和软件包容器：
+首先停止 Robonix：在运行 `rbnx boot` 的终端按 `Ctrl+C`，并等待关闭完成；也可以从另一个终端在部署目录执行 `rbnx shutdown`。随后再停止 Webots 仿真和由示例记录的 RViz2 进程：
 
 ```bash
 cd /path/to/robonix/examples/webots
@@ -219,7 +219,7 @@ rbnx shutdown
 bash sim/stop.sh
 ```
 
-`sim/stop.sh` 会执行 `docker compose down`，但保留可复用的镜像、Webots asset volume 和软件包构建缓存。该脚本还会按进程名强制清理该示例可能遗留的 Robonix、Python service 和 RViz2 进程；在共享主机上运行前应确认没有其他用户共用这些进程名。
+`sim/stop.sh` 会对该示例的 Compose 项目执行 `docker compose down`，并停止启动脚本记录的 RViz2 进程。它保留可复用的镜像、Webots 资源卷和软件包构建缓存，不会按进程名扫描或终止 Robonix 与软件包进程，因此不能代替 `rbnx shutdown`。
 
 ## 排错
 
@@ -230,11 +230,20 @@ printf 'DISPLAY=%s\n' "${DISPLAY:-<unset>}"
 docker ps --filter name=robonix_tiago_sim
 ```
 
-本地图形桌面通常使用 `DISPLAY=:0`。若日志包含 X11 permission 错误，按 `start.sh` 打印的 `xhost` 命令授权本地 Docker 用户；SSH 主机应使用可信 X11 forwarding 或 `ROBONIX_SIM_STREAM=1` 的浏览器模式。
+本地图形桌面通常使用 `DISPLAY=:0`。若日志包含 X11 权限错误，按 `start.sh` 打印的 `xhost` 命令授权本地 Docker 用户。没有可用 X Server 的主机可以显式选择软件渲染；需要在浏览器中查看仿真画面时再开启流式模式：
+
+```bash
+WEBOTS_HEADLESS_MODE=xvfb ROBONIX_FORCE_CPU=1 \
+  bash examples/webots/sim/start.sh
+
+ROBONIX_SIM_STREAM=1 bash examples/webots/sim/start.sh
+```
+
+`xvfb` 不需要图形设备，但仿真速度通常低于可用 GPU 的主机。`ROBONIX_SIM_STREAM=1` 会按仿真启动日志给出的地址提供浏览器画面。
 
 ### 软件包启动失败
 
-先读启动摘要中点名的 provider 日志，不要只看 bootstrap 尾部：
+先读启动摘要中点名的提供方日志，不要只看启动器日志尾部：
 
 ```bash
 ls -1 rbnx-boot/logs
@@ -255,6 +264,6 @@ rbnx update
 ## 下一步
 
 - [系统部署与启动](../architecture/deployment-and-startup.md)：理解真实启动所有权、生命周期和日志位置。
-- [本体接入指南](../integration-guide/vendor-onboarding.md)：把 Webots 能力提供者替换为真实机器人硬件。
+- [本体接入指南](../integration-guide/vendor-onboarding.md)：把 Webots 能力提供方替换为真实机器人硬件。
 - [开发者指南](../developer-guide.md)：从 template-rbnx 开发自己的原语、服务或技能。
 - [接口目录](../interface-catalog/index.md)：查询标准契约与 ROS 接口定义。

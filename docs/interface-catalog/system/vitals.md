@@ -7,7 +7,7 @@ title: 健康服务
 
 健康服务会先注册下表 3 条 gRPC 能力，再在后台等待本体服务；本体服务不可用时进程仍在线，但没有可用的本体健康输入。`robonix-vitals --mock-soma` 会把该进程切换为模拟本体服务端，并不会同时启动健康服务，开发测试需要另起一个健康服务进程消费它。
 
-能力约定 TOML 在 `capabilities/system/vitals/`，IDL 在 `capabilities/lib/vitals/` 与 `capabilities/lib/module_health/`。
+能力约定 TOML 在 `capabilities/system/vitals/`，接口定义语言（Interface Definition Language，IDL）文件在 `capabilities/lib/vitals/` 与 `capabilities/lib/module_health/`。
 
 ## 接口
 

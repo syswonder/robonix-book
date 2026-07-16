@@ -20,7 +20,7 @@ title: 底盘
 
 底盘有两个运动入口，分工明确：
 
-- `move`（单发离散命令）：一次 `forward_m` / `rotate_deg`，或带 `duration_sec` 封顶的速度命令。当前 Tiago 参考实现通过 gRPC 接收请求，按配置速度换算持续时间，在 `cmd_vel` 上开环发布一小段 `Twist` 再停；`forward_m` / `rotate_deg` 是近似量，不提供 odom 闭环精度保证。该实现不暴露 MCP；需要避障或精确到达时使用 `service/navigation/navigate`。
+- `move`（单发离散命令）：一次 `forward_m` / `rotate_deg`，或带 `duration_sec` 封顶的速度命令。当前 Tiago 参考实现通过 gRPC 接收请求，按配置速度换算持续时间，在 `cmd_vel` 上开环发布一小段 `Twist` 再停；`forward_m` / `rotate_deg` 是近似量，不提供 odom 闭环精度保证。该实现不暴露模型上下文协议（Model Context Protocol，MCP）接口；需要避障或精确到达时使用 `service/navigation/navigate`。
 - `twist_in`（`geometry_msgs/Twist`）：连续速度流入口。`topic_in` 模式不绑定具体传输方式；当前 Webots Tiago 实现通过 ROS 2 接收 Nav2 控制器和遥控端的 `cmd_vel`。导航不通过 gRPC 调用 `move`。
 
 需要 odom 坐标系下的位姿时订阅 `primitive/chassis/odom`；需要 map 坐标系下的定位结果时使用 `service/map/pose`。底盘原语不合并上层定位结果。

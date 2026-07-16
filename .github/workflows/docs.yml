@@ -69,33 +69,17 @@ jobs:
           diff -u docs/reference/idl.md "$generated/idl.md"
 
       - name: Build Rust API documentation
-        run: |
-          cargo doc --manifest-path robonix/Cargo.toml --locked --no-deps --workspace
-          mkdir -p build/api/rust
-          cp -r robonix/target/doc/. build/api/rust/
+        run: make api-rust ROBONIX_SOURCE="$PWD/robonix"
 
       - name: Build Python API documentation
-        env:
-          ROBONIX_SPHINX_MOCKS: "torch,rclpy,cv2,open3d,scipy,sklearn,semantic_map_mcp"
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install sphinx furo numpy grpcio protobuf pyyaml
+          python3 -m pip install sphinx furo numpy grpcio grpcio-tools protobuf pyyaml
           python3 -m pip install ./robonix/pylib/robonix-api
-          mkdir -p build/api/python
-          ROBONIX_API_SRC="$PWD/robonix/pylib/robonix-api" \
-          ROBONIX_SCENE_SRC="$PWD/robonix/system/scene" \
-            python3 -m sphinx -b html apidoc/python build/api/python
+          make api-python ROBONIX_SOURCE="$PWD/robonix" API_PYTHON=python3
 
       - name: Verify published API entry points
-        run: |
-          test -s build/api/rust/robonix_atlas/index.html
-          test -s build/api/rust/robonix_executor/index.html
-          test -s build/api/rust/robonix_pilot/index.html
-          test -s build/api/rust/robonix_liaison/index.html
-          test -s build/api/rust/robonix_codegen/index.html
-          test -s build/api/rust/rbnx/index.html
-          test -s build/api/python/_autosummary/robonix_api.html
-          test -s build/api/python/_autosummary/scene_service.html
+        run: make api-check
 
       - name: Upload documentation preview
         if: github.event_name == 'pull_request'
@@ -119,7 +103,7 @@ jobs:
   external-links:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    continue-on-error: true
+    continue-on-error: ${{ github.event_name == 'schedule' }}
     steps:
       - uses: actions/checkout@v4
       - name: Report source drift
@@ -132,7 +116,7 @@ jobs:
       - name: Check external links
         uses: lycheeverse/lychee-action@v2
         with:
-          fail: false
+          fail: true
           jobSummary: true
           args: >-
             --no-progress

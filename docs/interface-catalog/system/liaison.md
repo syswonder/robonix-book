@@ -9,7 +9,7 @@ title: 交互服务
 
 交互服务是带身份归一化、访问控制和语音编排的用户入口。`rbnx chat` 以及需要这些策略的移动应用、网页或接口客户端应先连接交互服务：文本路径转发给规划器，语音路径由交互服务编排（麦克风 → 流式语音识别 → 声纹 → 规划器 → 可选语音合成 → 扬声器）。非交互命令 `rbnx ask` 当前会绕过交互服务，直接连接规划器。
 
-能力约定 TOML 在 `capabilities/system/liaison/`，IDL 在 `capabilities/lib/liaison/`。
+能力约定 TOML 在 `capabilities/system/liaison/`，接口定义语言（Interface Definition Language，IDL）文件在 `capabilities/lib/liaison/`。
 
 ## 接口
 
@@ -25,9 +25,9 @@ title: 交互服务
 
 `submit` 的事件流就是规划器事件流原样转发；`voice` 的流是交互服务自己合成的 `VoiceEvent`，其中 `event_kind=PILOT` 的事件把内嵌 `PilotEvent` 装回 `pilot` 字段。`handsfree/*` 提供免手持模式的开关、状态查询和只读事件流。用户身份走 `Task.context_json.user_id`（默认 `local:<os_user>`）。
 
-## rbnx chat 的连接路径
+## `rbnx chat` 的连接路径
 
-```
+```text
 rbnx chat
     │  atlas.find(contract="robonix/system/liaison/submit", grpc) → endpoint
     ▼
@@ -43,10 +43,10 @@ robonix-liaison (gRPC)
 | 阶段 | 能力约定 | 参考提供方 |
 |---|---|---|
 | 录音 | `robonix/primitive/audio/mic` | `audio_driver` / `audio_client_bridge` |
-| ASR | `robonix/service/speech/asr_stream` | `services/speech` |
+| 自动语音识别（Automatic Speech Recognition，ASR） | `robonix/service/speech/asr_stream` | `services/speech` |
 | 声纹 | `robonix/service/voiceprint/identify` | `services/voiceprint` |
 | Pilot | `robonix/system/pilot` | `robonix-pilot` |
-| TTS | `robonix/service/speech/tts` | `services/speech` |
+| 语音合成（Text-to-Speech，TTS） | `robonix/service/speech/tts` | `services/speech` |
 | 播放 | `robonix/primitive/audio/speaker` | `audio_driver` / `audio_client_bridge` |
 
 依赖缺失时的行为如下：

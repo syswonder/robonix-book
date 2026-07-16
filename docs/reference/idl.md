@@ -6,12 +6,12 @@ hide_table_of_contents: true
 
 > 由 `rbnx docs` 自动生成，请勿手改。
 
-本页收录从 IDL 包含根（`rbnx docs --include`，默认 `capabilities/lib/`）收集的全部 ROS IDL（`.msg` / `.srv`）原文，按 ROS 包分组（共 303 个文件）。[能力约定参考](contracts.md) 的载荷列链到这里对应的锚点。
+本页收录从 IDL 包含根（`rbnx docs --include`，默认 `capabilities/lib/`）收集的全部 ROS IDL（`.msg` / `.srv`）原文，按 ROS 包分组（共 304 个文件）。[能力约定参考](contracts.md) 的载荷列链到这里对应的锚点。
 
 <details className="idl-package-index">
 <summary>展开 ROS package 索引</summary>
 
-[action_msgs](#action_msgs) · [actionlib_msgs](#actionlib_msgs) · [asr](#asr) · [audio](#audio) · [builtin_interfaces](#builtin_interfaces) · [camera](#camera) · [chassis](#chassis) · [composition_interfaces](#composition_interfaces) · [diagnostic_msgs](#diagnostic_msgs) · [executor](#executor) · [geometry_msgs](#geometry_msgs) · [health](#health) · [liaison](#liaison) · [lidar](#lidar) · [lifecycle](#lifecycle) · [lifecycle_msgs](#lifecycle_msgs) · [map](#map) · [memory](#memory) · [module_health](#module_health) · [nav_msgs](#nav_msgs) · [navigation](#navigation) · [perception](#perception) · [pilot](#pilot) · [rcl_interfaces](#rcl_interfaces) · [rosgraph_msgs](#rosgraph_msgs) · [semantic_map](#semantic_map) · [sensor_msgs](#sensor_msgs) · [shape_msgs](#shape_msgs) · [soma](#soma) · [speech](#speech) · [statistics_msgs](#statistics_msgs) · [std_msgs](#std_msgs) · [std_srvs](#std_srvs) · [stereo_msgs](#stereo_msgs) · [test_msgs](#test_msgs) · [trajectory_msgs](#trajectory_msgs) · [tts](#tts) · [visualization_msgs](#visualization_msgs) · [vitals](#vitals) · [voiceprint](#voiceprint)
+[action_msgs](#action_msgs) · [actionlib_msgs](#actionlib_msgs) · [asr](#asr) · [audio](#audio) · [builtin_interfaces](#builtin_interfaces) · [camera](#camera) · [chassis](#chassis) · [composition_interfaces](#composition_interfaces) · [diagnostic_msgs](#diagnostic_msgs) · [executor](#executor) · [geometry_msgs](#geometry_msgs) · [health](#health) · [liaison](#liaison) · [lidar](#lidar) · [lifecycle](#lifecycle) · [lifecycle_msgs](#lifecycle_msgs) · [map](#map) · [memory](#memory) · [module_health](#module_health) · [nav_msgs](#nav_msgs) · [navigation](#navigation) · [perception](#perception) · [pilot](#pilot) · [rcl_interfaces](#rcl_interfaces) · [rosgraph_msgs](#rosgraph_msgs) · [semantic_map](#semantic_map) · [sensor_msgs](#sensor_msgs) · [shape_msgs](#shape_msgs) · [soma](#soma) · [speech](#speech) · [statistics_msgs](#statistics_msgs) · [std_msgs](#std_msgs) · [std_srvs](#std_srvs) · [stereo_msgs](#stereo_msgs) · [test_msgs](#test_msgs) · [trajectory_msgs](#trajectory_msgs) · [tts](#tts) · [unique_identifier_msgs](#unique_identifier_msgs) · [visualization_msgs](#visualization_msgs) · [vitals](#vitals) · [voiceprint](#voiceprint)
 
 </details>
 
@@ -207,7 +207,7 @@ audio/msg/AudioChunk chunk
 
 ```rosidl
 # ASR one-shot recognition
-# abstract_interface_id: robonix/system/speech/asr
+# Contract: robonix/service/speech/asr
 # Caller sends raw audio bytes; service returns a transcript string.
 uint8[] audio_data
 string encoding       # e.g. "pcm_s16le", "opus", "mp3"
@@ -494,7 +494,7 @@ float64 rotate_deg
 `chassis/srv/Stop.srv`
 
 ```rosidl
-# robonix/primitive/base/stop — synchronous stop (RPC)
+# Legacy unregistered stop IDL. No contract TOML references this file.
 ---
 bool success
 string message
@@ -1284,7 +1284,7 @@ string detail
 
 ```rosidl
 # Voice push-to-talk turn orchestrated entirely inside Liaison.
-# abstract_interface_id: robonix/system/liaison.start_voice_session
+# Contract: robonix/system/liaison/voice
 string  session_id              # empty → server allocates UUID
 string  client_user_id          # hint (e.g. local OS user)
 uint32  record_seconds          # 0 → server default (5s)
@@ -1358,7 +1358,7 @@ liaison/VoiceEvent event
 `lidar/srv/GetLaserScan.srv`
 
 ```rosidl
-# robonix/primitive/lidar/lidar_snapshot — on-demand single LaserScan.
+# robonix/primitive/lidar/snapshot — on-demand single LaserScan.
 ---
 sensor_msgs/LaserScan scan
 ```
@@ -1817,7 +1817,7 @@ string detail
 `memory/srv/Compact.srv`
 
 ```rosidl
-# robonix/sys/memory/compact — summarize / compact long-term memory (unary RPC).
+# robonix/service/memory/compact — summarize long-term memory (unary RPC).
 # Request: no fields (empty trigger, maps to google.protobuf.Empty on the facade when appropriate).
 ---
 std_msgs/String summary
@@ -1828,7 +1828,7 @@ std_msgs/String summary
 `memory/srv/Save.srv`
 
 ```rosidl
-# robonix/sys/memory/save — persist a fact or preference (unary RPC).
+# robonix/service/memory/save — persist a fact or preference (unary RPC).
 std_msgs/String content
 ---
 std_msgs/String confirmation
@@ -1839,7 +1839,7 @@ std_msgs/String confirmation
 `memory/srv/Search.srv`
 
 ```rosidl
-# robonix/sys/memory/search — semantic search over long-term memory (unary RPC).
+# robonix/service/memory/search — semantic search over long-term memory (unary RPC).
 std_msgs/String query
 ---
 std_msgs/String results
@@ -2176,7 +2176,7 @@ string status
 `perception/srv/PerceptionDetect.srv`
 
 ```rosidl
-# robonix/service/perception/detect — detection / scene understanding on one image.
+# Legacy unregistered detection IDL. No contract TOML references this file.
 sensor_msgs/Image image
 ---
 std_msgs/String results
@@ -4459,7 +4459,7 @@ string error
 `speech/srv/ListSpeakers.srv`
 
 ```rosidl
-# robonix/system/speech/list_speakers — enumerate every audio/speaker
+# robonix/service/speech/list_speakers — enumerate every audio/speaker
 # primitive registered in atlas, so a caller can choose a `target` for
 # speak. `namespace_prefix` optionally filters by provider namespace.
 # `speakers_json` is a JSON array of {provider_id, namespace, description}.
@@ -4515,7 +4515,7 @@ string error
 `speech/srv/Speak.srv`
 
 ```rosidl
-# robonix/system/speech/speak — synthesize `text` to speech and play it
+# robonix/service/speech/speak — synthesize `text` to speech and play it
 # out loud on the audio/speaker primitive identified by `target`
 # (its provider_id, from list_speakers). Empty target = first available
 # speaker. Lets an agent make the robot announce things aloud.
@@ -5298,7 +5298,7 @@ builtin_interfaces/Duration time_from_start
 
 ```rosidl
 # TTS one-shot synthesis
-# abstract_interface_id: robonix/system/speech/tts
+# Contract: robonix/service/speech/tts
 string text           # text to synthesize
 string language       # BCP-47, e.g. "zh-CN", "" = default
 string voice          # voice ID, "" = default
@@ -5337,6 +5337,21 @@ float32 speed
 audio/AudioConfig audio_config
 ---
 tts/SynthesizeAudioChunk chunk
+```
+
+## unique_identifier_msgs
+
+### UUID `msg` {/* #unique-identifier-msgs-msg-uuid-msg */}
+
+`unique_identifier_msgs/msg/UUID.msg`
+
+```rosidl
+# A universally unique identifier (UUID).
+#
+#  http://en.wikipedia.org/wiki/Universally_unique_identifier
+#  http://tools.ietf.org/html/rfc4122.html
+
+uint8[16] uuid
 ```
 
 ## visualization_msgs
@@ -5925,7 +5940,7 @@ BodyHealth[] bodies          # zero or more body health entries
 # the change to enrolled.json. Subsequent Identify(...) calls will no
 # longer match this speaker. Used by `rbnx chat`'s Settings → Users
 # modal when the operator presses `d` on the cursor row.
-# abstract_interface_id: robonix/system/speech/voiceprint_delete
+# Contract: robonix/service/voiceprint/delete
 string  user_id          # which user to forget; no-op + success=true if absent
 ---
 bool    success          # true if the row was removed OR was already absent
@@ -5941,7 +5956,7 @@ string  error            # non-empty on failure (I/O, etc.)
 # Caller sends raw audio + the user_id/user_name to bind. Service
 # extracts the speaker embedding and persists it. Subsequent calls
 # to Identify(...) with the same speaker should now match this user_id.
-# abstract_interface_id: robonix/system/speech/voiceprint_enroll
+# Contract: robonix/service/voiceprint/enroll
 string  user_id          # stable id (caller-chosen, must be unique)
 string  user_name        # human-friendly label (free-form)
 uint8[] audio_data       # raw PCM bytes, length >= 1 second is recommended
@@ -5958,7 +5973,7 @@ string  error            # non-empty on failure
 
 ```rosidl
 # Voiceprint identification (one-shot)
-# abstract_interface_id: robonix/system/speech/voiceprint
+# Contract: robonix/service/voiceprint/identify
 uint8[] audio_data
 string  encoding         # e.g. "pcm_s16le"
 uint32  sample_rate_hz   # e.g. 16000
@@ -5977,8 +5992,8 @@ string  error            # non-empty on failure
 ```rosidl
 # List every currently enrolled voiceprint user (admin RPC).
 # Returns a JSON-encoded array so the catalog shape can evolve without
-# changing the IDL — same pattern as robonix/system/speech/list_speakers.
-# abstract_interface_id: robonix/system/speech/voiceprint_list
+# changing the IDL — same pattern as robonix/service/speech/list_speakers.
+# Contract: robonix/service/voiceprint/list
 ---
 string  users_json       # JSON array: [{"user_id":"...","user_name":"..."}, ...]
 uint32  count            # convenience: number of users in users_json

@@ -4,9 +4,9 @@ title: 执行器
 <span id="executor-robonixsystemexecutor"></span>
 # 执行器（Executor）
 
-执行器接收规划器产出的执行方案，按照 RTDL 的 `sequence`、`parallel` 和 `do` 结构调度，并以事件流返回执行结果。当前外部 `do` 调用只走 MCP；目标为执行器自身时执行进程内置工具。gRPC 用于下表的方案控制面和技能的 `Driver(CMD_ACTIVATE)` 激活，执行器不直接读写 ROS 2 话题。安全监督器（Sentinel）尚未实现，能力分发链路当前不会经过其策略检查，详见[系统组件](../../architecture/components.md)。
+执行器接收规划器产出的执行方案，按照机器人任务描述语言（Robot Task Description Language，RTDL）的 `sequence`、`parallel` 和 `do` 结构调度，并以事件流返回执行结果。当前外部 `do` 调用只走模型上下文协议（Model Context Protocol，MCP）；目标为执行器自身时执行进程内置工具。gRPC 用于下表的方案控制面和技能的 `Driver(CMD_ACTIVATE)` 激活，执行器不直接读写 ROS 2 话题。安全监督器（Sentinel）尚未实现，能力分发链路当前不会经过其策略检查，详见[系统组件](../../architecture/components.md)。
 
-能力约定 TOML 在 `capabilities/system/executor/`，IDL 在 `capabilities/lib/executor/` 与 `capabilities/lib/module_health/`。
+能力约定 TOML 在 `capabilities/system/executor/`，接口定义语言（Interface Definition Language，IDL）文件在 `capabilities/lib/executor/` 与 `capabilities/lib/module_health/`。
 
 ## 接口
 

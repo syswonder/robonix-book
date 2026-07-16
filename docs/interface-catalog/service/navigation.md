@@ -4,9 +4,9 @@ title: 导航
 <span id="导航-robonixservicenavigation"></span>
 # 导航
 
-导航服务承担**目标式**运动：消费方给出地图坐标系中的目标，服务内部完成路径规划与避障。当前参考实现由 Nav2 产生速度，并经最终速度保护器发布 ROS `/cmd_vel`；底盘如何接收该话题由机器人部署完成。它不解析 `primitive/chassis/twist_in` 能力约定。智能体和规划器应调用导航 MCP 工具，不直接生成瞬时速度命令。
+导航服务承担**目标式**运动：消费方给出地图坐标系中的目标，服务内部完成路径规划与避障。当前参考实现由 Nav2 产生速度，并经最终速度保护器发布 ROS `/cmd_vel`；底盘如何接收该话题由机器人部署完成。它不解析 `primitive/chassis/twist_in` 能力约定。智能体和规划器应调用导航的模型上下文协议（Model Context Protocol，MCP）工具，不直接生成瞬时速度命令。
 
-能力约定 TOML 在 `capabilities/service/navigation/`；直接 IDL 位于 `capabilities/lib/{navigation,lifecycle,common_interfaces}/`。
+能力约定 TOML 在 `capabilities/service/navigation/`；直接使用的接口定义语言（Interface Definition Language，IDL）文件位于 `capabilities/lib/{navigation,lifecycle,common_interfaces}/`。
 
 ## 接口
 
@@ -19,7 +19,7 @@ title: 导航
 
 `navigate(goal: geometry_msgs/PoseStamped)` 返回提供方分配的 `run_id`，消费方用它通过 `navigate/status` / `navigate/cancel` 寻址同一个目标。`detail` 只是一句人类可读的说明（接受或拒绝的原因），不是结构化数据，消费方不应解析其内容。
 
-参考实现为 [`service-navigation-rbnx`](https://github.com/syswonder/service-navigation-rbnx/tree/b1a923a25cb3bf75554b861fceb605a190ae641b)。它把 `navigate`、`navigate/status`、`navigate/cancel` 接到 Nav2 `navigate_to_pose` action；`provider_ids` 必须绑定 map、chassis odom 和 lidar。使用 3D lidar 时，改绑 `scan_cloud` 并显式配置 `scan_projection`。Robot deployment 必须保存完整 `config/nav2_params.yaml` 并通过 `config.params_file` 引用；可用 `bt_xml_file` 指定本体 BehaviorTree。共享仓库的 `config/nav2_params.example.yml` 只是中性模板，不是机器人 profile。
+参考实现为 [`service-navigation-rbnx`](https://github.com/syswonder/service-navigation-rbnx/tree/b1a923a25cb3bf75554b861fceb605a190ae641b)。它把 `navigate`、`navigate/status`、`navigate/cancel` 接到 Nav2 的 `navigate_to_pose` 动作；`provider_ids` 必须绑定地图、底盘里程计和激光雷达。使用三维激光雷达时，改绑 `scan_cloud` 并显式配置 `scan_projection`。机器人部署仓库必须保存完整 `config/nav2_params.yaml` 并通过 `config.params_file` 引用；可用 `bt_xml_file` 指定本体行为树。共享仓库的 `config/nav2_params.example.yml` 只是中性模板，不是机器人配置组合。
 
 缺少所选提供方时，`Driver(CMD_INIT)` 返回 `Deferred`；配置无效或 Nav2 启动失败时返回错误并清理子进程。部署程序应区分这两类结果，不能把 `Deferred` 当成已可导航。
 

@@ -6,7 +6,7 @@ title: 惯性测量单元
 
 IMU 原语反馈惯性测量（角速度、线加速度、姿态），`topic_out` 数据面可供三维建图和状态估计使用，例如支持 IMU 与点云融合的建图提供方。`topic_out` 只规定单向输出流，不保证具体建图实现已经接入，也不绑定 ROS 2 或 gRPC 传输。
 
-能力约定 TOML 在 `capabilities/primitive/imu/`，IDL 在 `capabilities/lib/common_interfaces/sensor_msgs/`。
+能力约定 TOML 在 `capabilities/primitive/imu/`，接口定义语言（Interface Definition Language，IDL）文件在 `capabilities/lib/common_interfaces/sensor_msgs/`。
 
 ## 接口
 

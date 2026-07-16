@@ -1,12 +1,15 @@
 {
   "name": "robonix-book",
   "version": "0.1.0",
+  "license": "MulanPSL-2.0",
   "private": true,
   "scripts": {
     "start": "docusaurus start",
     "build": "docusaurus build && python3 scripts/write-legacy-pages.py build",
     "serve": "docusaurus serve",
     "clear": "docusaurus clear",
+    "check:code-blocks": "node scripts/check-code-blocks.mjs",
+    "check:assets": "node scripts/check-doc-assets.mjs",
     "typecheck": "tsc --noEmit",
     "docs:version": "docusaurus docs:version",
     "write-translations": "docusaurus write-translations"
@@ -30,6 +33,8 @@
     "@docusaurus/tsconfig": "3.10.2",
     "@docusaurus/types": "3.10.2",
     "@types/react": "^19.1.0",
+    "js-yaml": "5.2.1",
+    "smol-toml": "1.7.0",
     "typescript": "~6.0.2"
   },
   "browserslist": {

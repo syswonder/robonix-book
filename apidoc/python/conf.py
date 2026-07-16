@@ -18,20 +18,26 @@ def _add(p):
 
 _api_src = os.environ.get("ROBONIX_API_SRC", "")
 _scene = os.environ.get("ROBONIX_SCENE_SRC", "")
-if not os.path.isdir(_api_src) or not os.path.isdir(_scene):
+_scene_codegen = os.environ.get("ROBONIX_SCENE_CODEGEN", "")
+if (
+    not os.path.isdir(_api_src)
+    or not os.path.isdir(_scene)
+    or not os.path.isdir(_scene_codegen)
+):
     raise RuntimeError(
-        "Set ROBONIX_API_SRC and ROBONIX_SCENE_SRC to directories in the "
-        "pinned Robonix source checkout; see docs/reference/api.md."
+        "Set ROBONIX_API_SRC, ROBONIX_SCENE_SRC, and ROBONIX_SCENE_CODEGEN "
+        "to the pinned source and generated Scene interfaces; use the Book "
+        "Makefile targets described in docs/reference/api.md."
     )
 
 # robonix_api SDK.
 _add(_api_src)
-# scene service + its codegen-generated stubs (semantic_map_mcp / *_pb2),
-# which scene_service.mcp_tools imports when available. CI and the documented
-# lightweight local build mock those optional imports.
+# Scene implementation plus codegen-generated semantic_map_mcp and protobuf
+# modules. The Makefile generates these in a temporary directory so API
+# generation never writes into the clean pinned source checkout.
 _add(_scene)
-_add(os.path.join(_scene, "rbnx-build/codegen/robonix_mcp_types"))
-_add(os.path.join(_scene, "rbnx-build/codegen/proto_gen"))
+_add(os.path.join(_scene_codegen, "robonix_mcp_types"))
+_add(os.path.join(_scene_codegen, "proto_gen"))
 
 project = "Robonix Python API"
 author = "Robonix"
@@ -44,6 +50,7 @@ extensions = [
     "sphinx.ext.viewcode",
 ]
 autosummary_generate = True
+autosummary_generate_overwrite = False
 autodoc_default_options = {
     "members": True,
     "undoc-members": True,
@@ -63,7 +70,7 @@ html_title = "Robonix Python API"
 html_show_sphinx = False
 html_static_path = ["_static"]
 html_css_files = ["robonix.css"]
-# Match the mdBook: robonix blue accent, Noto Sans CJK SC body, JetBrains Mono.
+# Match the Docusaurus handbook: Robonix blue, Noto Sans SC, JetBrains Mono.
 html_theme_options = {
     "light_css_variables": {
         "color-brand-primary": "#283689",

@@ -9,5 +9,5 @@ build/
 .docusaurus/
 .venv-api/
 
-# Locally-generated API docs (rustdoc/pdoc). Built fresh by CI for Pages.
+# Locally generated API docs (rustdoc/Sphinx). Built fresh by CI for Pages.
 src/api/

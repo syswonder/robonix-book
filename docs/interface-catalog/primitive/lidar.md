@@ -6,7 +6,7 @@ title: 激光雷达
 
 激光雷达原语覆盖二维扫描与三维点云。`lidar`（二维 `LaserScan`）和 `lidar3d`（`PointCloud2`）都是不绑定具体传输方式的 `topic_out` 数据面，供建图（`service/map`）、避障和场景融合使用；`snapshot` 供大模型智能体按需取一帧二维扫描。
 
-能力约定 TOML 在 `capabilities/primitive/lidar/`，IDL 在 `capabilities/lib/lidar/` 与 `capabilities/lib/common_interfaces/`。
+能力约定 TOML 在 `capabilities/primitive/lidar/`，接口定义语言（Interface Definition Language，IDL）文件在 `capabilities/lib/lidar/` 与 `capabilities/lib/common_interfaces/`。
 
 ## 接口
 
@@ -17,10 +17,8 @@ title: 激光雷达
 | `robonix/primitive/lidar/lidar3d` | `topic_out` | [`sensor_msgs/PointCloud2`](../../reference/idl.md#common-interfaces-sensor-msgs-msg-pointcloud2-msg) | `primitive/lidar/lidar3d.v1.toml` |
 | `robonix/primitive/lidar/snapshot` | `rpc` | [`lidar/GetLaserScan`](../../reference/idl.md#lidar-srv-getlaserscan-srv) | `primitive/lidar/lidar_snapshot.v1.toml` |
 
-一个雷达包按硬件实现 `lidar`（2D 雷达）、`lidar3d`（3D 雷达，如 Livox / Velodyne）或两者。**vendor 中立**：原语只暴露标准 `LaserScan` / `PointCloud2`，厂家 SDK 的私有点云格式应在驱动内转成标准消息，不外泄到能力约定。
+一个雷达软件包可以按硬件实现 `lidar`（二维雷达）、`lidar3d`（三维雷达，如 Livox 或 Velodyne）或两者。原语接口与厂商无关：提供方只暴露标准 `LaserScan` 或 `PointCloud2`，厂商 SDK 的私有格式应在驱动内转换为标准消息。
 
-> **当前运行时限制**：Scene 的 3D 自动发现仍查询错误的 `robonix/primitive/lidar/pointcloud`，不会自动接入标准 `robonix/primitive/lidar/lidar3d`。修复 Scene 前，不能把声明了 `lidar3d` 等同于已经启用 Scene 3D 融合。
+`snapshot` 的规范 ID 是 `robonix/primitive/lidar/snapshot`。二维、三维数据是否进入建图或场景融合，取决于对应服务的提供方绑定与运行参数；仅声明 `lidar` 或 `lidar3d` 不会自动启用上层处理。
 
-`snapshot` 的规范 ID 是表中的 `robonix/primitive/lidar/snapshot`。`GetLaserScan.srv` 的生成参考目前仍显示旧名称 `robonix/primitive/lidar/lidar_snapshot`；提供方注册时不要使用旧名称。
-
-参考实现：`examples/webots/primitives/tiago_lidar`（`/scanner` → `lidar` + `snapshot`，输出归一化的 `/scanner_normalized`）。驱动初始化成功后会向 Atlas 声明 `robonix/primitive/lidar/lidar`，但当前 `package_manifest.yaml` 只列出 `snapshot` 和 `driver`；修复清单前，软件包元数据不是完整的运行时能力清单。
+参考实现位于 `examples/webots/primitives/tiago_lidar`，它把 `/scanner` 转换为二维激光雷达数据和按需快照，并输出归一化的 `/scanner_normalized`。实现新雷达包时，应让软件包清单中的 `capabilities` 与 Atlas 中的实际声明一致，并用 `rbnx caps -v` 核对提供方。

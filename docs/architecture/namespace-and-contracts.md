@@ -1,7 +1,7 @@
 # 命名空间与能力约定
 
 
-Robonix 使用**能力约定（Contract）**定义标准接口，使用**能力（Capability）**表示某个提供方（Provider）对该接口的具体实现。能力约定说明数据结构和交互方式；能力再绑定提供方、传输方式（Transport）和访问地址（Endpoint）。
+Robonix 使用**能力约定（Contract）**定义稳定、可复用的调用或数据接口，包括接口 ID、数据结构、交互方式、版本和类别。**能力（Capability）**是某个运行实例对一条能力约定的具体实现，并在运行时绑定传输方式（Transport）和访问地址（Endpoint）。
 
 ## 能力约定 ID 是接口名，不是设备 ID
 
@@ -110,7 +110,7 @@ capabilities:
     path: capabilities/inspect.v1.toml
 ```
 
-`rbnx codegen` 与 Atlas 都会合并 Robonix 全局 `capabilities/` 和软件包自带的 `capabilities/`。同 ID 的软件包内描述文件覆盖全局描述文件，适合实验；进入公共接口后应迁移到 Robonix 主仓库并更新使用方。
+在软件包目录运行 `rbnx codegen` 时，会合并 Robonix 全局 `capabilities/` 与当前软件包自带的 `capabilities/`。启动整机部署时，`rbnx boot` 会把部署清单 `primitive`、`service` 和 `skill` 列表中软件包的 `capabilities/` 自动追加到 Atlas；系统组件的额外目录不在这条自动发现路径中。若要显式配置，`system.atlas.capabilities` 必须是逗号分隔的单个字符串，而不是 YAML 列表；设置后会完整替换自动目录列表，因此必须同时写入全局目录、仍需保留的软件包目录和额外系统目录，建议使用展开后的绝对路径。同 ID 的后加载描述会覆盖先加载描述，适合实验；进入公共接口后应迁移到 Robonix 主仓库并更新使用方。
 
 ## 代码生成产物
 

@@ -15,7 +15,7 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: '接入机器人',
+      label: '接入与发布',
       items: [
         'integration-guide/index',
         'integration-guide/vendor-onboarding',
@@ -26,7 +26,7 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: '开发能力',
+      label: '软件包开发',
       items: ['developer-guide'],
     },
     {
@@ -41,7 +41,7 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: '接口目录',
+      label: '接口参考',
       items: [
         {type: 'doc', id: 'interface-catalog/index', label: '接口目录'},
         {

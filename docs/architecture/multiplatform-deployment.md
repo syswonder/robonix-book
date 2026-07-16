@@ -19,11 +19,9 @@ Robonix 的机器人部署清单可以为每个软件包实例选择不同的软
 system:
   scene:
     manifest: package_manifest.jetson-native.yaml
-    camera_frame: front_camera_rgb_optical_frame
-    camera_provider_id: front_camera
 ```
 
-`rbnx build -f robonix_manifest.yaml` 使用该文件的 `build:`；`rbnx boot` 内部执行 `rbnx start --manifest <file>`，使用同一文件的 `start:` 和 `stop:`。文件不存在时直接失败，不会静默回退。
+`rbnx build -f robonix_manifest.yaml` 使用该文件的 `build:`；`rbnx boot` 内部执行 `rbnx start --manifest <file>`，使用同一文件的 `start:` 和 `stop:`。文件不存在时直接失败，不会静默回退。场景服务当前只从 `system.scene` 读取 `manifest`；运行参数应按[软件包与部署清单规范](../integration-guide/packaging-spec.md)使用 `RBNX_CONFIG_FILE` 包装脚本传入。
 
 常见文件名是约定，不是 CLI 枚举：
 
@@ -45,7 +43,6 @@ manifestVersion: 1
 package:
   name: com.robonix.system.scene
   version: 0.1.0
-  vendor: robonix
   description: Scene — semantic + geometric live map (Jetson + native host-ROS2 target).
   license: MulanPSL-2.0
 
@@ -62,7 +59,7 @@ capabilities:
   - name: robonix/system/scene/list_relations
 ```
 
-这段内容直接摘自当前 Scene 的 Jetson 本机清单。`RBNX_BUILD_TARGET`、`ROBONIX_SCENE_FORCE` 是 Scene 脚本自己的实现约定；`rbnx` 只执行清单中的 shell 命令，不解释这些变量。
+上例中的 `RBNX_BUILD_TARGET` 和 `ROBONIX_SCENE_FORCE` 是场景服务脚本的实现约定；`rbnx` 只执行清单中的 shell 命令，不解释这些变量。其他软件包可以使用自己的变量名，但必须在 README 和目标清单中说明。
 
 ## 本机与容器的边界
 
@@ -91,13 +88,9 @@ capabilities:
 
 `rbnx` 不会自动把 ROS 2、CUDA、设备或环境变量注入任意容器；这些属于软件包的启动实现。
 
-## 当前仓库中可验证的例子
+## 确认软件包支持的目标
 
-| 软件包 | 默认清单 | 额外清单 |
-|---|---|---|
-| 场景服务 | `package_manifest.yaml`，x86 Docker | `package_manifest.jetson-native.yaml`、`package_manifest.jetson-docker.yaml` |
-
-当前 Robonix 源码快照中，只有场景服务同时提供上述三个清单。Webots 部署清单通过 `url:` 引用建图和导航外部软件包，但它们的目标清单由各自上游仓库定义，不能从本源码树推断。记忆、语音、某个原语或第三方技能也不会因此自动支持相同目标。接入时应先检查实际软件包根目录：
+机器人部署应仅选择软件包仓库实际提供且已验证的目标清单。某个软件包支持 Jetson 本机运行，不代表建图、导航、语音或其他软件包自动支持相同目标。对外部软件包，以该仓库的清单、README 和发布记录为准。引用前先检查软件包根目录：
 
 ```bash
 find /path/to/package -maxdepth 1 -name 'package_manifest*.yaml' -print
@@ -139,7 +132,7 @@ service:
         scan: front_lidar
 ```
 
-`rbnx` 把 `params_file` 等软件包配置当作不透明值，不会代替软件包解析任意文件路径。只有声明 `*/driver` 能力约定的提供方会通过 `Driver(CMD_INIT, config_json)` 收到这份配置，并应在 `on_init` 中明确相对路径以部署目录、软件包目录还是其他目录为基准。没有 driver 的软件包不会从这条路径收到 `config:`，必须在自己的启动实现中定义配置入口。上游外部包的 profile 兼容性和路径约定应以该软件包当前实现为准。
+`rbnx` 把 `params_file` 等软件包配置当作不透明值，不会代替软件包解析任意文件路径。只有声明生命周期驱动能力约定的提供方会通过 `Driver(CMD_INIT, config_json)` 收到这份配置，并应在 `on_init` 中明确相对路径以部署目录、软件包目录还是其他目录为基准。没有生命周期驱动的软件包不会从这条路径收到 `config:`，必须在自己的启动实现中定义配置入口。上游软件包的配置组合兼容性和路径约定应以该软件包当前实现为准。
 
 ## ROS 2、RMW 与 Zenoh
 
@@ -166,7 +159,7 @@ sudo apt install -y "ros-$ROS_DISTRO-rmw-zenoh-cpp"
 test -x "/opt/ros/$ROS_DISTRO/lib/rmw_zenoh_cpp/rmw_zenohd"
 ```
 
-由机器人 deployment 的启动脚本统一拉起路由器。下面是最小宿主机流程：保存 PID、等待默认 TCP `7447` 就绪，并把日志留在本次部署目录。
+由机器人部署的启动脚本统一拉起路由器。下面是最小宿主机流程：保存 PID、等待默认 TCP `7447` 就绪，并把日志留在本次部署目录。
 
 ```bash
 set -euo pipefail
@@ -256,7 +249,7 @@ ROBONIX_ZENOH_LISTEN
 
 它们不是第二个 RMW 选择器。`RMW_IMPLEMENTATION` 选择 ROS 2 中间件；上述变量只描述 `rmw_zenoh_cpp` 如何连接路由器。软件包入口脚本最终将生成的文件写入 `ZENOH_SESSION_CONFIG_URI`。
 
-路由器位于宿主机或另一台固定节点、而 ROS 2 package 在容器中运行时，可在 deployment 顶层统一提供会话参数：
+路由器位于宿主机或另一台固定节点、而 ROS 2 软件包在容器中运行时，可在机器人部署顶层统一提供会话参数：
 
 ```yaml
 env:
@@ -269,15 +262,23 @@ env:
 
 ## 验证目标选择
 
-```bash
-# 构建部署选中的全部软件包清单
-rbnx build -f robonix_manifest.yaml
+先构建部署选中的全部软件包清单：
 
-# 启动并检查提供方状态
+```bash
+rbnx build -f robonix_manifest.yaml
+```
+
+在终端 A 启动部署：
+
+```bash
 rbnx boot -f robonix_manifest.yaml
+```
+
+`rbnx boot` 保持在前台并等待 Ctrl-C 或关闭信号。保持终端 A 运行，在终端 B 检查提供方状态和日志：
+
+```bash
 rbnx caps -v
 
-# 检查目标软件包的构建和启动日志
 rg -n "RBNX_BUILD_TARGET|mode=|ERROR|FAIL" rbnx-boot/logs
 ```
 

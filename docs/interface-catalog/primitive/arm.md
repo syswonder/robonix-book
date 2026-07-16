@@ -2,7 +2,7 @@
 
 机械臂原语用统一的关节名称和单位提供指令、反馈与末端位姿。夹爪若属于机械臂，也作为同一 `JointState` 中的具名关节暴露。
 
-能力约定 TOML 在 `capabilities/primitive/arm/`，IDL 在 `capabilities/lib/common_interfaces/`。
+能力约定 TOML 在 `capabilities/primitive/arm/`，接口定义语言（Interface Definition Language，IDL）文件在 `capabilities/lib/common_interfaces/`。
 
 ## 接口
 

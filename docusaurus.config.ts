@@ -100,7 +100,7 @@ const config: Config = {
         },
         {
           href: 'https://github.com/syswonder/robonix-book',
-          label: '编辑手册',
+          label: '文档仓库',
           position: 'right',
         },
       ],

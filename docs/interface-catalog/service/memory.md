@@ -6,18 +6,18 @@ title: 记忆
 
 记忆服务是长期记忆层：语义检索、写入和压缩归纳。`search` / `save` 的请求和响应使用 `std_msgs/String`；`compact` 接收空请求，返回 `std_msgs/String`。embedding、向量库和检索数量属于实现细节，不进能力约定。
 
-能力约定 TOML 在 `capabilities/service/memory/`；直接 IDL 位于 `capabilities/lib/memory/`，字符串载荷复用 `std_msgs/String`。
+能力约定 TOML 在 `capabilities/service/memory/`；直接使用的接口定义语言（Interface Definition Language，IDL）文件位于 `capabilities/lib/memory/`，字符串载荷复用 `std_msgs/String`。
 
 ## 接口
 
 | 能力约定 ID | 模式 | 默认实现传输 | 载荷（IDL） | 能力约定 TOML |
 |---|---|---|---|---|
 | `robonix/service/memory/driver` | `rpc` | gRPC（生命周期） | [`lifecycle/Driver`](../../reference/idl.md#lifecycle-srv-driver-srv) | `service/memory/driver.v1.toml` |
-| `robonix/service/memory/search` | `rpc` | MCP | [`memory/Search`](../../reference/idl.md#memory-srv-search-srv)（`std_msgs/String` → `std_msgs/String`） | `service/memory/search.v1.toml` |
+| `robonix/service/memory/search` | `rpc` | 模型上下文协议（Model Context Protocol，MCP） | [`memory/Search`](../../reference/idl.md#memory-srv-search-srv)（`std_msgs/String` → `std_msgs/String`） | `service/memory/search.v1.toml` |
 | `robonix/service/memory/save` | `rpc` | MCP | [`memory/Save`](../../reference/idl.md#memory-srv-save-srv)（`std_msgs/String` → `std_msgs/String`） | `service/memory/save.v1.toml` |
 | `robonix/service/memory/compact` | `rpc` | MCP | [`memory/Compact`](../../reference/idl.md#memory-srv-compact-srv)（空请求 → `std_msgs/String`） | `service/memory/compact.v1.toml` |
 
-参考实现：Robonix 源码中的 [`services/memsearch`](https://github.com/syswonder/robonix/tree/9a68b2918717c0421faff690eb7bc05e1c8f2a64/services/memsearch)（`memsearch[onnx]` + `milvus-lite`）。三个记忆操作都用 `@memory.mcp(...)` 暴露，不挂载业务 gRPC servicer；工具名默认取能力约定 leaf：`search`、`save`、`compact`。`driver` 由 Robonix API 以 gRPC 提供。
+参考实现：Robonix 源码中的 [`services/memsearch`](https://github.com/syswonder/robonix/tree/436204a0aa5301dcf682a38ad29523023ad5a3a5/services/memsearch)（`memsearch[onnx]` + `milvus-lite`）。三个记忆操作都用 `@memory.mcp(...)` 暴露，不挂载业务 gRPC servicer；工具名默认取能力约定 leaf：`search`、`save`、`compact`。`driver` 由 Robonix API 以 gRPC 提供。
 
 ## 生命周期与运行行为
 
