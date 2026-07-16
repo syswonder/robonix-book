@@ -8,7 +8,6 @@ hide_table_of_contents: true
 
 本页收录从 IDL 包含根（`rbnx docs --include`，默认 `capabilities/lib/`）收集的全部 ROS IDL（`.msg` / `.srv`）原文，按 ROS 包分组（共 303 个文件）。[能力约定参考](contracts.md) 的载荷列链到这里对应的锚点。
 
-
 <details className="idl-package-index">
 <summary>展开 ROS package 索引</summary>
 

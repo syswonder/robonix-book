@@ -17,7 +17,7 @@ GENERATED_BANNER = re.compile(
     re.MULTILINE,
 )
 IDL_INDEX_BLOCK = re.compile(
-    r'\n<details className="idl-package-index">.*?</details>\n',
+    r'\n+<details className="idl-package-index">.*?</details>\n+',
     re.DOTALL,
 )
 
@@ -55,7 +55,7 @@ def normalize(text: str) -> str:
     if '# ROS IDL 参考（自动生成）' in text[:120]:
         if not text.startswith('---\n'):
             text = '---\nhide_table_of_contents: true\n---\n\n' + text
-        text = IDL_INDEX_BLOCK.sub('\n', text)
+        text = IDL_INDEX_BLOCK.sub('\n\n', text)
         packages = idl_packages(text)
         links = ' · '.join(f'[{name}](#{name.lower()})' for name in packages)
         first_package = text.find('\n## ')
