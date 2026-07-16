@@ -2,60 +2,157 @@
 
 [toc]
 
-Robonix 的能力提供者（原语 / 服务 / 技能）都通过 **contract** 暴露自己提供的能力（capability）。contract 描述"是什么"——schema、IO、交互形态；具体由谁实现、绑哪种 transport、endpoint 在哪，是注册时再决定的。
+Robonix 使用 **contract** 定义标准接口，使用 **Capability** 表示某个 provider 对该接口的具体实现。contract 说明数据形状和交互方式；Capability 再绑定 provider、transport 和 endpoint。
+
+## Contract ID 是接口名，不是设备 ID
+
+以下 ID 表示“相机 RGB 数据”这一标准接口：
+
+```text
+robonix/primitive/camera/rgb
+```
+
+它不表示前置相机、机械臂相机或某个进程。多个 provider 可以同时实现同一 contract：
+
+```text
+front_camera   + robonix/primitive/camera/rgb + ROS2
+arm_camera     + robonix/primitive/camera/rgb + ROS2
+rear_camera    + robonix/primitive/camera/rgb + gRPC
+```
+
+消费者先选择 provider ID，再选择 contract 和 transport。Atlas 以 `(provider_id, contract_id, transport)` 唯一定位一条运行时 Capability。
 
 ## 命名空间
 
-每个能力提供者注册时声明一个主 `namespace` 前缀，用于分类、检索和运维诊断。普通 capability 的 `contract_id` 应从这个前缀开始；明确设置 `cross_namespace = true` 的共享 contract 可以由其它 namespace 的能力提供者实现。其它不一致会由 robonix-api 和 atlas 记录 warning，并显示在 `rbnx caps -v`，但不会阻止注册、启动或调用。一级命名空间分四类：
+provider 注册时声明主 `namespace`。它用于分类、查询和配置诊断，不是授权或隔离边界。
 
-| 前缀 | 含义 | 谁实现 |
-|------|------|--------|
-| `robonix/primitive/*` | 原语：低层硬件抽象（chassis、camera、lidar、gripper 等） | 设备驱动包 |
-| `robonix/service/*`   | 服务：场景级算法/能力（slam、navigation、semantic_map 等） | Robonix 提供默认实现，可被替换或扩展 |
-| `robonix/skill/*`     | 技能：封装特定语义功能、组合原语和服务来完成任务的可复用单元 | 用户/算法开发者自行定义 |
-| `robonix/system/*`    | 系统服务：Robonix 自身的核心服务（pilot、executor、liaison、scene） | 仓库内置，不可替换 |
+| Contract 前缀 | 内容 |
+|---|---|
+| `robonix/primitive/*` | 硬件与设备原语，例如 chassis、camera、lidar、arm |
+| `robonix/service/*` | 可复用算法与服务，例如 mapping、navigation、speech |
+| `robonix/skill/*` | 面向任务的可复用技能 |
+| `robonix/system/*` | Robonix 系统接口，例如 Executor、Pilot、Scene、Soma |
 
-## 能力约定（contract）
+这四类是 contract 命名空间。Atlas 的 provider kind 仍只有 Primitive、Service 和 Skill；`system` 不是第四种 provider kind。
 
-contract 是一条 capability 的**身份证**——`contract_id` 在整个系统里全局唯一，提供方和消费方都按 `contract_id` 对话，跟具体进程、传输无关。每个 contract 由一份 TOML 描述：
+普通 contract 应位于 provider 主 namespace 下。若不一致，robonix-api 和 Atlas 会记录 warning，并将 Capability 标记为 `namespace_mismatch`，但不会阻止注册、启动或调用。确实需要跨命名空间复用的 contract 可以在 descriptor 中设置：
+
+```toml
+cross_namespace = true
+```
+
+## Contract descriptor
+
+标准 descriptor 位于 Robonix 源码树的 `capabilities/`。例如：
 
 ```toml
 # capabilities/primitive/chassis/move.v1.toml
 [contract]
-id      = "robonix/primitive/chassis/move"
+id = "robonix/primitive/chassis/move"
 version = "1"
-kind    = "primitive"
-idl     = "chassis/srv/ExecuteMoveCommand.srv"
-# 跨 provider 领域复用的共享 contract 设为 true。
-# 普通领域 contract 省略该字段（默认 false）。
-cross_namespace = false
+kind = "primitive"
+idl = "chassis/srv/ExecuteMoveCommand.srv"
+description = "Low-level bounded chassis motion command without global path planning."
 
 [mode]
 type = "rpc"
 ```
 
-字段含义：
+`idl` 相对于 `capabilities/lib/` 解析。因此上例对应：
 
-- `[contract]`：身份与载荷。`id` 采用 Path-style 命名空间，如 `robonix/primitive/chassis/move`；`version` 为能力约定版本；`kind` 为对应大类；`idl` 指向载荷的 ROS IDL（`.msg` / `.srv`）；`cross_namespace` 默认为 `false`，仅共享 contract 设置为 `true`，用于关闭正常的跨 namespace 诊断。**官方 contract**（robonix 源码树的 `capabilities/`）的 IDL 解析到 `capabilities/lib/`；**包内 contract**（package 自己的 `capabilities/`）解析到包的 `capabilities/lib/`。
-- `[mode]`：交互形态：
-  - `rpc`：一元 RPC，如 ROS2 service 或 gRPC unary。
-  - `rpc_server_stream` / `rpc_client_stream` / `rpc_bidirectional_stream`：流式 RPC，目前仅 gRPC 支持，ROS2 不原生支持。
-  - `topic_out`：流式发布者，如 ROS2 topic publish 或 gRPC server-stream（request 为空）。
-  - `topic_in`：流式订阅者，如 ROS2 topic subscribe 或 gRPC client-stream（response 为空）。
+```text
+capabilities/lib/chassis/srv/ExecuteMoveCommand.srv
+```
 
-contract 文件本身不包含传输信息——同一个 `robonix/primitive/camera/rgb` 既可以由 ROS 2 桥提供，也可以由 gRPC 服务提供，也可以由 MCP 工具提供。某些 mode 受限：`rpc_server_stream/client_stream/bidirectional_stream` 仅 gRPC，topic_out/topic_in 可走 ROS2 或 gRPC。
+descriptor 的关键字段为：
 
-## codegen：能力约定 → 代码
+- `id`：稳定的标准接口名。
+- `version`：contract 版本。
+- `kind`：预期的 provider kind。
+- `idl`：`.msg` 或 `.srv` 载荷定义。
+- `description`：所有 provider 实例共享的接口说明。
+- `cross_namespace`：可选；允许跨主 namespace 实现而不产生诊断。
+- `[mode].type`：交互形态。
 
-**`rbnx codegen`**（详见 [Build 与 Codegen](../integration-guide/build-and-codegen.md)）从包的 `capabilities:` 列表读 contract，生成 stub：
+支持的 mode：
 
-1. **proto / Python stubs**：把 ROS IDL 翻成 protobuf，再用 `grpc_tools.protoc` 生成 `proto_gen/*_pb2.py`。包代码 `from proto_gen.prm_chassis_pb2 import MoveCommand` 即可。
-2. **MCP types**（`--mcp`）：把 contract 的 IO 类型生成为 pydantic-like 类，含 `.json_schema()`、`.model_validate(dict)`、`.model_dump()`。落到 `<pkg>/robonix_mcp_types/`。
+| Mode | IDL | 含义 |
+|---|---|---|
+| `rpc` | `.srv` | 一元请求与响应 |
+| `rpc_server_stream` | `.srv` | 一次请求，服务端流式响应 |
+| `rpc_client_stream` | `.srv` | 客户端流式请求，一次响应 |
+| `rpc_bidirectional_stream` | `.srv` | 双向流 |
+| `topic_out` | `.msg` | provider 发布消息 |
+| `topic_in` | `.msg` | provider 接收消息 |
 
-> codegen 全部产出到 `<pkg>/rbnx-build/codegen/`（proto stubs）和 `<pkg>/robonix_mcp_types/`（MCP types）。`rbnx start` 在 spawn 子进程前会把这两个目录加进 `PYTHONPATH`。
+contract descriptor 不绑定传输。同一 contract 可以由不同 provider 通过 ROS 2、gRPC 或 MCP 实现。
 
-## 通道（channel）
+## Package-local contract
 
-consumer 要使用某条 capability 时，先调 Atlas 的 `ConnectCapability(consumer_id, provider_id, contract_id, transport)`，Atlas 记录这条 consumer→provider 的 channel，并把 endpoint 返回给 consumer。consumer 拿到 endpoint 自己 dial（gRPC）或订阅（ROS）或起 HTTP client（MCP）。channel 在 Atlas 侧只是一条记账记录，可以用 `rbnx channels` 查看。
+官方 contract 尚未覆盖的实验接口可以随 package 提供：
 
-不需要走 Connect 也能用：所有的只读发现都用 `Query` 直接拿 endpoint。Connect 主要给系统服务用——pilot / executor 启动时连一次相关 provider，channel 帮 atlas 跟踪谁在用谁，方便 `rbnx inspect` 时给运维一个完整图。
+```text
+my_skill/
+├── capabilities/
+│   ├── inspect.v1.toml
+│   └── lib/
+│       └── inspect/
+│           └── srv/
+│               └── Inspect.srv
+├── package_manifest.yaml
+└── scripts/
+```
+
+package manifest 可用 `path:` 明确关联 package-local descriptor：
+
+```yaml
+capabilities:
+  - name: robonix/skill/inspection/inspect
+    path: capabilities/inspect.v1.toml
+```
+
+`rbnx codegen` 与 Atlas 都会合并 Robonix 全局 `capabilities/` 和 package 自带的 `capabilities/`。同 ID 的 package-local descriptor 覆盖全局 descriptor，适合实验；进入公共接口后应迁移到 Robonix 主仓库并更新使用方。
+
+## Codegen 输出
+
+在 package 根目录运行：
+
+```bash
+rbnx codegen --mcp --ros2
+```
+
+默认产物为：
+
+```text
+<package>/
+└── rbnx-build/
+    ├── proto-staging/                  # 临时 proto 输入
+    └── codegen/
+        ├── proto_gen/                  # Python protobuf/gRPC stubs
+        ├── robonix_mcp_types/          # --mcp 生成的 MCP 类型
+        └── ros2_idl/                   # --ros2 生成的 ROS 2 overlay 源码
+```
+
+`rbnx start` 会把 package 根、`proto_gen/` 和 `robonix_mcp_types/` 加入 `PYTHONPATH`。如果存在 `<package>/rbnx-build/ws/install/setup.bash`，启动前还会 source 该 colcon overlay。
+
+`ros2_idl/` 只是 colcon workspace 源码。使用 ROS 2 类型前，package 的 `build.sh` 仍需在目标 ROS 2 环境中执行 `colcon build`，并在运行时 source 对应的 `install/setup.bash`。
+
+## Capability 绑定与通道
+
+provider 启动时调用 `DeclareCapability`，将 contract 绑定到 transport 和候选 endpoint。消费者使用前调用：
+
+```text
+ConnectCapability(consumer_id, provider_id, contract_id, transport)
+```
+
+Atlas 返回最终 endpoint 和传输参数，并记录 channel。消费者随后直接连接 provider。`Query` 只返回发现元数据，不公开 endpoint，因此不能用 Query 绕过 channel 建立新连接。
+
+使用以下命令检查结果：
+
+```bash
+rbnx contracts
+rbnx caps -v
+rbnx channels
+```
+
+contract 解决接口兼容问题；provider ID 解决实例选择问题；namespace 解决分类与诊断问题。三者不要混用。

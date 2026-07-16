@@ -1,1649 +1,361 @@
-# Robonix 开发者指南
+# 开发者指南
 
 [toc]
 
-**本指南对应的开发分支**：[`syswonder/robonix:dev-next`](https://github.com/syswonder/robonix/tree/dev-next)。接口和配置以该分支当前实现为准。
+本指南面向 Primitive、Service 和 Skill Package 开发者。完成后，你将能从官方模板启动一个最小部署，创建自己的 Package，声明标准或自定义 contract，接收 deployment config，并用 Atlas 与 CLI 验证运行结果。
 
-**面向**：写 service / skill / primitive 的开发者。
+<div class="procedure-meta">
+  <div><strong>源码</strong>syswonder/robonix dev-next</div>
+  <div><strong>模板</strong>syswonder/template-rbnx main</div>
+  <div><strong>交付物</strong>独立 Package 仓库或 robot deployment 子目录</div>
+</div>
 
-> **概念**：**原语 / 服务 / 技能** 是三类独立运行的能力提供者（带 lifecycle）；它们对外暴露的 **Capability** 是 contract + transport + endpoint 的接口描述。Python 里就是 `Primitive` / `Service` / `Skill` 三个类。
+## 1. 选择 Package 类型
 
-**阅读路径**：
+| 类型 | 何时使用 | 典型例子 |
+|---|---|---|
+| Primitive | 直接连接一项硬件或硬件数据源 | chassis、camera、lidar、IMU、arm、audio |
+| Service | 提供可替换的系统算法或共享功能 | mapping、navigation、speech、memory |
+| Skill | 提供模型可调用的语义行为 | explore、greet、pick、transport_things |
 
-- **Part I 入门**（§1-§2）：跑通最小部署，建立全局印象
-- **Part II 核心概念**（§3-§5）：原语/服务/技能 / 能力约定 / 生命周期
-- **Part III 开发**（§6-§10）：包结构 / API 速览 / 写服务 / 写原语 / 写技能
-- **Part IV 部署**（§11-§13）：部署目录 / 部署清单 / 启动
-- **Part V 参考**（§14-§16）：Python API / CLI / 配置字段
+不要把整台机器人写成一个 Package。完整机器人由 robot deployment 组合多个 Package、URDF、Soma 和本体参数；Package 本身应保持可替换和可复用。
 
-***
+## 2. 跑通官方模板
 
-**Part I — 入门**
-
-***
-
-## 1. 5 分钟上手
-
-**前置**：Rust 1.86+（含 cargo，确保 `~/.cargo/bin` 在 `PATH`，没装就 `source ~/.cargo/env`）/ Python 3.10+ / Docker / `uv`。
+先按[快速上手](getting-started/quickstart.md#2-取得-dev-next-并安装-robonix)安装 `dev-next`。然后克隆模板：
 
 ```bash
-# 1. 装工具链
-git clone --recurse-submodules https://github.com/syswonder/robonix
-cd robonix
-git switch dev-next
-make install
-rbnx --version
-
-# 2. 克隆部署模板
-git clone https://github.com/syswonder/template-rbnx ~/my_deploy
-cd ~/my_deploy
-
-# 3. VLM 凭据（pilot 用）
-export VLM_API_KEY=sk-...
-export VLM_BASE_URL=https://api.openai.com/v1
-export VLM_MODEL=gpt-4o-mini
-
-# 4. build + boot
-rbnx build && rbnx boot
+git clone https://github.com/syswonder/template-rbnx.git
+cd template-rbnx
 ```
 
-`rbnx boot` 跑完停在 `✓ N component(s) up`。开新终端：
+模板包含一个 Primitive、一个 Service 和一个 Skill。先验证三个 Package manifest；`rbnx validate` 使用位置参数，不使用 `-p`：
 
 ```bash
-rbnx caps -v          # 4 system + mock_chassis / my_navigate / say_hello
-rbnx chat             # 试 "say hello to alice"
+rbnx validate primitives/mock_chassis
+rbnx validate services/my_navigate
+rbnx validate skills/say_hello
 ```
 
-`Ctrl-C` 杀 `rbnx boot`，所有能力提供者自动清理并退出。跑通后跳 §8 写自己的服务，或 §2 看整体设计。
+每条命令都应以以下一行结束：
 
-***
-
-## 2. Robonix 是什么
-
-机器人系统的功能天然分散——驱动、SLAM、导航、决策各是一个独立单元，需要互相发现、调用、可独立替换。Robonix 给这套协调一个最小骨架：**三类能力提供者（原语 / 服务 / 技能）+ 一个目录服务（atlas）+ 一份接口形状（contract）**。
-
-```
-       skill        explore / say_hello / ...
-         |          (LLM-triggered tasks)
-         v
-       service      mapping / nav / memory / speech
-         |          (robot-level algorithms)
-         v
-       primitive    chassis / camera / lidar / audio
-                    (1 物理设备 = 1 primitive)
+```text
+✓ Manifest validation passed
 ```
 
-**几个核心机制**协同工作（详见 Part II）：
+配置 VLM 后构建、启动：
 
-* **原语 / 服务 / 技能**：三类独立运行的能力提供者，Python 里写为 `Primitive(id, ns)` / `Service(...)` / `Skill(...)`，挂 lifecycle、装饰器、对外暴露若干 Capability。
-* **Capability**：能力提供者对外暴露的一条接口（contract + transport + endpoint）。一个能力提供者可同时暴露多条（`tiago_camera` → `rgb` + `depth` + `extrinsics`）。
-* **Atlas**：能力提供者启动时把"我是谁、暴露什么、在哪"注册过来；别人通过它发现 + 寻址。**没有 Atlas 就要硬编码地址**。
-* **Contract**：Capability 的形状（toml + ROS IDL）。换实现不动能力约定。
+```bash
+export VLM_API_KEY='sk-...'
+export VLM_BASE_URL='https://api.example.com/v1'
+export VLM_MODEL='your-model-name'
 
-剩下的章节都是落地细节。Robonix 内部还跑 pilot / executor / liaison 等系统服务。
-
-> **Robonix 是 EAIOS（Embodied AI Operating System）v0.1 白皮书的开源参考实现**。
-
-***
-
-**Part II — 核心概念**
-
-***
-
-## 3. 原语 / 服务 / 技能 与 Capability
-
-### 3.1 三类能力提供者
-
-| 类型 | namespace 前缀（例） | 定义 |
-|---|---|---|
-| primitive（原语）| `robonix/primitive/<kind>` | 对单一物理设备的硬件抽象，封装其不可再分解的原子操作集。`<kind>` ∈ {`audio`, `camera`, `chassis`, `imu`, `lidar`}（封闭）|
-| service（服务）| `robonix/service/<x>` | 由操作系统统一注册、调度与管理的标准化功能模块 |
-| skill（技能）| `robonix/skill/<x>` | 封装特定语义功能的可复用行为序列，由 LLM / 状态机触发 |
-
-第三方实验可用 `myorg/...` 自前缀，atlas 不强制 `robonix/`。`robonix/system/` 是 robonix 自带组件保留前缀。
-
-### 3.2 定义
-
-| | 含义 | Python | 生命周期 |
-|---|---|---|---|
-| 原语 / 服务 / 技能 | 一个独立运行的能力提供者 | `service = Service(id="my_navigate", namespace=...)` | `REGISTERED → INACTIVE → ACTIVE → ...`（见 §5）|
-| Capability | 能力提供者暴露的一条接口 `(contract_id, transport, endpoint, params, description)`，Pilot 大模型在 prompt 里看到的就是这些 | `@service.mcp(...)` / `@service.grpc(...)` / `service.declare_ros2_topic(...)` 等装饰器/方法 | 跟随能力提供者 |
-
-`id` 是该能力提供者在 atlas 里的唯一 id（`audio_driver` / `tiago_chassis` / `my_navigate`）；Capability 没有自己的 id，只通过 `(provider_id, contract_id)` 寻址。
-
-### 3.3 包
-
-**静态构建/分发单元**——目录、manifest、（可选）docker。运行时启动为一个能力提供者。
-
-`package.name` 是 package 的发布名（例如 `robonix.service.navigation` 或 `robonix.primitive.intel.realsense_d435i.camera`）；能力提供者 id 是运行时身份，由 Python 源里 `Primitive/Service/Skill(id="...")` 声明。两者不必相同。rbnx boot 在 spawn 包之后 poll atlas 拿到新注册的能力提供者，跟 `robonix_manifest.yaml` 里挂这个包的 `name:` 对账（两处必须一致）。包结构详见 §6。
-
-### 3.4 Atlas 目录服务
-
-中心目录服务（gRPC，端口 `50051`）。能力提供者启动时按 kind 调 `RegisterPrimitive` / `RegisterService` / `RegisterSkill`，之后每条接口调 `DeclareCapability`。其它能力提供者调 `Query`（`ATLAS.query_primitives/_services/_skills`，返回能力提供者记录列表）或 `find_capability`（扁平展开到 Capability 列表）拿 endpoint。Atlas **不传业务数据**，只传"谁在哪里能干什么"。
-
-***
-
-## 4. 能力约定
-
-### 4.1 定义
-
-原语/服务/技能暴露的细粒度接口。可类比硬件接口规格书：定义"能做什么 + 数据是什么形状"，与具体实现解耦。一条能力约定由三件东西组成：
-
-| 件 | 文件 | 决定 |
-|---|---|---|
-| toml | `capabilities/<...>.v1.toml` | 接口 ID + mode + IDL 引用 |
-| IDL | `capabilities/lib/<lib_name>/{msg,srv}/<Name>` | 数据类型（ROS IDL，msg/srv 文件） |
-| 实现 | python 装饰器 / publisher | 运行时绑定 |
-
-`mode` 决定语义（rpc / topic / streaming），框架据此选 transport。具体编写步骤见 §8.5。
-
-### 4.2 模式（Mode）与传输（Transport）
-
-能力约定 toml 的 `[mode] type` 描述**抽象语义**（与具体协议无关）；传输是落地协议。一个模式可被多种传输实现。
-
-**抽象 mode**：
-
-| mode | 语义 |
-|---|---|
-| `rpc` | 单次请求 / 单次响应 |
-| `rpc_server_stream` | 请求 → 响应流 |
-| `rpc_client_stream` | 请求流 → 响应 |
-| `rpc_bidirectional_stream` | 双向流 |
-| `topic_out` | 该能力持续 publish 这条 topic |
-| `topic_in` | 该能力持续 subscribe 这条 topic（典型：chassis 声明它消费 `Twist` 命令） |
-
-**transport × mode 兼容矩阵**：
-
-| mode \ transport     | gRPC | ROS 2 | MCP |
-|---                   |:---:|:---:|:---:|
-| `rpc`                | ✓ | ✓ ¹ | ✓ |
-| `rpc_server_stream`  | ✓ | ✗ | ✗ |
-| `rpc_client_stream`  | ✓ | ✗ | ✗ |
-| `rpc_bidirectional_stream`    | ✓ | ✗ | ✗ |
-| `topic_out`          | ✓ ² | ✓ | ✗ |
-| `topic_in`           | ✓ ² | ✓ | ✗ |
-| **endpoint 形式**    | `host:port` | topic 名 + QoS | HTTP URL |
-
-¹ ROS 2 通过 service 实现 rpc，请求/响应一对一。
-² gRPC 上的 `topic_*` = 用 server/client streaming 把"持续 publish/subscribe"伪装成一次性 RPC——典型用途是跨网络 / 跨语言、ROS 2 不可达时的退路。
-
-**为什么是 `topic_in` / `topic_out`、不是无方向的 `topic`**
-
-后缀刻画的是**声明者（能力提供者）的角色**，不是数据的物理流向：
-
-* `topic_out` — 能力提供者是 source，consumer 反向拿 endpoint 去 subscribe（典型：lidar 声明 `/scan`）。
-* `topic_in` — 能力提供者是 sink，consumer 反向拿 endpoint 去 publish（典型：chassis 声明 `/cmd_vel`）。
-
-去掉方向后会失去两件不可替代的信息：(1) gRPC fallback 的 codegen 没法决定生成 server-stream 还是 client-stream（见上脚注 ²）；(2) consumer 拿到 endpoint 后不知道自己该 pub 还是 sub，atlas 的"指路"语义就缺一半。多对多 pub/sub（`/tf` 这种）的解法是每个 publisher 各自声明一条 `topic_out` Capability，全指同一个 topic 名；不需要新 mode。
-
-**经验法则**：
-
-* LLM 要调的工具 → `rpc` + MCP
-* 一般 service ↔ service / skill ↔ service 调用 → `rpc` + gRPC
-* 高频流式数据（传感器、控制）→ `topic_out` + ROS 2
-* 长时任务进度推送（LLM 不直接消费，但 service 间需要）→ `rpc_server_stream` + gRPC
-
-***
-
-## 5. 生命周期
-
-![能力提供者状态机](cap-lifecycle.png){width=100%}
-
-### 5.1 状态
-
-| 状态 | 含义 | 可调它的 Capability |
-|---|---|---|
-| `REGISTERED` | atlas 已建档，但还没初始化 | ✗ |
-| `INACTIVE` | 已初始化（参数 / 上游依赖），但热资源未就位 | ✗ |
-| `ACTIVE` | 热资源就位，对外服务 | ✓ |
-| `ERROR` | handler 返回 `Err()` 或 raise | ✗ |
-| `TERMINATED` | 已退出 / 被驱逐——终态 | ✗ |
-
-### 5.2 三类能力提供者的状态迁移
-
-| 能力提供者类型 | boot 后停在哪 | 谁推到 `ACTIVE` |
-|---|---|---|
-| **Primitive** | `ACTIVE` | rbnx boot 紧跟 `CMD_INIT` 自动续发 `CMD_ACTIVATE` |
-| **Service** | `ACTIVE` | 同 primitive |
-| **Skill** | `INACTIVE` | executor 在 LLM 首次路由到该 skill 时发 `CMD_ACTIVATE`；idle 后可发 `CMD_DEACTIVATE` 回 `INACTIVE` |
-
-通用规则：
-
-* 任意状态下，handler 返 `Err()` / raise → `ERROR`
-* SIGTERM / `CMD_SHUTDOWN` / 心跳 90s 失联 → `TERMINATED`
-
-handler 实现见 §14.3。
-
-***
-
-**Part III — 开发**
-
-***
-
-## 6. 包结构
-
-template\_rbnx 里三个包正好覆盖典型差别。
-
-### 6.1 service 包
-
-```
-my_navigate/
-├── package_manifest.yaml    包元数据 + 要 declare 的 contract 清单
-├── config.spec              on_init(cfg) 接受字段的逐项说明；不参与运行时解析
-├── scripts/
-│   ├── build.sh             调 rbnx codegen 生 stubs
-│   └── start.sh             起能力提供者的命令（python -m my_navigate.main）
-└── my_navigate/             放源码的目录，robonix 不关心代码目录结构，直接调用 start.sh
-    ├── __init__.py
-    └── main.py              ★ 入口：构造能力提供者 + 装饰器
+rbnx build
+rbnx boot
 ```
 
-**没有 `capabilities/` 子目录**——my\_navigate 要 declare 的 4 条 `robonix/service/navigation/*` contract 已经在 **robonix 源码的全局 `capabilities/`** 里定义好了，本包只是实现它们（详见 §6.4）。
+另开终端：
 
-### 6.2 skill 包
-
+```bash
+rbnx caps -v
+rbnx tools
+rbnx ask 'Say hello to Alice.'
 ```
-say_hello/
+
+<div class="expected-result">
+Atlas 中出现 <code>mock_chassis</code>、<code>my_navigate</code> 和 <code>say_hello</code>；<code>rbnx tools</code> 列出可供模型调用的 MCP 工具；问候任务完成后返回自然语言结果。
+</div>
+
+## 3. 理解 Package 与运行实例
+
+一个 Package 是静态构建与分发单元。一个 deployment entry 是该 Package 的一次运行实例。
+
+```yaml
+primitive:
+  - name: front_camera
+    url: https://github.com/example/primitive-camera-rbnx
+    branch: main
+    config:
+      serial: '123456'
+```
+
+- `url` / `path` 找到 Package。
+- `name` 是本次运行的 provider id，必须与进程向 Atlas 注册的 `id` 一致。
+- `config` 是该实例的运行时配置；只有实现生命周期 driver 的 Package 才会通过 `Driver(CMD_INIT, config_json)` 收到它。
+- 同一 Package 可以启动多个实例，但每个实例必须使用不同的 `name`。
+
+可复用 Package 不应把 provider id 写死。`rbnx boot` 为进程注入 `RBNX_INSTANCE_NAME`；代码使用它作为 `id`：
+
+```python
+import os
+from robonix_api import Primitive
+
+provider = Primitive(
+    id=os.environ.get("RBNX_INSTANCE_NAME", "demo_camera"),
+    namespace="robonix/primitive/camera",
+)
+```
+
+`namespace` 是 contract 的主分组与诊断信息，不是 provider 唯一身份。共享 contract 或迁移中的不一致会产生提示，但 Atlas 以 `(provider_id, contract_id)` 区分能力。
+
+## 4. 创建 Package 骨架
+
+在一个 deployment 根目录中运行：
+
+```bash
+rbnx package-new demo_camera --type primitive
+rbnx package-new demo_service --type service
+rbnx package-new demo_skill --type skill
+```
+
+`--type` 默认为 `service`，创建 Primitive 或 Skill 时必须显式指定。以 Primitive 为例，生成结果是：
+
+```text
+primitives/demo_camera/
 ├── package_manifest.yaml
-├── config.spec
-├── scripts/{build.sh, start.sh}
-├── say_hello_skill/
+├── scripts/
+│   ├── build.sh
+│   └── start.sh
+├── demo_camera/
 │   ├── __init__.py
 │   └── main.py
-└── capabilities/                              ★ 包私有 contract 定义
-    ├── lib/say_hello/srv/SayHello.srv         ROS IDL 类型
-    ├── say_hello.v1.toml                      contract 描述（MCP 工具）
-    └── driver.v1.toml                         contract 描述（lifecycle 入口）
+├── capabilities/
+│   └── .gitkeep
+└── .gitignore
 ```
 
-skill 通常是全新功能，没有现成 contract 可用，所以在自己的 `capabilities/` 里定义。
+生成器提供的是可编辑骨架，不会替你选择 contract、实现 transport 或连接硬件。
 
-### 6.3 primitive 包
+## 5. 编写 package_manifest.yaml
 
-```
-mock_chassis/
-├── package_manifest.yaml
-├── config.spec
-├── scripts/{build.sh, start.sh}
-└── mock_chassis/
-    ├── __init__.py
-    └── main.py
-```
-
-primitive 包的目录形态和 service 一样。**怎么把硬件 / 厂商 SDK 装起来由开发者自己定**——可以在本地 venv 里跑、也可以让 `start.sh` 调 `docker run` 起容器、也可以 ssh 到机器人主机起。框架不关心实现，只看 `start.sh` 拉起来的进程能不能注册进 atlas。模板里 `mock_chassis` 给了一个走 docker 的例子，仅供参考（包含 `docker/Dockerfile` 等额外文件）。
-
-### 6.4 `package_manifest.yaml`
-
-以 `services/my_navigate/package_manifest.yaml` 为例（注释逐行）：
+最小新格式：
 
 ```yaml
 manifestVersion: 1
+
 package:
-  name: robonix.service.navigation.example  # 发布名；与运行时 id 是两码事
+  name: robonix.primitive.example.camera
   version: 0.1.0
-  description: Example navigation service package.
-  tags: [service, navigation, example]
+  description: RGB-D camera primitive for Example Camera.
+  license: Apache-2.0
+  tags: [primitive, camera, rgbd]
   maintainers:
-    - Example Maintainer <maintainer@example.com>
-  license: MIT
+    - Your Name <you@example.com>
+
 build: bash scripts/build.sh
 start: bash scripts/start.sh
-stop: bash scripts/stop.sh                  # 可选：包自有的优雅清理命令
-capabilities:                                # 要 declare 的 contract（全 / 本地都可，codegen 合并搜索）
-  - name: robonix/service/navigation/driver
-  - name: robonix/service/navigation/navigate
-  - name: robonix/service/navigation/navigate/status
-  - name: robonix/service/navigation/navigate/cancel
 
-depends:                                     # 可选：构建或导入时使用的包依赖
-  - name: robonix.primitive.example.chassis
-    url: https://github.com/example/primitive-example-chassis-rbnx
-    branch: main
+capabilities:
+  - name: robonix/primitive/camera/driver
+  - name: robonix/primitive/camera/rgb
+  - name: robonix/primitive/camera/depth
+  - name: robonix/primitive/camera/intrinsics
+
+depends: []
 ```
 
-旧 manifest 中的 `package.vendor` 在 `dev-next` 继续兼容，但新 package 不需要填写。Catalog 的归属与维护信息由 `package.name`、`package.tags` 和 `package.maintainers` 表达。
+运行时校验要求 `manifestVersion`、`package.name`、`package.version`、`package.description`、`package.license` 和非空 `start`。`build` 可省略，适用于已经交付可执行产物的 Package。准备提交 Catalog 时还应填写 `tags` 与 `maintainers`。
 
-skill 会同时引用全局 lifecycle contract 和自定义 contract——见 `skills/say_hello/package_manifest.yaml`。
+旧的 `package.vendor`、`package.id`、`nodes[]`、`build.script` 和 Package 内 `robonix_manifest.yaml` 继续向后兼容，但会显示迁移 warning；新 Package 使用上面的结构。
 
-### 6.5 `capabilities/` 目录
+### Target manifest
 
-整个系统有**两种** `capabilities/` 目录（robonix 全局只有 1 份；包私有的每个包各 1 份）：
+同一 Package 可以为不同平台提供不同 manifest，例如：
 
-| 位置 | 谁维护 | 装什么 |
-|---|---|---|
-| `<robonix-repo>/capabilities/` | robonix 上游 | primitive 标准族（chassis/camera/lidar/audio）、所有 system 服务接口、内置共享 service 接口（navigation/map/scene/memory…）、跨包 ROS IDL 类型库（`lib/`）|
-| `<your-pkg>/capabilities/` | 你自己 | 该包私有的额外 contract（skill 自定义工具最常见）|
-
-`rbnx codegen` 扫描两种根合并，得到当前包能引用的 contract 全集。合并规则：toml / IDL 同 `id` **包内覆盖全局**（用于本地试改）；包内 `capabilities/lib/` 的 ROS IDL 也对自己可见。
-
-**何时建本地 `capabilities/`**：
-
-| 你要 declare 的 contract | 它在哪 | 要建本地 `capabilities/` 吗？ |
-|---|---|---|
-| `robonix/primitive/chassis/move` | robonix 全局 | 不需要 |
-| `robonix/service/navigation/navigate` | robonix 全局 | 不需要 |
-| `robonix/skill/say_hello/say`（自定义 skill 工具）| 没有，自己定义 | **需要** |
-| 自家私有 service 接口（暂不上游） | 没有，自己定义 | **需要** |
-
-***
-
-## 7. API 速览
-
-写原语/服务/技能 用的 Python 库就是 `robonix_api`。下面是后续 §8-§10 所有代码示例里会出现的 API，先有印象就行——**完整签名 + 机制 + 多 mode 写法见 §14**。
-
-```python
-from robonix_api import Service, Ok, Err, ATLAS
-from robonix_api.atlas_types import Transport, Channel
-from myorg_mcp import Hello_Request, Hello_Response   # codegen dataclass
-
-service = Service(id="my_service", namespace="robonix/service/myorg")
-
-# Hot resources — only touched between on_activate / on_deactivate.
-chassis_ch: Channel | None = None
-
-@service.on_init
-def init(cfg: dict):
-    # Light: 读 cfg、向 atlas 探活上游；不开连接、不占资源。
-    if not ATLAS.find_capability(
-        contract_id="robonix/primitive/chassis/move",
-        transport=Transport.GRPC,
-    ):
-        return Err("no chassis candidate online")
-    return Ok()
-
-@service.on_activate
-def activate():
-    # Heavy: 拿上游 endpoint、起线程、加载模型——只有进入 ACTIVE 时才做。
-    global chassis_ch
-    cap_view = ATLAS.find_unique_capability(
-        contract_id="robonix/primitive/chassis/move",
-        transport=Transport.GRPC,
-    )
-    chassis_ch = service.connect_capability(
-        cap_view, "robonix/primitive/chassis/move", Transport.GRPC,
-    )
-    return Ok()
-
-@service.on_deactivate
-def deactivate():
-    # 对称释放 on_activate 申请的所有资源。
-    global chassis_ch
-    if chassis_ch is not None:
-        chassis_ch.close()
-        chassis_ch = None
-    return Ok()
-
-@service.mcp("robonix/service/myorg/hello")
-def hello(req: Hello_Request) -> Hello_Response:
-    """打招呼。docstring 即工具描述，pilot 喂给 LLM。"""
-    return Hello_Response(message=f"hello {req.name}")
-
-if __name__ == "__main__":
-    service.run()
+```text
+package_manifest.yaml
+package_manifest.jetson-native.yaml
+package_manifest.jetson-docker.yaml
 ```
 
-| API | 作用 |
-|---|---|
-| `service = Service(id, namespace)`（或 `primitive = Primitive(...)` / `skill = Skill(...)`）| 在文件顶部构造一个**全局能力提供者**，承载所有装饰器和方法。三个类按 package 类型选——它们的 lifecycle 语义、可暴露的 contract、executor 调度策略都有差异（详见 §3 / §5）。`id` 是 atlas 里该能力提供者的唯一 id；`namespace` 是主分类和普通接口的预期前缀。共享 contract 可设置 `cross_namespace = true`；其它前缀不一致只产生 warning，不阻断运行 |
-| `service.run()` | 阻塞主循环：注册到 atlas、起 gRPC + MCP server、心跳、等 SIGTERM |
-| `@service.on_init(fn)` | 必填，REGISTERED→INACTIVE；输入配置，返回 Result |
-| `@service.on_activate(fn)` | INACTIVE→ACTIVE；**skill 必填**，primitive / service 可省（省时框架自动返 `Ok()`）；无输入，返回 Result |
-| `@service.on_deactivate(fn)` | ACTIVE→INACTIVE；同 `on_activate` 的规则；无输入，返回 Result |
-| `@service.on_shutdown(fn)` | 任意→TERMINATED；可选；无输入，返回 Result |
-| `@service.mcp(contract_id, *, description="")` | 把函数挂成 MCP 工具（LLM 直接调），描述默认取 docstring |
-| `@service.grpc(contract_id, *, description="")` | 把函数挂成 gRPC servicer 方法；gRPC 无 docstring 惯例，建议显式传 description |
-| `ATLAS.query(*, kind=, id=, contract_id=, …)` | 按条件搜原语/服务/技能记录（kind=UNSPECIFIED 时三类一起返回）|
-| `ATLAS.query_primitives/_services/_skills(...)` | `query()` 的 kind 已固定的快捷形式 |
-| `ATLAS.find_capability(*, contract_id=, transport=, …)` | 扁平视角——按 contract 搜，返回 `list[Capability]`（每条 Capability 自带 `provider_id` / `provider_kind`）|
-| `ATLAS.find_unique_capability(...)` | 同上但断言只有一条；0 或 >1 都 raise（依赖唯一 capability 时用）|
-| `service.connect_capability(cap_view, contract_id, transport)` | 用一条 `Capability` 建一条 consumer→提供方的 `Channel` |
-| `service.declare_ros2_topic`   | 把一个 ROS 2 topic publisher 在 atlas 里登记为某能力约定（详见 §14.8） |
-| `service.declare_ros2_service` | 把一个 ROS 2 service 在 atlas 里登记为某能力约定（详见 §14.8） |
-| `Ok()` / `Err("...")` | API提供的辅助结果"类型"，能力提供者的 lifecycle handler 返回这两种之一 |
+Robot deployment 在对应条目上选择：
 
-**最小可跑的能力提供者长这样**——`on_init` 必填；`on_activate` / `on_deactivate` 对 primitive / service 可省（框架自动返 `Ok()`），skill 必须自己写：
-
-```python
-from robonix_api import Service, Ok
-
-service = Service(id="my_service", namespace="robonix/service/myorg")
-
-@service.on_init
-def init(cfg: dict):
-    return Ok()
-
-@service.on_activate
-def activate():
-    return Ok()
-
-@service.on_deactivate
-def deactivate():
-    return Ok()
-
-if __name__ == "__main__":
-    service.run()
+```yaml
+- name: front_camera
+  url: https://github.com/example/primitive-camera-rbnx
+  branch: main
+  manifest: package_manifest.jetson-native.yaml
+  config: {}
 ```
 
-***
+Target manifest 决定该平台使用的 `build`、`start`、`stop`、依赖与能力列表；运行时 `config` 仍由 robot deployment 提供。多平台约定见[多平台与 Target Manifest](architecture/multiplatform-deployment.md)。
 
-## 8. 服务
+## 6. 选择 Contract
 
-按"先 hello、再加上游探活、再加 connect、再加自定义 contract、最后给完整模板"的渐进式样例展开。每一节增量地解释新引入的 API，最后 §8.6 给可直接 copy 的完整 `main.py` + `package_manifest.yaml`。
+先查[接口目录](interface-catalog/index.md)和[自动生成的 Contract 参考](reference/contracts.md)。标准硬件与系统能力直接复用主仓库 contract，不在 Package 中复制一份：
 
-### 8.1 最小骨架
+- RGB-D camera：`robonix/primitive/camera/{driver,rgb,depth,intrinsics,extrinsics,snapshot}`
+- 3D lidar：`robonix/primitive/lidar/{driver,lidar3d}`，载荷是 `sensor_msgs/PointCloud2`
+- 2D lidar：`robonix/primitive/lidar/{driver,lidar}`，载荷是 `sensor_msgs/LaserScan`
+- Chassis：`robonix/primitive/chassis/{driver,move,twist_in,odom}`
+- Arm：以当前[自动生成参考](reference/contracts.md#primitive)中的 `robonix/primitive/arm/*` 为准
 
-四步：
+只有新语义能力没有标准 contract 时，才在 Package 的 `capabilities/` 中加入 TOML 与 ROS IDL，并在 manifest 的 capability 项上写 `path`。Skill 往往属于这种情况；`template-rbnx/skills/say_hello` 是完整示例。
 
-1. 复制 `template-rbnx/services/my_navigate/` 到你的部署，改包名
-2. 改 `package_manifest.yaml`：`package.name` / `capabilities[]`（只 declare robonix 全局已有的 contract 就不用建本地 `capabilities/`）；改 Python 源里 `Primitive/Service/Skill(id="...")` 的 id 跟 `robonix_manifest.yaml` 该条目的 `name:` 一致
-3. 写 `<pkg>/<pkg>/main.py`：按 package 类型构造一个能力提供者（`Primitive` / `Service` / `Skill`）+ lifecycle handlers + 装饰器
-4. `bash scripts/build.sh && bash scripts/start.sh`
-
-最小 `main.py`——`on_init` 必填；`on_activate` / `on_deactivate` 对 primitive / service 可省（省时框架自动 `Ok()`），下面这份模板把它们都写上方便你直接扩展：
-
-```python
-from robonix_api import Service, Ok
-from myorg_mcp import Hello_Request, Hello_Response   # codegen 出来的 dataclass
-
-service = Service(id="my_service", namespace="robonix/service/myorg")
-
-@service.on_init
-def init(cfg: dict):
-    return Ok()
-
-@service.on_activate
-def activate():
-    return Ok()
-
-@service.on_deactivate
-def deactivate():
-    return Ok()
-
-@service.mcp("robonix/service/myorg/hello")
-def hello(req: Hello_Request) -> Hello_Response:
-    return Hello_Response(message=f"hello {req.name}")
-
-if __name__ == "__main__":
-    service.run()
-```
-
-`service.run()` 阻塞直到 SIGTERM；中间它做完了：atlas 注册 → declare interfaces → 起 gRPC + MCP server → 起心跳。
-
-验证：
+构建脚本通过当前已登记的 Robonix 源码树解析标准 contract：
 
 ```bash
-rbnx caps -v | grep my_service
+rbnx codegen -p "$RBNX_PACKAGE_ROOT"
 ```
 
-### 8.2 atlas 探活
+默认产物位于：
 
-写真实 service 时，`on_init` 一般要先看上游依赖在不在。**按 id 取**：`ATLAS.query(id=...)` 返回一个 list（0 条 = 没有）：
-
-```python
-from robonix_api import Service, Ok, Err, ATLAS
-
-@service.on_init
-def init(cfg: dict):
-    if not ATLAS.query(id="tiago_chassis"):
-        return Err("chassis not online")
-    return Ok()
-```
-
-`Err("...")` 让能力提供者进 `ERROR`，`reason` 写入 `state_detail`，`rbnx caps -v` 看得到。完整 atlas 发现 API（按 contract 搜 / 多能力提供者处理）见 §14.4 / §14.5。
-
-### 8.3 上游 connect
-
-`on_activate` 阶段才做"申请热运行资源"——拿上游 endpoint、起 ROS subscription、加载模型、开线程。**按 contract 搜对应的 Capability**：`ATLAS.find_capability(contract_id=..., transport=...)` 返回 `list[Capability]`；`service.connect_capability(cap_view, contract_id, transport)` 返回一个 `Channel`，里面 `endpoint` 是对方实际地址：
-
-```python
-from robonix_api.atlas_types import Transport
-
-chassis_endpoint: str | None = None              # 模块级缓存
-
-@service.on_activate
-def activate():
-    global chassis_endpoint
-    cap_view = ATLAS.find_unique_capability(
-        contract_id="robonix/primitive/chassis/move",
-        transport=Transport.GRPC,
-    )
-    with service.connect_capability(
-        cap_view,
-        "robonix/primitive/chassis/move",
-        Transport.GRPC,
-    ) as ch:
-        chassis_endpoint = ch.endpoint
-    return Ok()
-```
-
-`with` 块退出时自动 `Disconnect`。`find_unique_capability` 在 0 或 >1 匹配时 raise——依赖唯一 capability 时用它；多能力提供者场景用 `find_capability` 拿 list 自己挑。完整 connect 机制见 §14.6。
-
-### 8.4 资源释放
-
-`on_activate` 申请的资源必须有对称的 `on_deactivate` 释放——否则 executor evict 后再 activate 会泄漏：
-
-```python
-@service.on_deactivate
-def deactivate():
-    global chassis_endpoint
-    chassis_endpoint = None
-    return Ok()
-```
-
-### 8.5 自定义 contract
-
-到 §8.4 为止你只用了 robonix 全局已有的 contract。如果你的 service 要暴露**全新接口**（带自己的 IDL），三步：
-
-**(1) 写 IDL** — 按 ROS IDL（msg / srv 文件）放 `<your-pkg>/capabilities/lib/<lib_name>/{msg,srv}/`：
-
-```
-# <your-pkg>/capabilities/lib/myorg/srv/Hello.srv
-string name
----
-string message
-```
-
-`<lib_name>` 是 `lib/` 下第一层子目录名（snake\_case，如 `myorg` / `camera` / `nav_msgs`），codegen 生成的 `<lib_name>_pb2.py` / `<lib_name>_mcp.py` 模块名沿用。同一 `<lib_name>` 下并列 `msg/` 和 `srv/`。`.srv` 中 `---` 上方是 request、下方是 response；`.msg` 无 `---`，整文件即字段列表。
-
-> ⚠️ **streaming mode 字段约束**：`.srv` 流方向那一段必须**恰 1 个字段**（gRPC 一条流只能跑一种 message type）；unary 方向不限。`topic_*` 用 `.msg`，整文件即流元素类型。违反 codegen 直接 bail。
->
-> | mode | request 字段数 | response 字段数 |
-> |---|:---:|:---:|
-> | `rpc` | 任意 | 任意 |
-> | `rpc_server_stream` | 任意 | **=1** |
-> | `rpc_client_stream` | **=1** | 任意 |
-> | `rpc_bidirectional_stream` | **=1** | **=1** |
-
-**(2) 写 toml** — 放 `<your-pkg>/capabilities/` 任意深度子目录（**不能进 `lib/`**）：
-
-```toml
-# <your-pkg>/capabilities/myorg/hello.v1.toml
-[contract]
-id      = "robonix/service/myorg/hello"
-version = "1"
-kind    = "service"
-idl     = "myorg/srv/Hello.srv"   # 相对 lib/ 的路径
-
-[mode]
-type = "rpc"                       # 详见 §4.2
-```
-
-**(3) 在代码里 declare** — 把 contract\_id 和你的实现绑定：
-
-```python
-@service.mcp("robonix/service/myorg/hello")    # contract_id 必须和 toml 的 [contract] id 一致
-def hello(req: Hello_Request) -> Hello_Response:
-    return Hello_Response(message=f"hi {req.name}")
-```
-
-**Codegen 产物**：`bash scripts/build.sh`（包内默认调 `rbnx codegen --mcp`）扫描两种 `capabilities/` 根生成到 `<your-pkg>/rbnx-build/codegen/`：
-
-```
+```text
 rbnx-build/codegen/
 ├── proto_gen/
-│   ├── robonix_contracts.proto             所有 contract 合成的 proto
-│   ├── robonix_contracts_pb2_grpc.py       ★ 所有 contract 的 Stub / Servicer
-│   ├── <lib_name>_pb2.py                   每个 lib/ 子目录的 msg 类
-│   └── ...
-└── robonix_mcp_types/
-    └── <lib_name>_mcp.py                   每个 lib/ 子目录的 dataclass（@service.mcp 用）
+├── robonix_mcp_types/
+└── ros2_idl/          # 仅请求 ROS 2 codegen 时出现
 ```
 
-**名字映射规则**：
+## 7. 实现 Provider 与生命周期
 
-| 源 | 生成的名字 |
-|---|---|
-| **msg 文件**：`lib/<lib_name>/msg/Foo.msg` | gRPC：`<lib_name>_pb2.Foo`<br/>MCP：`<lib_name>_mcp.Foo` |
-| **srv 文件**：`lib/<lib_name>/srv/Hello.srv` | gRPC：`<lib_name>_pb2.Hello_Request` / `Hello_Response`<br/>MCP：`<lib_name>_mcp.Hello_Request` / `Hello_Response` |
-| **contract id**：`robonix/service/myorg/hello`（其 toml 引用 `myorg/srv/Hello.srv`） | gRPC service：`RobonixServiceMyorgHello`<br/>Servicer：`robonix_contracts_pb2_grpc.RobonixServiceMyorgHelloServicer`<br/>Stub：`robonix_contracts_pb2_grpc.RobonixServiceMyorgHelloStub`<br/>方法名：`Hello`（按 IDL srv 文件名去 `.srv`） |
-| **contract id**：`mycomp/a/b/c` | gRPC service：`MycompABC`<br/>规则一致：每段按 `/` 切，段内 snake\_case 转 PascalCase |
+Python Package 使用 `Primitive`、`Service` 或 `Skill`。共同流程是：
 
-**在代码里 import 这些生成产物**：`from robonix_api import ...` 的那一刻，框架自动把 `<pkg>/rbnx-build/codegen/proto_gen` 和 `robonix_mcp_types` 加进 `sys.path`，所以**不需要 `sys.path.insert`**——直接和 robonix\_api 一起在文件顶部 import：
+1. 以 deployment instance name 注册 provider。
+2. 在 `on_init(cfg)` 中解析并验证配置、连接冷资源、声明 capability。
+3. 在 `on_activate` 中启动需要持续运行的热资源。
+4. 在 `on_deactivate` / `on_shutdown` 中停止线程、设备、子进程和 transport。
+5. 调用 `provider.run()` 进入运行循环。
 
-```python
-from robonix_api import Service, Ok, Err, ATLAS
-from robonix_api.atlas_types import Transport
+生命周期 driver 不是业务能力，但它决定 `rbnx boot` 能否下发 INIT / ACTIVATE / SHUTDOWN。Primitive 和 Service 在 boot 后进入 `ACTIVE`；Skill 完成 INIT 后保持 `INACTIVE`，第一次被 Executor 调用时激活。
 
-from navigation_mcp import (              # MCP dataclass：用作 @service.mcp 函数签名
-    Navigate_Request, Navigate_Response,
-)
-import chassis_pb2_grpc                   # gRPC stub：用作 service.connect 拿到 endpoint 后建 client
-import chassis_pb2                        # gRPC 消息类
+业务能力的 transport 按数据形态选择：
 
-service = Service(id="my_navigate", namespace="robonix/service/navigation")
-```
+| 数据形态 | 推荐 transport | 例子 |
+|---|---|---|
+| 高频连续传感器或控制 | ROS 2 topic | RGB、PointCloud2、Odometry、Twist |
+| 系统间请求/响应或流 | gRPC | lifecycle、状态查询、流式健康信息 |
+| 模型直接调用的工具 | MCP | navigate、goal_room、greet |
 
-在 service / skill 里：你**消费**的 contract 来自上游 Capability → 用 `service.connect_capability(...)` + 上面 import 的 `chassis_pb2_grpc.RobonixPrimitiveChassisMoveStub`。你**提供**的 contract → 用装饰器 `@service.mcp(...)` / `@service.grpc(...)`，签名里类型注解用 `<lib_name>_mcp` 里的 dataclass（MCP）或 `<lib_name>_pb2` 里的消息类（gRPC）。
+完整装饰器签名以 [`robonix_api`](https://github.com/syswonder/robonix/tree/dev-next/pylib/robonix-api) 源码和[代码 API](reference/api.md)为准。不要在教程里复制一份与 IDL 分叉的手写 JSON schema；MCP request / response 类型由 codegen 生成。
 
-### 8.6 完整模板
+## 8. 文档化运行时配置
 
-把 §8.1-§8.5 学到的合在一起——直接对接 robonix 全局的 `service/navigation/*` contract（不需要写自己的 IDL）。`my_navigate/main.py`：
-
-```python
-# SPDX-License-Identifier: MulanPSL-2.0
-"""my_navigate — minimal service.
-
-- 暴露 robonix 全局的 service/navigation/navigate 这条 MCP 工具
-- on_init 阶段在 atlas 里查 chassis primitive 是否在线
-- on_activate 阶段拿一条 chassis/move 的 gRPC channel 留着发命令用
-"""
-from __future__ import annotations
-import logging
-import uuid
-
-from robonix_api import Service, Ok, Err, ATLAS
-from robonix_api.atlas_types import Transport
-# Navigate_Request / Navigate_Response 是 codegen 从 robonix 全局的
-#   lib/navigation/srv/Navigate.srv 生成的 dataclass：
-#   geometry_msgs/PoseStamped goal     ← 请求
-#   ---
-#   bool   accepted                    ← 响应
-#   string goal_id
-#   string status_message
-from navigation_mcp import Navigate_Request, Navigate_Response
-
-# (1) 构造能力提供者：id 是 atlas 里该能力提供者的唯一 id，namespace 是要 declare 的 contract 公共前缀
-service = Service(
-    id="my_navigate",
-    namespace="robonix/service/navigation",   # 复用 robonix 全局 navigation 命名空间
-)
-
-log = logging.getLogger("my_navigate")
-chassis_endpoint: str | None = None              # 模块级缓存
-
-# (2) lifecycle: REGISTERED -> INACTIVE
-@service.on_init
-def init(cfg: dict):
-    """解析 config + 验证上游依赖。返回 Ok / Err。"""
-    log.info("init cfg=%s", cfg)
-    if not ATLAS.query(id="tiago_chassis"):
-        return Err("chassis not online")
-    return Ok()
-
-# (3) lifecycle: INACTIVE -> ACTIVE（申请热资源）
-@service.on_activate
-def activate():
-    global chassis_endpoint
-    cap_view = ATLAS.find_unique_capability(
-        contract_id="robonix/primitive/chassis/move",
-        transport=Transport.GRPC,
-    )
-    with service.connect_capability(
-        cap_view,
-        "robonix/primitive/chassis/move",
-        Transport.GRPC,
-    ) as ch:
-        chassis_endpoint = ch.endpoint
-    return Ok()
-
-# (4) lifecycle: 回到 INACTIVE（释放热资源）
-@service.on_deactivate
-def deactivate():
-    global chassis_endpoint
-    chassis_endpoint = None
-    return Ok()
-
-# (5) 暴露 MCP 工具——docstring 即工具的自然语言描述，pilot 喂给 LLM。
-@service.mcp("robonix/service/navigation/navigate")
-def navigate(req: Navigate_Request) -> Navigate_Response:
-    """把底盘开到 goal 指定的 map 系位姿。LLM 决定调用时机；返回 goal_id
-    供后续 query / cancel 用。"""
-    pos = req.goal.pose.position
-    goal_id = str(uuid.uuid4())
-    log.info("navigate accepted goal=%s target=(%.2f, %.2f)", goal_id, pos.x, pos.y)
-    # 实际规划逻辑：通过 chassis_ch 发 gRPC 命令到底盘 primitive ……
-    return Navigate_Response(
-        accepted=True,
-        goal_id=goal_id,
-        status_message="stub planner accepted goal",
-    )
-
-# (6) 阻塞主循环：注册 + declare + listen + heartbeat 全在里面
-if __name__ == "__main__":
-    service.run()
-```
-
-配套 `package_manifest.yaml`（不需要本地 `capabilities/`，全用 robonix 全局 contract）：
+如果 Package 接受 `config`，在 `package_manifest.yaml` 旁增加 `config.spec`。它是给集成人员和工具阅读的说明，不参与运行时解析；实际默认值与校验仍由 Package 代码负责。
 
 ```yaml
-manifestVersion: 1
-package:
-  name: robonix.service.navigation.example
-  version: 0.1.0
-  description: Example navigation service package.
-  tags: [service, navigation, example]
-  maintainers:
-    - Example Maintainer <maintainer@example.com>
-  license: MIT
-build: bash scripts/build.sh
-start: bash scripts/start.sh
-# 全部从 robonix 全局 capabilities/ 引用，自己不再 declare 新 contract
-capabilities:
-  - name: robonix/service/navigation/driver
-  - name: robonix/service/navigation/navigate
-  - name: robonix/service/navigation/navigate/status
-  - name: robonix/service/navigation/navigate/cancel
+config:
+  device_serial:
+    type: string
+    required: true
+    description: Camera serial number selected by this instance.
+
+  publish_rate_hz:
+    type: float
+    unit: Hz
+    default: 15.0
+    constraints: 0 < value <= 30
+    description: RGB and depth publish frequency.
 ```
 
-每个 API 的详细签名 + 用法见 §14。
+每个字段至少写明类型、是否必需、单位、默认值、约束和用途。没有运行时配置时可以省略文件，或明确写 `config: {}`。
 
-***
+`CAPABILITY.md` 也是推荐项而非运行必需项。它解释模型应如何使用整个 Package、前置条件、长任务行为、安全限制和取消方式。Provider 注册时把正文上传到 Atlas，Pilot 需要时通过 `read_capability_doc(provider_id)` 获取；不要让模型读取 provider 本机文件路径。
 
-## 9. 原语
+## 9. 加入 robot deployment
 
-primitive 对应一个物理设备（一个相机、一个底盘、一台麦克风）。和 service 大体相同，差别如下：
-
-* `namespace = "robonix/primitive/<kind>"`，`<kind>` ∈ {`audio`, `camera`, `chassis`, `imu`, `lidar`}（封闭）
-* **"能力提供者 id = device id" 约定**：一个设备一个 primitive。3 个相机 → 3 个 primitive 能力提供者（`tiago_camera_front` / `tiago_camera_left` / `tiago_camera_right`）
-* 怎么打包（本地 venv / docker / ssh 到机器人主机）由 `scripts/start.sh` 决定——框架只看能力提供者进程能不能注册进 atlas。`template-rbnx/primitives/mock_chassis/` 给了一个 docker 例子。
-
-**典型 lifecycle**（同 service：`on_init` 必填，`on_activate` / `on_deactivate` 可省。下面这份模板把它们都写上方便扩展硬件资源管理）：
-
-```python
-primitive = Primitive(id="my_lidar", namespace="robonix/primitive/lidar")
-
-@primitive.on_init
-def init(cfg: dict):
-    # 轻量校验：cfg 字段、上游存在性
-    return Ok()
-
-@primitive.on_activate
-def activate():
-    # 起 rclpy node、加载模型、打开硬件 fd、起控制线程；同时 primitive.declare_ros2_topic / declare_ros2_service 把
-    # 暴露的 ROS topic 注册到 atlas（详见 §14.8）
-    return Ok()
-
-@primitive.on_deactivate
-def deactivate():
-    # 关 rclpy node / 关硬件 fd / 停控制线程；on_activate 申请的所有热资源在这里对称释放
-    return Ok()
-```
-
-声明 ROS topic 接口的写法见 §8.5 + §14.8。
-
-***
-
-## 10. 技能
-
-skill = 一段被 LLM / 状态机触发的复合任务。和 service 不同点：
-
-* `namespace = "robonix/skill/<x>"`
-* **必须实现 `@skill.on_activate` + `@skill.on_deactivate`**——它们是 executor 控制资源占用的入口，必然成对（eviction 策略可能反复 cycle）
-* skill boot 后停在 `INACTIVE`；首次 LLM 调用时 executor 发 `CMD_ACTIVATE` 推到 `ACTIVE`
-* skill 通常通过 `@skill.mcp` 暴露工具
-
-**当前版本的兼容规则：每个原语 / 服务 / 技能仍需提供 `driver.v1.toml`**——lifecycle 入口由这条 contract 描述，缺了 `rbnx boot` 没法发 `CMD_INIT` / `CMD_ACTIVATE`，executor 也没法路由 skill 激活命令。后续版本会提供主仓库内置的共享 lifecycle contract，使新 package 无需复制 driver TOML；现有每 namespace driver 将继续兼容并只提示迁移，不会突然失效。
-
-**framework 怎么找 driver**：能力提供者启动时按 `f"{self.namespace}/driver"` 自动向 atlas declare 这条接口（`capability.py:698`）；`rbnx boot` / executor / atlas 反向查找时只看一条规则——**该能力提供者的 interface 列表里 `contract_id` 以 `/driver` 结尾的那一条**（`run_package.rs:722` 等多处用 `ends_with("/driver")`）。也就是说，**contract id 的整体格式 robonix 不强制**——`myorg/aaa/bbb/...` 也行；强制的只是"该能力提供者 namespace 下必须有且只有一个 leaf 叫 `driver`"。
-
-skill 没有现成的 driver contract 可借用，必须自己写一份；**最快做法是从任意 primitive / service 的 `driver.v1.toml` 复制过来，把 `[contract].id` 改成 `<你 skill 的 namespace>/driver`**——namespace 必须和 `Skill(id=..., namespace=...)` 里写的完全一致，否则 codegen 算出的 gRPC service name 和 runtime declare 的对不上：
-
-```toml
-# capabilities/driver.v1.toml
-[contract]
-id      = "<your-namespace>/driver"     # ← 必须 = Primitive/Service/Skill(...) 的 namespace + "/driver"
-version = "1"
-kind    = "skill"                        # ← primitive / service / skill 据实填
-idl     = "lifecycle/srv/Driver.srv"
-
-[mode]
-type = "rpc"
-```
-
-`idl` 一律指向框架自带的 `lifecycle/srv/Driver.srv`，不要自创——所有能力提供者共享这一个 lifecycle 接口。`kind` 字段会被 atlas 用于 `rbnx caps` 的分类显示和 executor 的策略判断。
-
-**标准模式**：
-
-```python
-skill = Skill(id="myskill", namespace="robonix/skill/myskill")
-
-@skill.on_init
-def init(cfg: dict):
-    caps = ATLAS.find_capability(contract_id="robonix/service/navigation/navigate")
-    if not caps:
-        return Err("navigation service not found")
-    return Ok()
-
-@skill.on_activate
-def activate():
-    # spawn controller thread, load state machine
-    return Ok()
-
-@skill.on_deactivate
-def deactivate():
-    # release threads, unsubscribe
-    return Ok()
-
-@skill.mcp("robonix/skill/myskill/run")
-def run(req):
-    ...
-```
-
-***
-
-**Part IV — 部署**
-
-***
-
-## 11. 部署目录
-
-> 本部分通过 `template-rbnx` 这个最小部署模板把目录、manifest、能力约定的关系讲清。读完你应该能看懂一个部署的所有文件。
-
-`template-rbnx` 是一个最小桌面部署模板：[`syswonder/template-rbnx`](https://github.com/syswonder/template-rbnx)。建议下面的章节边读边对着看真实文件。
-
-```
-template-rbnx/
-├── robonix_manifest.yaml      ★ 部署入口：rbnx boot 读这个，声明用哪些原语 / 服务 / 技能、各自的包在哪里、启动时的 config 参数（喂给 @service.on_init）
-├── soma.yaml                  Soma 本体描述；关联完整 URDF 与能力提供者
-├── urdf/mock_robot.urdf       模板机器人的完整 URDF
-├── primitives/
-│   └── mock_chassis/          一个 primitive 包（能力提供者 id = mock_chassis）
-│       ├── package_manifest.yaml
-│       └── config.spec        该 package 接受的 instance config 说明
-├── services/
-│   └── my_navigate/           一个 service 包（能力提供者 id = my_navigate）
-│       ├── package_manifest.yaml
-│       └── config.spec
-└── skills/
-    └── say_hello/             一个 skill 包（能力提供者 id = say_hello）
-        ├── package_manifest.yaml
-        ├── config.spec
-        └── capabilities/      该 skill 私有的 IDL 与 contract 定义
-```
-
-`primitives/` / `services/` / `skills/` 是约定的子目录名，内部必须是若干个标准 Robonix 包的目录，`robonix_manifest.yaml` 里给每个包写 `path:` 显式指明所处的目录。
-
-每个包内部长什么样见 §6 包结构。
-
-***
-
-## 12. 部署清单
-
-`robonix_manifest.yaml` 是一个 robonix 部署的入口文件——`rbnx boot -f robonix_manifest.yaml` 读它来决定起哪些 system 服务、哪些 primitive / service / skill，以及给每个能力提供者喂什么配置。
-
-**结构**：
+本地 Package：
 
 ```yaml
-manifestVersion: 1
-name: my-robot                       # 运行时部署名
-
-# 发布到 Package Catalog 时使用的整机元数据。
-catalog:
-  name: robonix.robot.example.my_robot
-  version: 0.1.0
-  description: Robonix deployment for My Robot.
-  license: Apache-2.0
-  tags: [robot, deploy, example]
-  maintainers:
-    - Example Maintainer <maintainer@example.com>
-
-env:                                 # 可选：部署级 env（一般留空，env 在外层 export）
-
-# ─── system: robonix 自带的系统组件 ───
-# key 是固定的 system 服务名（atlas/executor/soma/vitals/pilot/liaison 是 Rust 二进制，
-# scene 是 Python 包），value 是它的配置块；保持原样的层级会被 JSON 化喂给
-# 能力提供者的 on_init(cfg)。memory / speech 等不是 system，它们是 service，
-# 写在下面的 service: 列表里。
-system:
-  atlas:
-    listen: 127.0.0.1:50051
-    log: info
-  executor:
-    listen: 127.0.0.1:50061
-    log: info
-  soma:
-    robot_yaml: ./soma.yaml
-  vitals:
-    listen: 127.0.0.1:50093
-  pilot:
-    listen: 127.0.0.1:50071
-    log: info
-    vlm:
-      upstream: ${VLM_BASE_URL}      # ${...} 会在加载时展开成环境变量
-      api_key: ${VLM_API_KEY}
-      model: ${VLM_MODEL}
-  liaison:
-    listen: 127.0.0.1:50081
-    log: info
-  scene:
-    log: info
-    # 多相机部署必须绑定一个同时提供 RGB + Depth 的相机 provider。
-    camera_provider_id: tiago_camera
-
-# ─── primitive: 设备包列表（每条 = 一个物理设备的 primitive） ───
 primitive:
-  - name: tiago_chassis              # 必须等于该包 Python 源里 Primitive/Service/Skill(id="...") 的 id
-    path: ./primitives/tiago_chassis # 相对部署根的本地路径
+  - name: front_camera
+    path: ./primitives/front_camera
     config:
-      odom_topic: /odom              # 只写该 package 的 config.spec 声明的字段
-      twist_in_topic: /cmd_vel       # 整段 config 会以 JSON 传给 on_init(cfg)
-  - name: tiago_camera
-    path: ./primitives/tiago_camera
-  - name: tiago_lidar
-    path: ./primitives/tiago_lidar
+      device_serial: '123456'
+      publish_rate_hz: 15.0
+```
 
-# ─── service: 算法 / 应用层服务 ───
-service:
-  - name: memory                     # robonix 自带 service（曾在 system 下，现归位 service）
-    path: ${ROBONIX_SOURCE_PATH}/services/memsearch  # rbnx 根据已登记的 Robonix 源码树自动展开
-    config:
-      backend: sqlite
+独立仓库 Package：
 
-  - name: mapping                    # 远程 git 包：rbnx build 阶段克隆到 rbnx-boot/cache/
-    url: https://github.com/syswonder/service-map-rbnx
-    branch: main
-    manifest: package_manifest.jetson-native.yaml # 可选：选择包内的目标平台 manifest
-    config:
-      params_file: config/rtabmap_params.yaml      # 完整参数由 robot deployment 持有
-      sensor_providers:
-        lidar2d: tiago_lidar
-        rgb: tiago_camera
-        depth: tiago_camera
-        odom: tiago_chassis
-
-  - name: nav2
-    url: https://github.com/syswonder/service-navigation-rbnx
+```yaml
+primitive:
+  - name: front_camera
+    url: https://github.com/example/primitive-camera-rbnx
     branch: main
     manifest: package_manifest.jetson-native.yaml
     config:
-      params_file: config/nav2_params.yaml
-      provider_ids: { map: mapping, odom: tiago_chassis, scan: tiago_lidar }
-
-# ─── skill: LLM/状态机触发的复合任务 ───
-skill:
-  - name: explore
-    url: https://github.com/syswonder/skill-explore-rbnx
-    branch: main
-    config:
-      timeout_s: 600
+      device_serial: '123456'
 ```
 
-`system.scene.camera_provider_id` 填相机 primitive 条目的 `name`。该 provider
-必须同时暴露 `robonix/primitive/camera/rgb` 与
-`robonix/primitive/camera/depth`；建议同时暴露相机 intrinsics 和从
-`base_link` 到 camera optical frame 的 extrinsics。Scene 的机器人位姿独立
-来自 Mapping/定位 provider 的 `robonix/service/map/pose`，应为经过 SLAM、
-AMCL 或其他定位系统全局修正后的 `PoseWithCovarianceStamped`。新本体还应
-提供完整 URDF，使 `base_link` 与相机 frame 的固定变换可验证。
+远程仓库 clone 到 `<deployment>/rbnx-boot/cache/<repository-name>/`。Cache 目录按 URL 的仓库名命名，不按 provider instance `name` 命名；同一仓库的多个实例共享一个 checkout。
 
-`name` 是本次运行的部署名；`catalog.name` 是整机部署仓库发布到 Package Catalog 时的稳定名称。Robot deployment 不需要额外创建 `package_manifest.yaml`。完整发布流程见 [Package Catalog 发布流程](integration-guide/package-catalog.md)。
+开发期间可使用移动分支；可复现实验或发布应记录并固定实际 commit。更新已有 cache 使用 `rbnx update`，不要手动修改一份未记录的 checkout 后仍把它当作上游版本。
 
-字段速查见 §16。
+## 10. 验证、构建与单包调试
 
-***
-
-## 13. 启动
-
-**`rbnx boot -f robonix_manifest.yaml`** 顺序：
-
-1. 加载 manifest，展开 `${...}` 环境变量
-2. 起 `system:` 下声明的所有 system 服务
-3. 按 `primitive` → `service` → `skill` 顺序起每个用户包：spawn 后 poll atlas 拿到新注册的能力提供者，跟 manifest 该条目 `name:` 对账（不一致直接 fail），然后 `Driver(CMD_INIT, config_json)` → `on_init(cfg)` → 对 primitive/service 紧跟 `CMD_ACTIVATE` 推到 `ACTIVE`（skill 停 `INACTIVE` 等 executor）
-4. 全部就绪后阻塞，`Ctrl-C` 反向 teardown
-
-**约定**：
-
-* **同一层级内顺序起**：service/skill 不解析依赖；要让 mapping 在 simple\_nav 之前起就写前面。
-* **config 直传**：yaml 里 `config: { max_linear: 0.5 }` → `on_init(cfg)` 拿到 `cfg["max_linear"] == 0.5`，嵌套结构原样保留。
-* **`name:` 必须等于 Python 源里 `Primitive/Service/Skill(id=...)` 的 id**——boot 时 atlas 对账，不一致就退出。
-
-**单包调试**：跳过 manifest 直接起一个：
+在 Package 根或 deployment 根执行：
 
 ```bash
-rbnx start -p ./services/my_navigate -c local_config.yaml
-rbnx start -p ./services/my_navigate -s max_linear=0.3 -s goal_tolerance=0.2
+# 只检查 package manifest
+rbnx validate ./primitives/front_camera
+
+# 构建一个 Package
+rbnx build -p ./primitives/front_camera
+
+# 构建 deployment 中全部 Package
+rbnx build -f ./robonix_manifest.yaml
+
+# 已有 Atlas 时单独启动 Package
+rbnx start -p ./primitives/front_camera \
+  --endpoint 127.0.0.1:50051 \
+  --config ./front_camera.local.yaml
+
+# 启动完整 deployment
+rbnx boot -f ./robonix_manifest.yaml
 ```
 
-`-c` 跟一个 yaml 文件，整段当 config；`-s key=value` 单字段覆盖。最终都是以 JSON 喂给 `on_init(cfg)`。
+`rbnx validate` 只验证单个 `package_manifest.yaml`，不会验证 deployment 根；完整 deployment 由 `rbnx build -f` 和 `rbnx boot -f` 解析。
 
-***
+运行时检查：
 
-**Part V — 参考**
-
-***
-
-## 14. Python API
-
-`robonix_api` 是写原语 / 服务 / 技能的核心库——三个类 + 一组装饰器 + `Result` 类型 + `ATLAS` 客户端。每个 API 给出**签名、参数、返回、机制、示例**。
-
-> 本节是 v0.1 发版前的 API 规划。dev 上已经按这套形态推进，签名 / 命名 / 默认值在正式发版前仍可能微调。
-
-### 14.0 总表
-
-```python
-from robonix_api import Service, Ok, Err, ATLAS   # 或 Primitive / Skill
-from robonix_api.atlas_types import Transport, Capability
+```bash
+rbnx caps -v
+rbnx contracts
+rbnx describe --provider front_camera
+rbnx channels
+rbnx inspect
+rbnx logs -t front_camera
 ```
 
-> 签名里的 `*` 是 keyword-only 标志——`*` 之后的参数必须用 `name=value` 传，不能按位置传。
+<div class="expected-result">
+Provider id 与 deployment entry 的 <code>name</code> 相同；生命周期达到该类型的目标状态；每条实际暴露的 capability 都能在 <code>rbnx caps -v</code> 查到；日志文件名为 <code>rbnx-boot/logs/&lt;provider_id&gt;.log</code>。
+</div>
 
-| API | 用途 |
-|---|---|
-| `Primitive(id, namespace)` / `Service(...)` / `Skill(...)` | 构造一个能力提供者（按 package 类型选——三类的 lifecycle / 调度策略 / 可暴露的 contract 都有差异，详见 §3 / §5）|
-| `service.run()` | 阻塞主循环；注册 + listen + 心跳 + 等 SIGTERM |
-| `@service.on_init(cfg) -> Result` | REGISTERED → INACTIVE，必填 |
-| `@service.on_activate() -> Result` | INACTIVE → ACTIVE；skill 必填，primitive / service 可省（省时框架自动 `Ok()`）|
-| `@service.on_deactivate() -> Result` | ACTIVE → INACTIVE；规则同 `on_activate` |
-| `@service.on_shutdown() -> Result` | 任意 → TERMINATED，可选 |
-| `Ok()` / `Err("reason")` | lifecycle handler 返回值 |
-| `ATLAS.query(*, kind=…, id=…, contract_id=…, namespace_prefix=…, transport=…)` | 搜能力提供者记录 |
-| `ATLAS.query_primitives/_services/_skills(...)` | `query()` 已固定 kind 的快捷形式 |
-| `ATLAS.find_capability(*, contract_id=…, transport=…, provider_kind=…, provider_id=…, namespace_prefix=…)` | 按 contract 搜，返回 `list[Capability]` |
-| `ATLAS.find_unique_capability(*, contract_id=…, ...)` | 同上但断言只有一条；0 或 >1 都 raise |
-| `service.connect_capability(cap_view, contract_id, transport)` | 用一条 Capability 建 consumer → 提供方 `Channel` |
-| `@service.mcp(contract_id, *, description="")` | 把函数挂成 MCP 工具（`mode=rpc`，给 LLM 调）；description 默认取 docstring |
-| `@service.grpc(contract_id, *, description="")` | 把函数挂成 contract 对应 gRPC 方法；建议显式传 description |
-| `service.declare_ros2_topic` / `declare_ros2_service` | 登记 ROS 2 端点 |
+## 11. 测试要求
 
-只读属性：`service.id` / `service.namespace` / `service.state`。
+### Primitive
 
-### 14.1 `Primitive` / `Service` / `Skill`
+- 配置缺失或单位错误时，INIT 返回可定位的错误。
+- 硬件不存在、断开或恢复时，生命周期与日志符合预期。
+- topic / RPC 的类型、frame、时间戳、单位和频率与 contract 一致。
+- 运动硬件具有限速、watchdog、stop 和进程退出后的安全状态。
 
-三个类构造签名一致：`Primitive(id, namespace)` / `Service(id, namespace)` / `Skill(id, namespace)`。按 package 类型挑一个——三类的 lifecycle / 调度策略 / 可暴露的 contract 都不同（详见 §3 / §5）。通常在模块顶部构造一个全局能力提供者，再用装饰器挂 handler。
+### Service
 
-| 参数 | 类型 | 必填 | 说明 |
-|---|---|---|---|
-| `id` | `str` | 是 | 能力提供者 id（atlas 里唯一），必须等于 `robonix_manifest.yaml` 里挂这个包的 `name:`（两处一致）|
-| `namespace` | `str` | 是 | 该能力提供者的主分类和普通 contract 的预期前缀，如 `robonix/service/myorg`。共享 contract 可设置 `cross_namespace = true`；其它不一致只产生 warning，不阻断注册或调用 |
+- 上游 provider 缺失时返回 `Deferred` 或结构化错误，不假装成功。
+- 长任务具有稳定 run id、状态查询和取消语义。
+- 参数来自 deployment，本体专属参数不硬编码在共享 Service 仓库。
 
-**机制**：构造时只做轻量校验（namespace 非空、包根目录定位、`<pkg>/rbnx-build/codegen/` 加进 `sys.path`）。**不连接 atlas、不开端口**——这些发生在 `service.run()`。
+### Skill
 
-```python
-service = Service(id="my_navigate", namespace="robonix/service/myorg")
+- 初始为 `INACTIVE`，首次调用激活，取消后资源可回收。
+- `CAPABILITY.md` 写清前置条件、阶段、限制和失败恢复。
+- 并发调用与重复调用不会产生不受控的物理动作。
+
+真实硬件必须经过仿真、架空/台架、低速空场和目标场景四级验证；测试人员能触达 E-stop，并在启动车轮或机械臂前确认安全边界。
+
+## 12. 发布与协作
+
+提交社区前完成：
+
+```text
+[ ] package_manifest.yaml 可由 rbnx validate 通过
+[ ] README 给出安装、构建、启动、验证和故障日志路径
+[ ] LICENSE 与 package.license 一致
+[ ] config.spec 覆盖所有 deployment-facing 字段
+[ ] 标准 contract 没有被私自复制或改名
+[ ] 目标平台的 build / boot 记录包含源码 commit 与 target manifest
+[ ] 真实运动能力有安全验收记录
 ```
 
-### 14.2 `service.run()`
-
-**阻塞主循环**。`main.py` 最后一行通常就是 `service.run()`，内部按序：
-
-1. 连 atlas + 按 kind 调对应 Register RPC（失败则记 warning 并继续，能力提供者停在 REGISTERED）
-2. 启 gRPC server（自动选端口），挂 `<namespace>/driver` 生命周期接口 + 所有 `@service.grpc` 业务方法
-3. 每条 gRPC contract 调 `DeclareCapability`
-4. 有 `@service.mcp` 则起 MCP HTTP server（FastMCP + uvicorn）并 declare
-5. 起心跳线程（约 30s 一次；超 90s 无心跳 atlas 标 TERMINATED）
-6. 装 SIGTERM/SIGINT handler，触发时 `on_shutdown` → 停 server → unregister
-7. `signal.pause()` 阻塞
-
-跑完 1-5 后 atlas 里只是 `REGISTERED`，等 `Driver(CMD_INIT)` 到达才进 `INACTIVE`——状态推进由 rbnx boot / executor 异步驱动。
-
-### 14.3 lifecycle 装饰器
-
-四个装饰器，对应 §5 的状态迁移。所有 handler 必须返回 `Result`（§14.7）。装饰器只在模块 import 时跑，把 fn 注册到能力提供者的 handler 表里，**不包 wrapper、不改 fn 行为**——保留可单测性。
-
-| 装饰器 | 签名 | 必填 | 该做什么 |
-|---|---|---|---|
-| `@service.on_init` | `fn(cfg: dict) -> Result` | 是 | 解析 cfg、用 `ATLAS.query`/`find_capability` 探上游。**不申请热资源** |
-| `@service.on_activate` | `fn() -> Result` | skill 是 / primitive·service 否 | 申请热资源——开线程、加载模型、订阅 ROS、打开硬件 fd。**必须可重入**（skill evict 后会再 activate）。primitive/service 省略时框架自动 `Ok()` |
-| `@service.on_deactivate` | `fn() -> Result` | 同 `on_activate` | 对称释放 `on_activate` 的热资源；config 和 atlas 注册保留 |
-| `@service.on_shutdown` | `fn() -> Result` | 否 | flush 日志、关端口。返回值忽略（能力提供者无论如何都退出） |
-
-`cfg` 来源：`rbnx boot` 时取 `robonix_manifest.yaml` 里该能力提供者的 `config:` 段；`rbnx start -p <pkg> -c local.yaml` 时取 `-c` 文件；都没传则 `{}`。
-
-```python
-@service.on_init
-def init(cfg: dict):
-    if cfg.get("require_camera") and not ATLAS.find_capability(
-        contract_id="robonix/primitive/camera/rgb"
-    ):
-        return Err("camera not online")
-    return Ok()
-
-@service.on_activate
-def activate():
-    global controller
-    controller = Controller(...)
-    controller.start()
-    return Ok()
-
-@service.on_deactivate
-def deactivate():
-    global controller
-    if controller is not None:
-        controller.stop()
-        controller = None
-    return Ok()
-```
-
-### 14.4 ATLAS 发现 + connect
-
-`ATLAS` 两种 API：
-
-* `ATLAS.query(*, id=…, kind=…, contract_id=…, …)` —— 能力提供者视角，按 id / kind / contract 搜能力提供者记录。`ATLAS.query_primitives/_services/_skills` 是固定 kind 的快捷形式。
-* `ATLAS.find_capability(*, contract_id=…, transport=…, …)` —— 接口视角，返回 `list[Capability]`（自带 `provider_id` / `provider_kind`）。`find_unique_capability` 在 0 或 >1 时 raise，依赖唯一 capability 时用。
-
-`service.connect_capability(cap_view, contract_id, transport)` 用一条 Capability 开 `Channel`，`ch.endpoint` 是对方实际地址。
-
-**典型写法**：
-
-```python
-# 默认：全场唯一一个 provider 提供该 contract
-cap_view = ATLAS.find_unique_capability(
-    contract_id="robonix/primitive/chassis/move",
-    transport=Transport.GRPC,
-)
-with service.connect_capability(cap_view, "robonix/primitive/chassis/move",
-                                Transport.GRPC) as ch:
-    ...
-
-# 多 provider 时：按 provider_id 自己挑
-capabilities = ATLAS.find_capability(contract_id="robonix/primitive/camera/rgb")
-front = next((c for c in capabilities if c.provider_id == "tiago_camera_front"), None)
-```
-
-### 14.5 atlas-types 数据结构
-
-`ATLAS` 是 module-level singleton（参照 `prometheus_client.REGISTRY` 风格），第一次访问时连到 atlas（端口取 `ROBONIX_ATLAS`，默认 `127.0.0.1:50051`）。
-
-返回的两个 dataclass 都是 frozen，要新数据就重新 query。
-
-**能力提供者记录**（`ATLAS.query / query_primitives / query_services / query_skills` 返回单元）：
-
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| `id` | `str` | 能力提供者 id（atlas 里唯一）|
-| `kind` | `Kind` | `PRIMITIVE` / `SERVICE` / `SKILL` |
-| `namespace` | `str` | contract 公共前缀 |
-| `state` | `LifecycleState` | §5.1 |
-| `state_detail` | `str` | `ERROR` 时为 reason，其它可能为空 |
-| `last_heartbeat_ms` | `int` | 上次心跳 unix ms |
-| `capability_md_path` | `str` | 注册时报上来的 `CAPABILITY.md` 路径 |
-| `capabilities` | `tuple[Capability, ...]` | 该能力提供者已声明的所有 Capability |
-
-**`Capability`**（`ATLAS.find_capability` 返回单元）：
-
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| `provider_id` | `str` | 暴露这条 capability 的能力提供者 id |
-| `provider_kind` | `Kind` | 该能力提供者的 kind |
-| `contract_id` | `str` | 接口 id |
-| `transport` | `Transport` | gRPC / ROS2 / MCP |
-| `params` | `GrpcParams \| Ros2Params \| McpParams` | transport-specific（gRPC service+method / ROS 2 qos\_profile / MCP description+schema）|
-| `description` | `str` | 动态注册的 provider/capability 实例描述，给 Pilot / 调试工具看；不等同于 contract TOML 的标准接口说明。|
-| `namespace_mismatch` | `bool` | 该 contract 是否位于 provider 主 namespace 外且未声明 `cross_namespace = true`；仅诊断，不影响调用 |
-
-`Transport` 是 `IntEnum`：`UNSPECIFIED` / `GRPC` / `ROS2` / `MCP`；`Kind` 是 `IntEnum`：`UNSPECIFIED` / `PRIMITIVE` / `SERVICE` / `SKILL`。
-
-#### `ATLAS.query(*, kind, id, contract_id, namespace_prefix, transport)`
-
-```python
-[chassis] = ATLAS.query(id="tiago_chassis")              # 按 id（0 或 1）
-skills    = ATLAS.query(kind=Kind.SKILL)                 # == query_skills()
-providers = ATLAS.query(contract_id="robonix/primitive/chassis/move",
-                        transport=Transport.GRPC)        # 按 contract
-```
-
-#### `ATLAS.find_capability(*, contract_id, transport, provider_kind, provider_id, namespace_prefix) -> list[Capability]`
-
-把所有能力提供者的 `capabilities[]` 拉平展开，返回所有匹配的 `Capability`（可能为空）。
-
-`on_init` 里轻量探活最常用：
-
-```python
-@service.on_init
-def init(cfg):
-    if not ATLAS.find_capability(contract_id="robonix/service/map/occupancy_grid"):
-        return Err("mapping service not online")
-    return Ok()
-```
-
-#### `ATLAS.find_unique_capability(*, contract_id, ...) -> Capability`
-
-同 `find_capability`，但 0 或 >1 都 raise `ValueError`，依赖唯一 capability 时用。
-
-### 14.6 `service.connect_capability`
-
-**签名**：`service.connect_capability(cap_view, contract_id, transport) -> Channel`
-
-**打开一条 consumer → 提供方通道，拿到该接口对方的 endpoint。**
-
-| 参数 | 类型 | 说明 |
-|---|---|---|
-| `cap_view` | `Capability` | 上一步从 `ATLAS.find_capability` / `find_unique_capability` 拿到的那条 |
-| `contract_id` | `str` | 要消费的接口 |
-| `transport` | `Transport` | 走 gRPC / ROS2 / MCP |
-
-**返回**：`Channel`，关键字段 + 方法：
-
-| 名 | 类型 | 说明 |
-|---|---|---|
-| `endpoint` | `str` | 对方实际地址（gRPC `host:port` / ROS topic 名 / MCP HTTP URL）|
-| `params` | transport-specific | gRPC 的 service+method / ROS 2 的 `qos_profile` / MCP 的 description+schema |
-| `channel_id` | `str` | atlas 给的句柄，框架内部追踪用 |
-| `close()` | method | 显式 disconnect（idempotent；多次调用安全）|
-| `__enter__` / `__exit__` | context manager | `with` 块退出时自动 `close()` |
-
-**机制**：atlas 端记一条 consumer→提供方边（`rbnx channels` 审计 + 心跳追踪），框架维护能力提供者本地 channel 表——`ch.close()` / `Channel.__exit__` / 能力提供者 teardown 都会调 atlas 的 `DisconnectCapability` 删掉对应边。
-
-**两种用法**：
-
-* **短寿命**——`with service.connect_capability(...) as ch:` 块内用 `ch.endpoint`，退出自动 disconnect。
-* **长寿命**——`on_activate` 里 `chassis_ch = service.connect_capability(...)` 存到模块级，`on_deactivate` 调 `chassis_ch.close()` 释放（§7 速览例已示）。
-
-框架兜底：忘 `close()` / `with`，teardown 时遍历内部 channel 表 Disconnect 所有未关。但显式 close 才规范——否则 atlas 端 consumer 边一直挂着，影响 `rbnx channels` 审计。
-
-### 14.7 `Result` 类型
-
-lifecycle handler 必须返回三种之一：
-
-| 构造 | 含义 | 后续行为 |
-|---|---|---|
-| `Ok()` | 成功 | 推进到下一态（CMD\_INIT→INACTIVE 等）|
-| `Err("reason")` | 失败 | 进 `ERROR`，`reason` 写入 atlas 的 `state_detail`，`rbnx caps -v` 能看到 |
-| `Deferred("reason")` | 尚未就绪、稍后重试 | 不迁移状态，保持当前态，`reason` 写入 `state_detail` |
-
-不返回 `Result`（例如忘了 return）会被框架视作 `Err`；handler 内部 `raise` 也会被捕获转成 `Err`（含异常类型与信息）。
-
-```python
-return Ok()
-return Err("device /dev/ttyUSB0 not found")
-return Deferred("waiting for upstream map service")
-```
-
-### 14.8 `service.declare_ros2_topic` / `service.declare_ros2_service`
-
-robonix v1 **不 wrap rclpy**——publisher / subscriber / service / client 直接 `rclpy.init() + Node + create_publisher / create_subscription / create_service + spin`。robonix 只插一个 declare 点告诉 atlas"我在某个 ROS 端点上提供某 contract"，让 consumer 能通过 `ATLAS.find_capability` + `service.connect_capability(transport=ROS2)` 拿到名字 + QoS。
-
-ROS 2 有两类端点，分别对应两个 declare 方法：
-
-| 方法 | 用途 | 对应 contract `mode` |
-|---|---|---|
-| `service.declare_ros2_topic`   | publish / subscribe 一条 topic | `topic_in` / `topic_out` |
-| `service.declare_ros2_service` | 提供一个 ROS 2 service（请求 / 响应一对一） | `rpc` |
-
-> ROS 2 **action**（长任务 + feedback + result）暂不支持。需要的话现在走 `rpc_server_stream` + gRPC（feedback 用 server-stream 推），等后续版本补。
-
-完整签名见下文。
-
-#### `declare_ros2_topic`
-
-```python
-service.declare_ros2_topic(
-    "robonix/primitive/lidar/lidar3d",
-    "/scanner_normalized",
-    qos="best_effort",
-    description="发布归一化点云（mid360 → robonix lidar3d 能力约定）",
-)
-```
-
-| 参数 | 类型 | 说明 |
-|---|---|---|
-| `contract_id` | `str` | 这个 publisher 满足的 contract |
-| `topic` | `str` | ROS topic 名 |
-| `qos` | `str` | QoS preset 字符串（见下表，默认 `best_effort`）|
-| `description` | `str?` | 这条动态注册 capability 实例的自然语言描述。ROS 2 没有 docstring-as-description 的惯例，建议显式传；这属于 provider/runtime 层描述，不是 contract TOML 的抽象接口说明。|
-
-**QoS preset**（字符串）跟 ROS 2 官方 `rmw` builtin profile 一致：
-
-| 字符串 | reliability / durability / depth | 何时用 |
-|---|---|---|
-| `"best_effort"` | BEST\_EFFORT / VOLATILE / depth=10 | 默认；可丢但要新鲜的流 |
-| `"reliable"` | RELIABLE / VOLATILE / depth=10 | 不允许丢的小流（控制命令、状态变更） |
-| `"sensor_data"` | BEST\_EFFORT / VOLATILE / depth=5 | 高频传感器流（lidar 扫描、相机帧）|
-| `"latched"` / `"transient_local"` | RELIABLE / TRANSIENT\_LOCAL / depth=1 | 静态信息（地图、相机外参）——晚来的订阅者也能拿到最近一次值 |
-
-#### `declare_ros2_service`
-
-```python
-service.declare_ros2_service(
-    "robonix/service/navigation/navigate",
-    "/navigate_to_pose",
-    description="把底盘开到 goal 指定位姿",
-)
-```
-
-| 参数 | 类型 | 说明 |
-|---|---|---|
-| `contract_id` | `str` | 该 service 满足的 contract（contract toml 必须 `mode=rpc`）|
-| `service` | `str` | ROS 2 service 名 |
-| `description` | `str?` | 同 `declare_ros2_topic` |
-
-ROS 2 service 的 QoS 用框架默认（reliable / depth=10），不暴露给开发者。
-
-#### 提供方：rclpy publisher + 一行 declare
-
-```python
-import rclpy
-from rclpy.node import Node
-from sensor_msgs.msg import LaserScan
-
-@service.on_activate
-def activate():
-    global node, pub
-    rclpy.init()
-    node = Node("my_lidar_cap")
-    pub  = node.create_publisher(LaserScan, "/scanner_normalized", 10)
-    service.declare_ros2_topic(
-        "robonix/primitive/lidar/lidar3d",
-        "/scanner_normalized",
-        qos="best_effort",
-    )
-    threading.Thread(target=lambda: rclpy.spin(node), daemon=True).start()
-    return Ok()
-
-# 业务代码里：
-pub.publish(scan_msg)
-```
-
-#### 消费方：`ATLAS.find_capability` + `service.connect_capability(transport=ROS2)` + rclpy subscription
-
-`service.connect_capability(...)` 拿到的 `Channel.endpoint` 就是 topic 名（或 service 名），`Channel.params.qos_profile` 是 declare 时给的 QoS preset（service 时为空）。
-
-```python
-import rclpy
-from rclpy.node import Node
-from sensor_msgs.msg import LaserScan
-
-@service.on_activate
-def activate():
-    cap_view = ATLAS.find_unique_capability(
-        contract_id="robonix/primitive/lidar/lidar3d",
-        transport=Transport.ROS2,
-    )
-    ch = service.connect_capability(cap_view,
-                                "robonix/primitive/lidar/lidar3d",
-                                Transport.ROS2)
-    rclpy.init()
-    node = Node("my_consumer")
-    node.create_subscription(LaserScan, ch.endpoint, on_scan,
-                             qos_profile=qos_from_str(ch.params.qos_profile))
-    threading.Thread(target=lambda: rclpy.spin(node), daemon=True).start()
-    return Ok()
-```
-
-`qos_from_str(...)` 是项目里几行的 helper（把字符串映射到 `rclpy.qos.QoSProfile`），常见做法是：
-
-```python
-from rclpy.qos import qos_profile_sensor_data, qos_profile_system_default
-def qos_from_str(s):
-    return {
-        "best_effort": qos_profile_system_default,
-        "reliable":    qos_profile_system_default,
-        "sensor_data": qos_profile_sensor_data,
-    }.get(s, qos_profile_system_default)
-```
-
-**为什么不 wrap rclpy**：ROS 2 是它自己一整套生命周期管理（Context/Executor/Node），robonix wrap 一层只会让用户在两套模型间切换。`declare_ros2_topic` / `declare_ros2_service` 是 robonix 在 ROS 2 路径上**唯一**的介入——告诉 atlas 端点名 + QoS，仅此而已。
-
-### 14.9 `@service.mcp` / `@service.grpc`
-
-#### `@service.mcp(contract_id, *, description="")` — MCP 工具
-
-把一个普通 Python 函数挂成一条 MCP 工具，pilot / 任何 MCP 客户端都能调到。
-
-**同步 / 异步分类**：
-
-* **同步 MCP handler**：一次 MCP 调用内完成工作并返回最终结果；executor 收到这次 `call_tool` 的结果后，该 RTDL 节点就进入终态。
-* **异步 MCP handler**：主 contract 的 MCP 调用只启动一个会继续运行的任务，并返回 provider 分配的 `run_id`；executor 后续通过同一 provider 上的 `<id>/status` 轮询终态，通过 `<id>/cancel` 取消任务。
-
-**共同要求**：
-
-* 函数有**类型注解**——参数类型（`req`）+ 返回类型——必须是 codegen 生成的 dataclass（`<pkg>/rbnx-build/codegen/robonix_mcp_types/...`）。FastMCP 用类型注解生成 JSON Schema 给 LLM。
-* contract toml 的 `mode` 必须是 `rpc`（其它 mode 会 raise）。
-
-**同步 handler 要求**：
-
-* 如果无法完成本次调用（例如依赖未初始化、传感器还没有数据、必需的上游能力不存在、输入为空且无法产生合法输出），应直接 `raise RuntimeError("短原因")`。FastMCP 会把异常转成 `CallToolResult.isError=true`，executor 会把它写入 `CapabilityCallResult.error`。
-* 不要用空 payload、`ok=false`、`encoding="error"` 等特殊返回值表达 handler 失败；只有当 contract 明确定义了“未找到 / 不可达 / 已拒绝”这类业务状态时，才把它作为正常 response 返回。
-
-**异步 handler 要求**：
-
-* 必须成组三条 contract：主 contract `<id>` 启动任务并返回 `run_id`；`<id>/status` 查询状态；`<id>/cancel` 取消任务。executor 只有在同一 provider 同时注册 `<id>/status` 和 `<id>/cancel` 时，才把 `<id>` 当异步 capability 轮询；只注册其中一个是配置错误。
-* `status` 返回必须包含 `state`（`PENDING` / `RUNNING` / `SUCCEEDED` / `FAILED` / `CANCELED` / `TIMEOUT` / `PAUSED`）和可选 `detail`；`status` / `cancel` 自身出错时同样 `raise RuntimeError(...)`。
-
-同步 handler 示例：
-
-```python
-from myorg_mcp import Hello_Request, Hello_Response
-
-@service.mcp("robonix/service/myorg/hello")
-def hello(req: Hello_Request) -> Hello_Response:
-    """打招呼。LLM 任何时候想跟人说话都可以调。"""
-    if not req.name:
-        raise RuntimeError("name is empty")
-    return Hello_Response(message=f"hi {req.name}")
-```
-
-异步 handler 示例：
-
-```python
-@service.mcp("robonix/service/navigation/navigate")
-def navigate(req: Navigate_Request) -> Navigate_Response:
-    """启动导航任务，立即返回 run_id。"""
-    run_id = start_navigation(req.goal)
-    _runs[run_id] = "RUNNING"
-    return Navigate_Response(accepted=True, run_id=run_id, detail="navigation started")
-
-@service.mcp("robonix/service/navigation/navigate/status")
-def navigate_status(req: GetNavigationStatus_Request) -> GetNavigationStatus_Response:
-    """查询导航任务状态。"""
-    run_id = req.run_id or latest_run_id()
-    state = _runs.get(run_id)
-    if state is None:
-        raise RuntimeError(f"unknown run_id {run_id!r}")
-    return GetNavigationStatus_Response(known=True, state=state, detail="")
-
-@service.mcp("robonix/service/navigation/navigate/cancel")
-def navigate_cancel(req: CancelNavigation_Request) -> CancelNavigation_Response:
-    """取消导航任务。"""
-    run_id = req.run_id or latest_run_id()
-    if run_id not in _runs:
-        raise RuntimeError(f"unknown run_id {run_id!r}")
-    cancel_navigation(run_id)
-    _runs[run_id] = "CANCELED"
-    return CancelNavigation_Response(accepted=True, detail="cancel requested")
-```
-
-**description（给 Pilot LLM 看的自然语言）当前来自 provider/runtime 层**：
-
-1. 装饰器的 `description=` kwarg；没传就 fallback 到 `fn.__doc__`（MCP 生态惯例：docstring 即 tool description）。
-2. 包根的 `CAPABILITY.md`（能力提供者级长文档，整个包共享）。
-
-contract TOML 的 `[contract].description` 是标准抽象接口说明，只属于文档层；`rbnx docs` 用它生成接口参考。它和动态注册的 provider description 不是一回事，不参与运行时 fallback、合并或大模型工具描述。
-
-`CAPABILITY.md` 的格式只有一条硬要求：文件开头一段 YAML frontmatter，**里面只有 `description` 一个键**（单行包级摘要）；正文随便写。**不要**在 frontmatter 写 `kind` / `provider`——provider 的种类和 id 由注册（`Primitive`/`Service`/`Skill`）决定、atlas 权威保存，Pilot 从 atlas 取，手写一份只会漂移。完整说明见《Robonix 包与部署配置规范》的 “CAPABILITY.md” 一节。
-
-codegen 生成的 dataclass 命名是 `<SrvName>_Request` / `<SrvName>_Response`（按 ROS srv 文件名）；msg 文件直接是 `<MsgName>`。每个能力提供者一个 FastMCP HTTP server（自动选端口），所有 `@service.mcp` 都挂在同一 server 上。MCP server 端的工具名固定 = `contract_id` 末段（跟 executor dispatch 那一侧用同一个推导），所以**装饰器不暴露 `name=` kwarg**——避免函数名 / 工具名漂移撞 executor。
-
-#### `@service.grpc(contract_id, *, description="")` — gRPC 方法 handler
-
-把一个 Python 函数挂成 contract 对应 gRPC servicer 的方法实现。
-
-**机制**：codegen 给每条带 gRPC transport 的 contract 生成 `<PascalContractId>Servicer` 抽象类（在 `<pkg>/rbnx-build/codegen/proto_gen/robonix_contracts_pb2_grpc.py`）。装饰器把你的函数包成这个 servicer 的子类，挂到能力提供者共享的 gRPC server 上。**handler 函数的形态由 contract 的 `[mode] type` 决定**——下面这张表列了所有 6 种 mode 对应的 handler 写法。
-
-**description**：gRPC 生态本身没有"docstring 当工具说明"的惯例，建议在装饰器里**显式**传 `description="..."`（不传时框架仍会 fallback 到 `fn.__doc__`，但 gRPC 调用方一般不读 docstring，最好别赖这个）。这是动态 provider description；contract TOML 级说明只应描述标准接口抽象。
-
-```python
-import chassis_pb2  # codegen 出来的 protobuf 类
-
-@service.grpc("robonix/primitive/chassis/move", description="发底盘速度命令，单位 m/s 与 rad/s")
-def execute_move_command(req: chassis_pb2.ExecuteMoveCommand_Request, ctx):
-    chassis.send_velocity(req.linear_x, req.angular_z)
-    return chassis_pb2.ExecuteMoveCommand_Response(ok=True)
-```
-
-**handler 参数类型**——robonix 不重新发明，直接套用 grpc-python 上游惯例：
-
-| 名 | 实际运行时类型 | 用法 |
-|---|---|---|
-| `request` | codegen 生成的 protobuf 消息类的对象，例如 `chassis_pb2.ExecuteMoveCommand_Request`——它继承自 `google.protobuf.message.Message` | 单次请求 mode（`rpc` / `rpc_server_stream` / `topic_out`）。直接 `req.field_name` 读字段 |
-| `request_iterator` | `grpc._server._RequestIterator`（grpc-python 内部类）——只用到 sync iterator 协议（`__iter__` + `__next__`）。每次 `next(request_iterator)` 阻塞到下一条消息到达，**返回值是 codegen 出的 protobuf 消息类的对象**（"流元素类型"，由 IDL 决定，详见 §8.5 streaming mode 约束）；客户端关流时 raise `StopIteration` | 请求流 mode（`rpc_client_stream` / `rpc_bidirectional_stream` / `topic_in`）。规范用法：`for chunk in request_iterator: ...`，每个 `chunk` 跟 unary mode 的 `request` 同 Python 类型，只是逐个到达；循环在客户端关流时自动退出 |
-| `ctx` | `grpc._server._Context`，公开接口 [`grpc.ServicerContext`](https://grpc.github.io/grpc/python/grpc.html#grpc.ServicerContext) | 常用：`ctx.is_active()` 判客户端是否还连着、`ctx.cancel()` 主动断、`ctx.set_trailing_metadata(...)` 加 trailer、`ctx.peer()` 拿调用方地址 |
-
-**关于 `yield`**：server-stream / bidi-stream / topic_out 三种 mode 的 handler 用 `yield` 而不是 `return`——`yield` 是 Python 关键字，把函数变成**生成器函数**（generator function）。区别：
-
-* 普通函数 `return x`：调用立刻执行到底，返回 `x`。
-* 生成器函数 `yield x`：调用**不立刻执行**，返回一个生成器对象。每次外部 `next()` 才执行到下一个 `yield` 把 `x` 送出，函数挂起；`return` 或自然结束即迭代终止。
-
-gRPC 框架自动遍历 handler 返回的 generator，把每个 yield 出的对象塞进响应流。这跟 grpc-python 上游一致，详见官方 [Basics tutorial](https://grpc.io/docs/languages/python/basics/) service-side 章节。
-
-**6 种 mode 的 handler 形态**：
-
-```python
-import chassis_pb2          # codegen 生成的消息类
-import audio_pb2            # 用 audio 流式接口举例
-import std_msgs_pb2         # ack 用 Empty
-```
-
-**(1) `rpc` — 一发一收**
-
-```python
-@service.grpc("robonix/primitive/chassis/move")
-def execute_move_command(req, ctx):
-    chassis.send_velocity(req.linear_x, req.angular_z)
-    return chassis_pb2.ExecuteMoveCommand_Response(ok=True)
-```
-
-handler `(req)` 或 `(req, ctx)`；return 一个 Response。框架按 inspect 自适应。
-
-**(2) `rpc_server_stream` — 一收多发**
-
-```python
-@service.grpc("robonix/system/executor/execute")
-def execute(req, ctx):
-    """收到 Plan，按 RTDL 节点流式回 RtdlEvent。"""
-    for step in req.plan.steps:
-        yield executor_pb2.RtdlEvent(event_kind=1, node_state=run_step(step))
-        if not ctx.is_active():
-            break
-```
-
-每 yield 一个 Response；`return` 或函数结束即关流；`ctx.is_active()` 检查订阅是否还在。
-
-**(3) `rpc_client_stream` — 多收一发**
-
-```python
-@service.grpc("robonix/primitive/audio/speaker")
-def stream(request_iterator, ctx):
-    for chunk in request_iterator:   # 阻塞迭代到客户端 done
-        speaker.write(chunk.data)
-    return std_msgs_pb2.Empty()
-```
-
-第一个参数是迭代器（习惯叫 `request_iterator`），`for chunk in ...` 阻塞到客户端关流，最后 return 一个 Response。
-
-**(4) `rpc_bidirectional_stream` — 多收多发**
-
-```python
-@service.grpc("robonix/system/speech/asr_stream")
-def asr_stream(request_iterator, ctx):
-    decoder = StreamingDecoder()
-    for chunk in request_iterator:
-        decoder.feed(chunk.data)
-        if (partial := decoder.peek()):
-            yield asr_pb2.RecognizeStreamEvent(event_type=asr_pb2.PARTIAL, text=partial)
-    yield asr_pb2.RecognizeStreamEvent(event_type=asr_pb2.FINAL, text=decoder.finalize())
-```
-
-`request_iterator` 进、`yield` 出，**两侧独立异步**，不需要一对一。
-
-**(5) `topic_out` — 持续 publish**
-
-走 gRPC 时 = server streaming：consumer 发 Empty 订阅，能力 `while ctx.is_active(): yield frame`。形态同 (2)，语义是主动持续推。
-
-**(6) `topic_in` — 持续 subscribe**
-
-走 gRPC 时 = client streaming：consumer 发流、能力消费。形态同 (3)，语义是该能力是 sink。
-
-**`topic_*` 走 ROS 2 transport 时不用 `@service.grpc`**——见 §14.8 `service.declare_ros2_topic` + 用户自管的 rclpy publisher/subscription。`topic_*` 只在该 contract 想跨语言或穿 docker 网络时才走 gRPC。
-
-### 14.10 只读属性
-
-| 属性 | 用途 |
-|---|---|
-| `service.id` | 构造时给的能力提供者 id |
-| `service.namespace` | 构造时给的 namespace |
-| `service.state` | 当前 lifecycle 状态（`LifecycleState` 枚举）|
-
-***
-
-## 15. CLI
-
-`rbnx build` / `rbnx clean` 在**部署根目录**（含 `robonix_manifest.yaml`）和**单包目录**（含 `package_manifest.yaml`）下行为不同——参考下面的"工作目录"列。
-
-| 子命令 | 工作目录 | 作用 |
-|---|---|---|
-| `rbnx --version` | 任意 | 版本 |
-| `rbnx path <key>` | 任意 | 查 robonix 子树（`root` / `rust` / `capabilities` / `interfaces-lib` / `runtime-proto` / `robonix-api`） |
-| `rbnx codegen [--mcp]` | 单包 | 给当前 package 生 proto stubs / MCP dataclass 到 `<pkg>/rbnx-build/codegen/` |
-| `rbnx build` | 部署根 | 遍历 manifest 里所有 primitive/service/skill，依次跑各包的 `package_manifest.build` |
-| `rbnx build` | 单包 | 跑当前包的 `package_manifest.build` |
-| `rbnx clean` | 部署根 | 清整套部署的 `rbnx-build/` + `rbnx-boot/cache/` |
-| `rbnx clean` | 单包 | 只清当前包的 `rbnx-build/` |
-| `rbnx clean --cache` | 部署根 | 同上 + 也清 `rbnx-boot/cache/` 里克隆下来的远程包 |
-| `rbnx start -p <pkg> [-c <yaml>] [-s k.v=val]` | 任意 | 单包启动（开发用），跳过 manifest |
-| `rbnx boot -f <manifest.yaml>` | 部署根 | 起整套部署 |
-| `rbnx shutdown -f <manifest.yaml>` | 部署根 | 拆 boot（pkill + docker 清理） |
-| `rbnx caps [-v]` | 任意 | 看 atlas 当前能力提供者列表 |
-| `rbnx contracts [-p <prefix>]` | 任意 | 看 atlas 已知的 contract registry |
-| `rbnx ask "<prompt>"` | 任意 | 单次 LLM 提问（走 pilot） |
-| `rbnx chat` | 任意 | 交互式对话（走 liaison） |
-
-***
-
-## 16. 配置字段
-
-### 16.1 `package_manifest.yaml`
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|---|---|
-| `manifestVersion` | int | 是 | 当前 `1` |
-| `package.name` | string | 是 | package 发布名，例如 `robonix.service.navigation` |
-| `package.version` | string | 是 | semver |
-| `package.description` | string | 是 | catalog 和文档展示用的一句话描述 |
-| `package.tags` | list[string] | 是 | catalog 过滤标签 |
-| `package.maintainers` | list[string] | 是 | 每项格式为 `Name <email@domain>` |
-| `package.license` | string | 是 | SPDX license 字符串 |
-| `package.vendor` | string | 否 | 旧 manifest 兼容字段；新 package 不需要填写，也不作为 Catalog 元数据来源 |
-| `build` | string | 否 | 构建 shell 命令；预构建包可省略 |
-| `start` | string | 是 | shell 命令 |
-| `stop` | string | 否 | 包自有的优雅清理 shell 命令 |
-| `capabilities[]` | list | 否 | 对外声明的 contract；每项至少包含 `name`，包内自定义 contract 可加 `path` |
-| `depends[]` | list | 否 | 构建/导入依赖；每项包含 `name`，并可选 `path` 或 `url` + `branch` |
-
-### 16.2 `robonix_manifest.yaml`
-
-顶层字段：
-
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| `manifestVersion` | int | `1` |
-| `name` | string | 运行时部署名 |
-| `catalog` | object | Robot deployment 的发布元数据；发布到 Package Catalog 时填写 |
-| `catalog.name` | string | Catalog 中的稳定整机名称，例如 `robonix.robot.agilex.ranger_mini_v3` |
-| `catalog.version` | string | 整机部署版本 |
-| `catalog.description` | string | 一句话说明该部署适配的机器人 |
-| `catalog.license` | string | 整机部署配置的 SPDX license 字符串 |
-| `catalog.tags` | list[string] | Catalog 分类标签 |
-| `catalog.maintainers` | list[string] | 维护者列表，每项格式为 `Name <email@domain>` |
-| `env` | object | 部署级环境变量（一般留空） |
-| `system` | map | system 服务的配置块；key 是固定 system 名（atlas/executor/soma/vitals/pilot/liaison/scene），value 由对应内置组件读取。memory/speech 等是 service，不在这里 |
-| `primitive` | list | primitive 包列表 |
-| `service` | list | service 包列表 |
-| `skill` | list | skill 包列表 |
-
-`primitive` / `service` / `skill` 列表中**每个条目**：
-
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| `name` | string | **必须等于该包 Python 源里 `Primitive/Service/Skill(id="...")` 的 id**（rbnx boot 用这个对账，不一致会失败）|
-| `path` | string | 本地包目录（相对部署根） — 与 `url` 二选一 |
-| `url` | string | 远程 git 仓库；`rbnx build` 阶段克隆到 `rbnx-boot/cache/` |
-| `branch` | string | 远程包分支；与 `url` 配套 |
-| `manifest` | string | 可选的包 manifest 文件名，例如 `package_manifest.jetson-native.yaml`；默认 `package_manifest.yaml` |
-| `config` | object | 整段以 JSON 化形式喂给该包的 `on_init(cfg)` |
-
-package 若接受 `config`，应在 `package_manifest.yaml` 旁提供文档型 `config.spec`，逐字段写明类型、单位、默认值、含义与约束。文件可以给出可复制的 `config:` 示例，也可以按 required/optional 分组；它不参与运行时解析，`config` 仍由 package 的 `on_init(cfg)` 消费。三个最小示例见 [`template-rbnx`](https://github.com/syswonder/template-rbnx)。Mapping/Nav2 的完整机器人参数文件放在 robot deployment 的 `config/` 下，再通过 `params_file` 引用；共享 service 仓库只保留 template/example。
-
-启动顺序：`system` 区块先按固定顺序起 → 然后 `primitive` → `service` → `skill`，**每段内部按 manifest 写入顺序**。当前 dev 不解析跨条目的 `depends_on`；要让 A 先于 B 起就把 A 写在前面。
-
-### 16.3 contract toml
-
-| 字段 | 说明 |
-|---|---|
-| `[contract] id` | 接口 ID，全局唯一 |
-| `[contract] version` | 字符串，从 `"1"` 起 |
-| `[contract] kind` | `primitive` / `service` / `skill` |
-| `[contract] idl` | 引用 IDL 文件，相对 `lib/` 根，例如 `chassis/srv/Move.srv` 或 `nav_msgs/msg/Odometry.msg` |
-| `[contract] description` | 能力约定级文档字段：只描述这个标准抽象接口是什么意思，供 `rbnx docs` / 接口参考展示；不参与运行时 fallback，也不进入大模型工具描述。|
-| `[contract] cross_namespace` | 可选布尔值，默认 `false`。共享 contract 设为 `true` 后可由不同 provider namespace 实现而不产生 mismatch 提示 |
-| `[mode] type` | `rpc` / `rpc_server_stream` / `rpc_client_stream` / `rpc_bidirectional_stream` / `topic_in` / `topic_out` |
+发布流程见 [Package Catalog](integration-guide/package-catalog.md)。仓库创建、Catalog 索引、整机集成验证和首页“已支持”是不同状态，不能用一次 manifest lint 代替本体验收。

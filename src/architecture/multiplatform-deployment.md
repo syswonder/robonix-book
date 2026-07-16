@@ -1,114 +1,190 @@
-# 多平台部署：x86 与 Jetson（arm64）
+# 多架构与多运行环境部署
 
-Robonix 同一套源码可以部署到 **x86_64** 和 **NVIDIA Jetson（arm64 / JetPack）** 两类平台，
-每类又分 **docker** 与 **native（无 docker）** 两种运行方式。本章讲清楚：
+[toc]
 
-- 四种部署 target 的区别与适用场景；
-- 每个包如何选择 target（构建期）与运行方式（运行期）；
-- Jetson 平台的系统前置（JetPack 版本、系统 Python / ROS2、CUDA torch）；
-- 怎么切换、怎么配置、怎么启动。
+Robonix 的 deployment manifest 可以为每个 package 实例选择不同的 package manifest。package 作者据此提供 x86_64、Jetson arm64、native 或 container 等构建与启动实现。
 
-## 1. 部署 target 矩阵
+这不是一张由 Robonix 强制定义的固定 target 矩阵。一个 package 只支持它实际提供并测试过的 manifest 文件。
 
-| target | 架构 | 运行方式 | 典型场景 |
-|---|---|---|---|
-| `x86-docker`   | x86_64 | docker | 默认；webots 仿真、x86 工作站，镜像内带 ROS2 + CUDA(cu128) torch |
-| `x86-native`   | x86_64 | 宿主直接跑 | x86 上已装好系统 ROS2 + torch，不想用 docker |
-| `jetson-docker`| arm64  | docker | Jetson 上用 L4T 基础镜像（`docker/Dockerfile.jetson`） |
-| `jetson-native`| arm64  | 宿主直接跑 | Jetson 上用 **JetPack 自带的** ROS2 + CUDA torch，**不**用 docker（小车默认） |
+## 选择 package manifest
 
-> **关键原则**：所有模型权重一律在**构建期**拉取，运行期（`start.sh`）只加载、绝不下载。
-> docker target 在 `Dockerfile` 的 `RUN` 里 bake 进镜像；native target 在 `build.sh` 里预取到包的
-> HF 缓存（`rbnx-build/data/hf`）。两者都是 build 时，机制不同而已。
+默认情况下，`rbnx build` 和 `rbnx start` 读取：
 
-## 2. 一个包怎么选 target
-
-target 由 **per-target 的 package manifest** 决定，命名 `package_manifest.<target>.yaml`。每个这样的
-manifest 的 `build:` / `start:` 行通过环境变量把 target 传给脚本：
-
-- **构建期**：`RBNX_BUILD_TARGET=<target>`（脚本里 `TARGET="${RBNX_BUILD_TARGET:-x86-docker}"`，
-  默认 `x86-docker`）。
-- **运行期**：`ROBONIX_<PKG>_PLATFORM=jetson_orin`（或在部署 manifest 里设），脚本据此决定
-  native/docker；也可用 `ROBONIX_<PKG>_FORCE=native|docker` 直接强制。
-
-例如 scene 的 `scripts/build.sh`：
-
-```bash
-TARGET="${RBNX_BUILD_TARGET:-x86-docker}"
-case "$TARGET" in
-  jetson-native) ... 宿主 python + pip --user + 预取 CLIP 权重 ... ;;
-  jetson-docker) SCENE_DOCKERFILE="docker/Dockerfile.jetson"; docker build ... ;;
-  x86-docker)    SCENE_DOCKERFILE="docker/Dockerfile";        docker build ... ;;
-esac
+```text
+<package>/package_manifest.yaml
 ```
 
-在部署 manifest（`robonix_manifest.yaml`）里，针对某个包指定平台即可切换，例如：
+部署项可用 `manifest:` 选择同一 package 中的另一个文件：
 
 ```yaml
-  - name: scene
-    path: .../system/scene
+service:
+  - name: mapping
+    url: https://github.com/syswonder/service-map-rbnx
+    branch: main
     manifest: package_manifest.jetson-native.yaml
     config:
-      ROBONIX_SCENE_PLATFORM: jetson_orin     # 运行期走 native
+      params_file: config/rtabmap_params.yaml
+      sensor_providers:
+        lidar3d: roof_lidar
+        odom: base_chassis
 ```
 
-`manifest:` 同时选择这个 target 的 `build:` 与 `start:`。例如 Scene 的 `package_manifest.jetson-native.yaml` 已在构建命令中设置 `RBNX_BUILD_TARGET=jetson-native`，并在启动命令中选择 native 运行方式，不需要在部署之外再执行一套不同的构建命令。
+`rbnx build -f robonix_manifest.yaml` 使用该文件的 `build:`；`rbnx boot` 内部执行 `rbnx start --manifest <file>`，使用同一文件的 `start:` 和 `stop:`。文件不存在时直接失败，不会静默回退。
 
-## 3. Jetson 平台系统前置
+常见文件名是约定，不是 CLI 枚举：
 
-小车实测环境：**Jetson Orin，JetPack 6 / L4T r36.4.3 / CUDA 12.6 / aarch64 / Python 3.10 / ROS2 Humble**。
+| 文件名示例 | 通常表示 |
+|---|---|
+| `package_manifest.yaml` | package 默认目标 |
+| `package_manifest.jetson-native.yaml` | Jetson 宿主机原生运行 |
+| `package_manifest.jetson-docker.yaml` | Jetson 的 L4T/NVIDIA 容器 |
 
-### 3.1 JetPack
+package 也可以定义其它名称。部署仓库必须只引用该 package 实际存在的文件。
 
-- 刷 **JetPack 6.x**（对应 L4T r36.4.x）。确认版本：`cat /etc/nv_tegra_release`。
-- JetPack 自带 CUDA 12.6、cuDNN、TensorRT。**不要**另装通用 CUDA。
+## 一个目标 manifest 应包含什么
 
-### 3.2 系统 ROS2 与 Python
+不同目标 manifest 应保持相同的 package 身份与 Capability surface，只改变构建和运行实现：
 
-- 装 **ROS2 Humble**（arm64 deb）。Robonix 的 native 包直接 source `/opt/ros/humble/setup.bash`。
-- 系统 **Python 3.10**（JetPack 默认）。native 包用 `uv` 建 venv，arch 轮子自动解析——
-  **唯一例外是 torch（见 3.3）**。
+```yaml
+manifestVersion: 1
 
-### 3.3 CUDA torch（最容易踩的坑）
+package:
+  name: robonix.service.navigation
+  version: 0.1.0
+  description: Nav2 service wrapper.
+  license: Apache-2.0
 
-PyPI 的 aarch64 `torch` 轮子是按某个 CUDA 版本编译的（如 cu130），**与 JetPack 的 CUDA 12.6 驱动不匹配**
-→ `torch.cuda.is_available()` 返回 False → 推理悄悄退回 CPU（语音 ASR、scene 感知会非常慢）。
+build: RBNX_BUILD_TARGET=jetson-native bash scripts/build.sh
+start: ROBONIX_NAV2_FORCE=native bash scripts/start.sh
+stop: ROBONIX_NAV2_FORCE=native bash scripts/stop.sh
 
-正确做法是用 **JetPack 配套的 CUDA torch**：
+capabilities:
+  - name: robonix/service/navigation/driver
+  - name: robonix/service/navigation/navigate
+  - name: robonix/service/navigation/navigate/status
+  - name: robonix/service/navigation/navigate/cancel
+```
 
-- 优先用宿主已装好的、能跑 CUDA 的 torch（`python3 -c "import torch; print(torch.cuda.is_available())"` 为 True）。
-- 或从 NVIDIA 的 Jetson pip 索引装匹配版本（注意官方域名换过，**当前是 `https://pypi.jetson-ai-lab.io/jp6/cu126`**；
-  旧的 `pypi.jetson-ai-lab.dev` 可能失效，且部分 jp6/cu126 包有被下架的情况，必要时换 cu129 索引并核对驱动）。
+`RBNX_BUILD_TARGET`、`ROBONIX_NAV2_FORCE` 等变量是 package 脚本自己的实现约定。`rbnx` 只执行 manifest 中的 shell 命令，不解释这些变量。
 
-**robonix 已经替你自动处理**：`scene` / `speech` / `voiceprint` 的 `build.sh` 在 Jetson 上（检测
-`/etc/nv_tegra_release`）会判断 venv 里的 torch 是否能用 CUDA，不能就**自动复用宿主 python 的 JetPack
-torch**（软链 `torch/torchaudio/torchvision/...` 进 venv，其余依赖仍来自 uv）。可用
-`<PKG>_SKIP_JETSON_TORCH=1` 关闭该行为。
+## Native 与 container 的边界
 
-## 4. 各包的平台支持现状
+### Native package
 
-| 包 | x86-docker | x86-native | jetson-docker | jetson-native | 备注 |
-|---|---|---|---|---|---|
-| scene      | ✅ | —  | ✅ | ✅ | x86-native 尚未提供 target |
-| mapping    | ✅ | ✅ | ✅ | ✅ | rtabmap，native 用系统 ROS2 |
-| nav2       | ✅ | ✅ | ✅ | ✅ | 系统 nav2 |
-| speech     | ✅ | ✅ | ✅ | ✅ | uv venv + Jetson torch 自愈 |
-| voiceprint | ✅ | ✅ | ✅ | ✅ | uv venv + Jetson torch 自愈 |
-| memory     | ✅ | ✅ | ✅ | ✅ | uv venv（embedding 模型 build 期拉） |
+Native package 直接使用宿主机的系统库、ROS 2、设备文件和 GPU runtime。它的目标 manifest 应在 `build:` 中验证必要依赖，在 `start:` 中 source 正确的 ROS 2 或 colcon overlay。
 
-> 注：用 `uv` 的纯 Python 包（speech/voiceprint/memory）天然支持四种 target——arch 轮子自动解析，
-> docker 与否只影响是否进容器。只有**硬编码了 x86/CUDA 轮子**的包（scene 的 cu128 torch）需要专门的
-> per-arch manifest 与 Dockerfile。scene 目前缺 `x86-native`（x86 上一般走 docker）。
+适合 native 的情况包括：
 
-## 5. 怎么启动
+- Jetson 已预装与 JetPack 匹配的 CUDA、TensorRT、PyTorch 等系统 package。
+- 硬件 SDK 或 ROS driver 已由 package 自带构建脚本安装或编译。
+- 需要直接访问 SocketCAN、USB、串口或宿主机 ROS 2 graph。
+
+不要假定另一台 Jetson 与当前机器具有相同 JetPack、CUDA 或 Python wheel。每个 package 的 README 和目标 manifest 是前置条件的权威来源。
+
+### Container package
+
+Container package 由 `build:` 构建镜像，由 `start:` 创建容器。package 脚本必须显式处理：
+
+- CPU 架构与基础镜像。
+- GPU runtime 和设备映射。
+- ROS 2 环境与 RMW 实现。
+- Atlas endpoint 的可达地址。
+- 配置、模型缓存和持久化数据的 mount。
+- 信号处理和容器清理。
+
+`rbnx` 不会自动把 ROS 2、CUDA、设备或环境变量注入任意容器；这些属于 package 的启动实现。
+
+## 当前仓库中可验证的例子
+
+| Package | 默认 manifest | 额外 manifest |
+|---|---|---|
+| Scene | `package_manifest.yaml`，x86 Docker | `package_manifest.jetson-native.yaml`、`package_manifest.jetson-docker.yaml` |
+| Mapping | `package_manifest.yaml`，x86 Docker | `package_manifest.jetson-native.yaml`、`package_manifest.jetson-docker.yaml` |
+| Navigation | `package_manifest.yaml`，x86 Docker | `package_manifest.jetson-native.yaml`、`package_manifest.jetson-docker.yaml` |
+
+这张表只描述当前文件。不能据此推断 Memory、Speech、某个 Primitive 或第三方 Skill 也支持相同目标。接入时应先检查 package 根目录：
 
 ```bash
-# 1) 在 robonix_manifest.yaml 的 package 条目中选择 manifest:
-#    manifest: package_manifest.jetson-native.yaml
-# 2) 构建并启动整个部署
-rbnx build -f robonix_manifest.yaml
-rbnx boot -f robonix_manifest.yaml
-rbnx caps          # 确认各 provider ACTIVE
+find /path/to/package -maxdepth 1 -name 'package_manifest*.yaml' -print
 ```
 
-切回 x86 + docker：删除该条目的 `manifest:`，让包使用默认的 `package_manifest.yaml`。
+## Robot-specific 配置属于部署仓库
+
+目标 manifest 决定“如何构建和运行 package”；部署项的 `config:` 决定“这个机器人实例如何配置”。两者不要混合。
+
+例如 Mapping 和 Navigation 的机器人参数文件应位于机器人部署仓库：
+
+```text
+robot-deploy/
+├── robonix_manifest.yaml
+└── config/
+    ├── rtabmap_params.yaml
+    └── nav2_params.yaml
+```
+
+```yaml
+service:
+  - name: mapping
+    url: https://github.com/syswonder/service-map-rbnx
+    manifest: package_manifest.jetson-native.yaml
+    config:
+      params_file: config/rtabmap_params.yaml
+      sensor_providers:
+        lidar3d: roof_lidar
+        rgb: front_camera
+        depth: front_camera
+        odom: base_chassis
+
+  - name: nav2
+    url: https://github.com/syswonder/service-navigation-rbnx
+    manifest: package_manifest.jetson-native.yaml
+    config:
+      params_file: config/nav2_params.yaml
+      provider_ids:
+        map: mapping
+        odom: base_chassis
+        scan: roof_lidar
+```
+
+`params_file` 相对于 robot deployment manifest 所在目录解析。上游仓库中的 `*.template.yaml` 只用于复制参考，不在运行时自动加载。Mapping 的旧 `rtabmap_profile`、Navigation 的旧 `params_profile` 仍为迁移兼容入口；当前实现会给出迁移 warning，新部署不要使用。
+
+## ROS 2、RMW 与 Zenoh
+
+Primitive 和 Service 继续编写标准 ROS 2 publisher、subscriber、service 或 action 代码，不需要调用 Zenoh 专用 API。实际传输由 ROS 2 的 RMW 层选择。
+
+同一 ROS 2 graph 中的进程必须使用一致的实现，例如：
+
+```bash
+export RMW_IMPLEMENTATION=rmw_zenoh_cpp
+rbnx boot -f robonix_manifest.yaml
+```
+
+`rbnx boot` 启动的 native 子进程继承该环境。container package 的 `start.sh` 必须把 `RMW_IMPLEMENTATION` 转发进容器。
+
+使用 `rmw_zenoh_cpp` 时，还需要一个所有参与者都能到达的 `rmw_zenohd` router。Webots 示例在仿真容器中启动 router。真实机器人可以在宿主机或网络中的固定节点启动，但同一 graph 不应由每个 package 各自盲目启动一份 router。
+
+部分 package 支持以下可选变量，用于为容器生成 Zenoh session 文件：
+
+```text
+ROBONIX_ZENOH_ROUTER
+ROBONIX_ZENOH_MODE
+ROBONIX_ZENOH_LISTEN
+```
+
+它们不是第二个 RMW 选择器。`RMW_IMPLEMENTATION` 选择 ROS 2 middleware；上述变量只描述 `rmw_zenoh_cpp` 如何连接 router。package entrypoint 最终将生成的文件写入 `ZENOH_SESSION_CONFIG_URI`。
+
+## 验证目标选择
+
+```bash
+# 构建部署选中的全部 package manifest
+rbnx build -f robonix_manifest.yaml
+
+# 启动并检查 provider 状态
+rbnx boot -f robonix_manifest.yaml
+rbnx caps -v
+
+# 检查目标 package 的构建和启动日志
+rg -n "RBNX_BUILD_TARGET|mode=|ERROR|FAIL" rbnx-boot/logs
+```
+
+验收时至少确认：实际架构正确、package 使用了预期 manifest、ROS 2 participant 能互相发现、Atlas 中 provider 为 `ACTIVE`，以及设备/GPU/持久化目录在运行环境中可访问。

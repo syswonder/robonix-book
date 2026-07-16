@@ -4,10 +4,13 @@
 
 | 域 | 覆盖 | 能力约定数 |
 |----|------|--------|
+| [机械臂 arm](arm.md) | 关节指令与反馈、末端位姿 | 4 |
 | [底盘 chassis](chassis.md) | 差速/全向底盘的速度控制与里程反馈 | 4 |
-| [相机 camera](camera.md) | RGB / 深度图像，流式与快照两种取图 | 6 |
+| [相机 camera](camera.md) | RGB / 深度图像，流式与快照两种取图 | 7 |
 | [激光雷达 lidar](lidar.md) | 2D 扫描与 3D 点云 | 4 |
 | [IMU](imu.md) | 惯性测量 | 2 |
-| [音频 audio](audio.md) | 麦克风采集、扬声器播放、设备选择 | 5 |
+| [音频 audio](audio.md) | 麦克风采集、扬声器播放、设备选择与桥接发现 | 6 |
+| [健康 health](health.md) | 设备健康快照与流 | 3 |
+| [机器人描述 robot_description](robot-description.md) | 机器人描述 provider 的生命周期入口 | 1 |
 
 参考实现见 `examples/webots/primitives/`（tiago_chassis / tiago_camera / tiago_lidar / audio_driver）。

@@ -1,0 +1,21 @@
+# Documentation structure, language, and publication workflow.
+* @syswonder/doc-m
+
+# Executable integration, deployment, and capability-development procedures.
+/src/getting-started/ @syswonder/doc-m @syswonder/robonix-m
+/src/integration-guide/ @syswonder/doc-m @syswonder/robonix-m
+/src/developer-guide.md @syswonder/doc-m @syswonder/robonix-m
+
+# Architecture and public interface claims require Robonix domain review.
+/src/architecture/ @syswonder/doc-m @syswonder/robonix-m
+/src/interface-catalog/ @syswonder/doc-m @syswonder/robonix-m
+/src/reference/ @syswonder/doc-m @syswonder/robonix-m
+
+# Build, publication, and maintenance policy.
+/.github/ @syswonder/doc-m @syswonder/robonix-m
+/book.toml @syswonder/doc-m @syswonder/robonix-m
+/scripts/ @syswonder/doc-m @syswonder/robonix-m
+/theme/ @syswonder/doc-m
+/.github/ISSUE_TEMPLATE/ @syswonder/doc-m @syswonder/robonix-m
+/CONTRIBUTING.md @syswonder/doc-m @syswonder/robonix-m
+/STYLE.md @syswonder/doc-m @syswonder/robonix-m

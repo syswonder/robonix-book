@@ -9,6 +9,7 @@
 | 能力约定 ID | 模式 | 载荷（IDL） | 能力约定 TOML |
 |---|---|---|---|
 | `robonix/service/map/driver` | `rpc` | [`lifecycle/Driver`](../../reference/idl.md#lifecycle-srv-driver-srv) | `service/map/driver.v1.toml` |
+| `robonix/service/map/lifecycle` | `topic_out` | [`map/MapLifecycle`](../../reference/idl.md#map-msg-maplifecycle-msg) | `service/map/lifecycle.v1.toml` |
 | `robonix/service/map/occupancy_grid` | `topic_out` | [`nav_msgs/OccupancyGrid`](../../reference/idl.md#common-interfaces-nav-msgs-msg-occupancygrid-msg) | `service/map/occupancy_grid.v1.toml` |
 | `robonix/service/map/pose` | `topic_out` | [`geometry_msgs/PoseWithCovarianceStamped`](../../reference/idl.md#common-interfaces-geometry-msgs-msg-posewithcovariancestamped-msg) | `service/map/pose.v1.toml` |
 | `robonix/service/map/odom` | `topic_out` | [`nav_msgs/Odometry`](../../reference/idl.md#common-interfaces-nav-msgs-msg-odometry-msg) | `service/map/odom.v1.toml` |
@@ -21,6 +22,7 @@
 | `robonix/service/map/get_mode` | `rpc` | [`map/GetMode`](../../reference/idl.md#map-srv-getmode-srv) | `service/map/get_mode.v1.toml` |
 | `robonix/service/map/get_pose` | `rpc` | [`map/GetPose`](../../reference/idl.md#map-srv-getpose-srv) | `service/map/get_pose.v1.toml` |
 | `robonix/service/map/pose_estimate` | `rpc` | [`map/PoseEstimate`](../../reference/idl.md#map-srv-poseestimate-srv) | `service/map/pose_estimate.v1.toml` |
+| `robonix/service/map/list_maps` | `rpc` | [`map/ListMaps`](../../reference/idl.md#map-srv-listmaps-srv) | `service/map/list_maps.v1.toml` |
 
 `pose` 是 **map 帧**的机器人位姿（融合定位结果）——和底盘原语的 `odom`（odom 帧、未消除漂移）分工不同：要 map 帧位姿找 `service/map/pose`，要瞬时里程找 `primitive/chassis/odom`（见 [底盘](../primitive/chassis.md)）。
 

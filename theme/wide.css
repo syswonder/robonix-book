@@ -14,13 +14,213 @@
     --code-font-size: 0.82em;
 }
 
-/* Hide the big prev/next chapter arrows on each page. */
-.nav-chapters,
-.nav-wrapper,
-.nav-wide-wrapper,
-.previous,
-.next {
-    display: none !important;
+/* ── Documentation release channel ─────────────────────────────────── */
+.release-channel {
+    position: sticky;
+    top: 0;
+    z-index: 110;
+    color: #f8f9ff;
+    background: #1c285f;
+    border-bottom: 1px solid #6f82d7;
+}
+
+.release-channel__inner {
+    min-height: 2.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.45rem 1rem;
+    font-size: 0.82rem;
+    line-height: 1.35;
+}
+
+.release-channel__label {
+    color: #bfc9f3;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.release-channel__branch {
+    flex: none;
+    padding: 0.15rem 0.5rem;
+    color: #1c285f;
+    background: #f4c95d;
+    border-radius: 999px;
+}
+
+.release-channel__policy {
+    flex: 1 1 32rem;
+}
+
+.release-channel code {
+    color: inherit;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.release-channel__revision {
+    flex: none;
+    color: #d8def8;
+    font-family: var(--mono-font);
+    font-size: 0.72rem;
+}
+
+.release-channel__source {
+    flex: none;
+    color: #fff;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 0.18em;
+}
+
+/* The mdBook menu remains visible below the persistent release channel. */
+#mdbook-menu-bar.sticky {
+    top: 2.8rem;
+}
+
+/* ── Task-oriented landing cards ───────────────────────────────────── */
+.task-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin: 1.4rem 0 2rem;
+}
+
+.task-card {
+    display: block;
+    min-height: 8.5rem;
+    padding: 1rem 1.1rem;
+    color: inherit !important;
+    text-decoration: none !important;
+    background: color-mix(in srgb, var(--bg) 94%, #5e73cf 6%);
+    border: 1px solid color-mix(in srgb, var(--fg) 20%, transparent);
+    border-left: 4px solid #5368c3;
+    border-radius: 0.45rem;
+    transition: border-color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+}
+
+.task-card:hover {
+    border-color: #5368c3;
+    box-shadow: 0 0.45rem 1.1rem rgba(24, 37, 89, 0.12);
+    transform: translateY(-2px);
+}
+
+.task-card:focus-visible {
+    outline: 3px solid #7c91ea;
+    outline-offset: 3px;
+}
+
+.task-card__eyebrow {
+    display: block;
+    margin-bottom: 0.35rem;
+    color: #5368c3;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+
+.task-card__title {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+.task-card__description {
+    display: block;
+    color: color-mix(in srgb, var(--fg) 78%, transparent);
+    line-height: 1.55;
+}
+
+/* Procedure metadata and verifiable outcomes. */
+.procedure-meta {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin: 1rem 0 1.5rem;
+}
+
+.procedure-meta > div {
+    padding: 0.75rem 0.85rem;
+    background: color-mix(in srgb, var(--bg) 94%, #5e73cf 6%);
+    border: 1px solid color-mix(in srgb, var(--fg) 16%, transparent);
+    border-radius: 0.35rem;
+}
+
+.procedure-meta strong {
+    display: block;
+    margin-bottom: 0.2rem;
+    color: #5368c3;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+}
+
+.expected-result {
+    margin: 1rem 0;
+    padding: 0.8rem 1rem;
+    background: color-mix(in srgb, var(--bg) 92%, #2f855a 8%);
+    border-left: 4px solid #2f855a;
+    border-radius: 0.25rem;
+}
+
+.expected-result::before {
+    content: "验收结果";
+    display: block;
+    margin-bottom: 0.35rem;
+    color: #2f855a;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+@media (max-width: 900px) {
+    .release-channel__inner {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .release-channel__policy {
+        order: 4;
+        flex-basis: 100%;
+    }
+
+    .release-channel__revision {
+        display: none;
+    }
+
+    #mdbook-menu-bar.sticky {
+        top: 4.7rem;
+    }
+}
+
+@media (max-width: 650px) {
+    .release-channel__label,
+    .release-channel__policy {
+        display: none;
+    }
+
+    .release-channel__inner {
+        min-height: 2.8rem;
+        flex-wrap: nowrap;
+    }
+
+    #mdbook-menu-bar.sticky {
+        top: 2.8rem;
+    }
+
+    .task-grid,
+    .procedure-meta {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .task-card {
+        transition: none;
+    }
 }
 
 /* Replace mdbook's default `❱` fold indicator with a clear chevron.

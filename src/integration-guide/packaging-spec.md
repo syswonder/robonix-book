@@ -1,111 +1,215 @@
-# Robonix 包与部署配置规范
+# 包与部署清单规范
 
 [toc]
 
-Robonix 部署分**两层** manifest：
+Robonix 用两类 manifest 分离“一个可复用 package 如何构建/启动”和“一台机器人选择哪些 package、以什么参数运行”。两者都使用 `manifestVersion: 1`，但作用域不同。
 
-| 文件 | 范围 | 谁读 |
-|---|---|---|
-| 部署根目录 `robonix_manifest.yaml` | 部署 | `rbnx boot` |
-| 每个包内 `package_manifest.yaml` | 包 | `rbnx start` |
+| 文件 | 所有者 | 作用 | 主要命令 |
+|---|---|---|---|
+| `package_manifest.yaml` | Primitive / Service / Skill package | 发布元数据、构建/启动入口、实现的 contract、源码依赖 | `rbnx validate`、`rbnx build -p`、`rbnx start -p` |
+| `robonix_manifest.yaml` | Robot deployment | 系统组件、package 实例、目标 manifest、实例参数和环境 | `rbnx build -f`、`rbnx boot -f` |
 
-## 命令
+> **配置所有权**　共享 package 只提供实现、`config.spec` 和可复制的模板。机器人尺寸、传感器选择、frame、Mapping/Nav2 参数等运行配置保存在 robot deployment 仓库，不写回上游 package。
 
-```bash
-# 整个栈一键起（读 deploy manifest，依次启动 system + 所有包）
-rbnx boot -f robonix_manifest.yaml
+## 1. Package manifest
 
-# 只起单个包（开发调试）
-rbnx start -p ./service/slam_fastlio2
-```
-
-`rbnx boot` 的流程：
-1. 展开 `${VAR}` 环境变量
-2. 起 `system:` 服务（atlas / executor / soma / vitals / pilot / liaison 是 Rust 二进制；scene 是 Python 包）
-3. 对每个 `primitive` / `service` / `skill` 条目：`rbnx start -p <path>` 拉起包进程，等它在 atlas 上注册完，然后调一次 gRPC `Driver(CMD_INIT, config_json=<manifest 里 config 块 JSON 化>)`。`on_init(cfg: dict)` 在包里直接接到这个 dict；不需要借助 env 或临时文件传递这段配置
-4. 日志落到 `rbnx-boot/logs/<component>.log`
-5. Ctrl-C 统一 kill
-
-> config 通过 gRPC `Driver(CMD_INIT)` 的 `config_json` 字段透传——没有 env、没有文件、不依赖 bash 引号 escape。包代码只暴露一个 `@<provider>.on_init(cfg: dict)` 入口；同一个包的多个 instance（manifest 里 `name` 不同）各自拿到自己的 `cfg`，互不干扰。
-
-## Deploy manifest 示例
-
-实例参考：`examples/webots/robonix_manifest.yaml`。
+下面是当前推荐结构：
 
 ```yaml
 manifestVersion: 1
-name: my-robot-deploy
 
-# 发布整机部署到 Package Catalog 时使用。
-catalog:
-  name: robonix.robot.example.my_robot
+package:
+  name: robonix.primitive.acme.rover.chassis
   version: 0.1.0
-  description: Robonix deployment for My Robot.
-  license: Apache-2.0
-  tags: [robot, deploy, example]
+  description: ACME Rover chassis driver.
+  tags: [primitive, chassis, acme, rover]
   maintainers:
-    - Example Maintainer <maintainer@example.com>
+    - Your Name <you@example.com>
+  license: Apache-2.0
+
+build: bash scripts/build.sh
+start: bash scripts/start.sh
+stop: bash scripts/stop.sh
+
+capabilities:
+  - name: robonix/primitive/chassis/driver
+  - name: robonix/primitive/chassis/move
+  - name: robonix/primitive/chassis/twist_in
+  - name: robonix/primitive/chassis/odom
+
+depends: []
+```
+
+### 1.1 字段
+
+| 字段 | 要求 | 含义 |
+|---|---|---|
+| `manifestVersion` | 必填，当前为 `1` | manifest 结构版本 |
+| `package.name` | 必填 | package 发布名；进入 Catalog 时必须与 Catalog name 一致 |
+| `package.version` | 必填 | package 版本 |
+| `package.description` | 必填 | 一句话说明 package 的功能 |
+| `package.license` | 必填 | SPDX license 标识 |
+| `package.tags` | 发布时必填 | Catalog 分类和过滤标签 |
+| `package.maintainers` | 发布时必填 | `Name <email@domain>` 字符串列表 |
+| `build` | 可选 | 在 package 根目录执行的 shell；预编译 package 可省略 |
+| `start` | 必填 | 在 package 根目录执行的唯一启动入口 |
+| `stop` | 可选 | package 自有的额外清理入口；不能替代 Driver shutdown |
+| `capabilities` | 按实现填写 | package 启动后实际声明的 contract |
+| `depends` | 可选 | 构建/导入所需的 package 源码依赖，不表示启动顺序 |
+
+`package.vendor`、`package.id`、`nodes[]`、`build: { script: ... }` 和 package 内旧文件名 `robonix_manifest.yaml` 仍被 `dev-next` 读取，以保证旧 package 可以启动；`rbnx` 会打印迁移 warning。新 package 使用上面的结构。
+
+验证 manifest：
+
+```bash
+rbnx validate ./path/to/package
+```
+
+成功时输出：
+
+```text
+✓ Manifest validation passed
+```
+
+### 1.2 `capabilities`
+
+标准 Primitive、Service 和 System contract 来自 Robonix 源码树。package 复用标准接口时只写 contract id：
+
+```yaml
+capabilities:
+  - name: robonix/primitive/camera/rgb
+  - name: robonix/primitive/camera/depth
+```
+
+当 package 确实定义尚未进入主仓库的接口时，可用 `path` 指向 package 本地 TOML：
+
+```yaml
+capabilities:
+  - name: robonix/skill/inventory/count
+    path: capabilities/count.v1.toml
+```
+
+本地 contract 引用的 IDL 放在同一 package 的 `capabilities/lib/`。`rbnx codegen` 会同时解析官方和 package 本地 contract。未实现的接口不能预先写进 `capabilities`；manifest 声明必须与 Atlas 运行时声明一致。
+
+### 1.3 `depends`
+
+`depends` 描述构建或导入依赖：
+
+```yaml
+depends:
+  - name: robonix.library.example
+    path: ../example
+  - name: robonix.library.remote
+    url: https://github.com/example/remote-rbnx
+    branch: main
+```
+
+每项必须有 `name`，`path` 和 `url` 二选一；两者都省略表示依赖已安装或在 `PYTHONPATH`。它不是运行时拓扑，不能用来表达“Mapping 必须先于 Navigation ACTIVE”。运行依赖通过 Atlas contract 发现与 Driver 的 `Deferred` 状态处理。
+
+### 1.4 多平台 manifest
+
+一个仓库可以为不同架构和运行方式提供多个 manifest：
+
+```text
+package_manifest.yaml
+package_manifest.x86-native.yaml
+package_manifest.jetson-native.yaml
+package_manifest.jetson-docker.yaml
+```
+
+每个文件都是完整 package manifest，可以选择不同 `build`、`start` 和系统依赖，但 package identity 与 contract 面应保持一致。Robot deployment 通过条目的 `manifest:` 选择具体文件；指定文件不存在时直接失败，不会回退到默认 manifest。
+
+## 2. 配置说明文件
+
+### 2.1 `config.spec`
+
+`config.spec` 位于 package 根目录，说明 deployment 条目中 `config:` 接受什么。它是人类和模型可读的 YAML 说明，不是 Robonix 运行时 schema，也不会替 provider 做校验。
+
+```yaml
+config:
+  # string, default: can0.
+  # SocketCAN interface. It must exist and be UP before CMD_INIT.
+  can_port: can0
+
+  # float, seconds, default: 30.0; must be > 0.
+  # Maximum wait for the first valid hardware feedback frame.
+  sentinel_timeout_s: 30.0
+```
+
+每个公开字段应写明类型、单位、默认值、范围、用途、失败条件和示例。没有配置的 package 明确写 `config: {}`。Provider 仍须在 `on_init` 中验证输入并返回可定位的错误。`template-rbnx` 给出了 Primitive、Service 和 Skill 的三种写法。
+
+### 2.2 `CAPABILITY.md`
+
+`CAPABILITY.md` 是可选的 provider 使用手册，适合描述调用顺序、约束、长任务的 status/cancel 语义和典型错误。文件存在时，Robonix API 在注册阶段读取其内容并交给 Atlas；Pilot 通过 provider id 调用 `read_capability_doc` 按需读取，不依赖共享文件系统路径。
+
+推荐 frontmatter 只保留一句摘要：
+
+```markdown
+---
+description: Navigate a mobile robot to a map-frame pose and expose status/cancel.
+---
+
+# Navigation
+
+正文说明调用条件、参数、状态和恢复方式。
+```
+
+Provider 的 id、kind 和 namespace 由 Atlas 注册信息负责，不在 Markdown 中重复维护。
+
+## 3. Robot deployment manifest
+
+`robonix_manifest.yaml` 是一台机器人或一个仿真场景的启动入口：
+
+```yaml
+manifestVersion: 1
+name: robonix-acme-rover
+
+catalog:
+  name: robonix.robot.acme.rover
+  version: 0.1.0
+  description: Robonix deployment for ACME Rover.
+  license: Apache-2.0
+  tags: [robot, deploy, acme, rover]
+  maintainers:
+    - Your Name <you@example.com>
 
 env:
-  ROS_DISTRO: humble
+  ROS_DOMAIN_ID: "0"
+  RMW_IMPLEMENTATION: rmw_zenoh_cpp
 
-# system 服务（atlas / executor / soma / vitals / pilot / liaison 是 Rust 二进制；
-# scene 是 Python 包）的 config 直接写在 key 下面。memory / speech 等
-# 不是 system，它们是 service，写在下面的 service: 列表里。
-# 每个 key 的 config 是包自己消费的任意字典，rbnx 把它 JSON 序列化后
-# 通过 Driver(CMD_INIT, config_json) 透传。
 system:
   atlas:
-    listen: 127.0.0.1:50051
-    log: info
-  executor:
-    listen: 127.0.0.1:50061
-    log: info
+    listen: 0.0.0.0:50051
   soma:
-    robot_yaml: ./soma.yaml
+    listen: 127.0.0.1:50091
+    robot_yaml: ${ROBONIX_DEPLOY_DIR}/soma.yaml
   vitals:
-    listen: 127.0.0.1:50093
+    listen: 0.0.0.0:50093
+  executor:
+    listen: 0.0.0.0:50061
   pilot:
     listen: 127.0.0.1:50071
-    log: info
-    # vlm 不是独立 system 服务 —— 它是 pilot 的 upstream 配置，写在 pilot 里。
     vlm:
       upstream: ${VLM_BASE_URL}
-      api_key:  ${VLM_API_KEY}
-      model:    ${VLM_MODEL}
-      api_format: openai
+      api_key: ${VLM_API_KEY}
+      model: ${VLM_MODEL}
+  liaison:
+    listen: 0.0.0.0:50081
   scene:
-    log: info
-    # 多相机部署：此 provider 必须同时提供 camera/rgb 与 camera/depth。
-    camera_provider_id: tiago_camera
+    camera_provider_id: front_camera
 
-# 硬件。每个条目是一个 instance（设备）。
 primitive:
-  - name: tiago_chassis
-    path: ./primitives/tiago_chassis
+  - name: base_chassis
+    url: https://github.com/acme/primitive-acme-rover-chassis-rbnx
+    branch: main
+    manifest: package_manifest.jetson-native.yaml
     config:
-      odom_topic: /odom
-      twist_in_topic: /cmd_vel
-  - name: tiago_camera
-    path: ./primitives/tiago_camera
-  - name: tiago_lidar
-    path: ./primitives/tiago_lidar
+      can_port: can0
 
-# 场景服务。path 是本地路径；url 是 git 地址（首次 clone 到 rbnx-boot/cache/）。
 service:
-  # memory / speech 是 robonix 自带的 service 包（曾经放在 system 下，现已归位 service）。
-  # make install 会登记 Robonix 源码树；rbnx 加载部署清单时自动展开
-  # ROBONIX_SOURCE_PATH，因此部署目录不需要知道源码树的绝对路径。
   - name: memory
     path: ${ROBONIX_SOURCE_PATH}/services/memsearch
-    config:
-      backend: sqlite
-
-  - name: speech
-    path: ${ROBONIX_SOURCE_PATH}/services/speech
-    config:
-      disable_whisper: true           # 节省一份 Whisper-large 权重
-      tts_voice: zh-CN-XiaoxiaoNeural
+    config: {}
 
   - name: mapping
     url: https://github.com/syswonder/service-map-rbnx
@@ -114,10 +218,10 @@ service:
     config:
       params_file: config/rtabmap_params.yaml
       sensor_providers:
-        lidar2d: tiago_lidar
-        rgb: tiago_camera
-        depth: tiago_camera
-        odom: tiago_chassis
+        lidar3d: roof_lidar
+        odom: base_chassis
+        rgb: front_camera
+        depth: front_camera
 
   - name: nav2
     url: https://github.com/syswonder/service-navigation-rbnx
@@ -127,246 +231,140 @@ service:
       params_file: config/nav2_params.yaml
       provider_ids:
         map: mapping
-        odom: tiago_chassis
-        scan: tiago_lidar
+        odom: base_chassis
+        scan_cloud: roof_lidar
 
 skill:
   - name: explore
     url: https://github.com/syswonder/skill-explore-rbnx
     branch: main
-    config:
-      explore_mode: frontier
-      timeout_s: 600
+    config: {}
 ```
 
-### 条目字段
+### 3.1 顶层字段
 
-- **`name`**：instance 名字 / 日志前缀（不是包名）。同一个包用不同 `name` 可以起多份。
-- **`path`** 或 **`url`**：二选一。`path` 相对 manifest 目录；`url` 是 git，首次 clone 到 `rbnx-boot/cache/<name>/`，可加 `branch:` 锁分支。
-- **`manifest`**：可选的包 manifest 文件名。目标平台需要不同构建/启动入口时可选 `package_manifest.jetson-native.yaml` 等文件；省略时使用 `package_manifest.yaml`。
-- **`config`**：任意 YAML 字典，rbnx 序列化为 JSON 后通过 `Driver(CMD_INIT, config_json)` 透传给包的 on_init 处理器。字段由对应 package 定义；先读 `package_manifest.yaml` 旁的 `config.spec`。
+| 字段 | 含义 |
+|---|---|
+| `name` | 这次整机部署的运行名称 |
+| `catalog` | Robot deployment 发布元数据；进入 Catalog 时六个字段都必须填写 |
+| `env` | 在解析 manifest 前展开，并传给 `rbnx` 启动的子进程 |
+| `system` | Robonix 系统组件及其配置 |
+| `primitive` | 直接连接硬件或仿真设备的 package 实例 |
+| `service` | Mapping、Navigation、Speech、Memory 等服务实例 |
+| `skill` | 模型可调用的技能实例；boot 后通常保持 `INACTIVE`，按需激活 |
 
-`config.spec` 是放在 `package_manifest.yaml` 旁的配置说明文件，不是 Robonix 运行时 schema，也不会被 provider 自动加载。它用人和模型都能直接阅读的 YAML 逐字段说明类型、单位、运行时默认值、含义和约束；可以给出可复制的 `config:`，也可以按 required/optional 分组。硬件 package 还应写清设备标识、frame/topic 所有权与启动超时。没有 instance 配置的 package 明确写 `config: {}`。三个基本写法见 [`template-rbnx`](https://github.com/syswonder/template-rbnx)。部署方仍以 package 实现和该文件为准，不把机器人参数写回共享上游仓库。
+`${ROBONIX_SOURCE_PATH}` 由 `rbnx setup` 登记的源码根目录提供；`${ROBONIX_DEPLOY_DIR}` 是当前 deployment manifest 所在目录。两者用于避免不可移植的绝对路径。
 
-上例中的两个 `params_file` 都相对 `robonix_manifest.yaml` 所在目录解析，因此 deployment 仓库必须先保存 `config/rtabmap_params.yaml` 与 `config/nav2_params.yaml`。可分别从 Mapping 上游的 `config/rtabmap_params.template.yaml` 和 Navigation 上游的 `config/nav2_params.example.yml` 复制一份再按本体修改。旧的 `rtabmap_profile`、`params_profile`、`sensors` 与 `rtabmap_inputs` 仍可运行，但 provider 会输出迁移 warning；新部署不要再使用这些字段。
+### 3.2 Package instance 字段
 
-顶层 `name` 是运行时部署名；顶层 `catalog` 是 Robot deployment 的发布元数据。整机部署仓库直接在 `robonix_manifest.yaml` 中提供该块，不需要额外的 `package_manifest.yaml`。发布步骤见 [Package Catalog 发布流程](package-catalog.md)。
-
-## Package manifest 示例
-
-```yaml
-manifestVersion: 1
-
-package:
-  name: robonix.service.mapping.fastlio2
-  version: 0.1.0
-  description: FASTLIO2 3D LiDAR-Inertial SLAM + PGO
-  tags: [service, mapping, slam, fastlio2, ros2]
-  maintainers:
-    - wheatfox <wheatfox17@icloud.com>
-  license: MulanPSL-2.0
-
-build: bash scripts/build.sh     # build 入口
-start: bash bin/start.sh         # start 入口
-stop: bash scripts/stop.sh       # 可选：包自有的优雅清理入口
-
-# 提供的能力。name 是 contract id，可选 path 指向包本地 TOML（当你自定义接口时）。
-# 不写 path 就去 $(rbnx path capabilities) 找官方 TOML。
-capabilities:
-  - name: robonix/service/map/lio_odom
-  - name: robonix/service/map/save_map
-  - name: robonix/service/map/switch_mode
-
-depends: # 库依赖，即需要用到另一个库的代码/数据（如 model）
-  - name: robonix.primitive.livox.mid360.lidar
-    path: ../primitive/sensor_lidar3d_mid360
-  - name: robonix.system.example
-    url: https://github.com/syswonder/robonix-xx.git
-    branch: v0.1
-```
-
-`package` 段是包的发布元数据。准备进入社区 catalog 的包必须填写：
-
-| 字段 | 必填 | 说明 |
+| 字段 | 要求 | 含义 |
 |---|---|---|
-| `package.name` | 是 | package 发布名，必须与 catalog 的 `name` 一致 |
-| `package.version` | 是 | package 版本 |
-| `package.description` | 是 | catalog 页面和 README 表格的一句话描述 |
-| `package.tags` | 是 | 字符串列表，用于 catalog 过滤和分类 |
-| `package.maintainers` | 是 | 字符串列表，每项格式为 `Name <email@domain>` |
-| `package.license` | 是 | SPDX license 字符串 |
+| `name` | 必填 | 实例名、期望 provider id 和日志标签 |
+| `path` / `url` | 二选一 | 本地 package 路径，或 Git 仓库 URL |
+| `branch` | `url` 可选 | branch、tag 或 commit；省略时取远端默认分支 |
+| `manifest` | 可选 | 选择 package 内的目标 manifest 文件 |
+| `config` | 可选，默认 `{}` | Driver `CMD_INIT` 的实例配置 |
 
-旧 manifest 中的 `package.vendor` 在 `dev-next` 继续兼容，但新 package 不需要填写。Catalog 不读取该字段，维护信息使用 `package.maintainers`，分类信息使用 `package.tags`。
+`path` 相对 deployment manifest 目录解析。`url` package 构建时克隆到 `rbnx-boot/cache/<repository-name>/`；缓存目录来自 URL 的仓库名，不来自实例 `name`。同一仓库的多个实例复用源码 checkout，但各自启动独立进程并接收独立配置。
 
-### 包里读 config
+`rbnx boot` 设置 `RBNX_INSTANCE_NAME=<name>`。Package 代码应使用 Robonix API 的实例 id 处理或该变量，使同一 package 可注册为 `front_camera`、`rear_camera` 等不同 provider；不要在 `config` 中再发明 `provider_id` 字段。
 
-包代码用 `@<provider>.on_init` 注册一个 handler，框架会把 `Driver(CMD_INIT)` 带来的 `config_json` 解析成 `dict` 再调进来：
+### 3.3 `config` 传递
+
+`rbnx boot` 将每个实例的 `config` 序列化为 Driver `CMD_INIT.config_json`。Robonix API 把它解析为 `dict` 传给 handler：
 
 ```python
-from robonix_api import Service, Ok
+from robonix_api import Err, Ok, Service
 
 mapping = Service(id="mapping", namespace="robonix/service/map")
 
 @mapping.on_init
 def init(cfg: dict):
-    algo = cfg.get("algo", "rtabmap")
-    sensor_providers = cfg.get("sensor_providers", {})
-    # ...用 cfg 启服务...
+    params_file = cfg.get("params_file")
+    if not params_file:
+        return Err("params_file is required")
     return Ok()
 ```
 
-传输层不需要用 env 或临时文件搬运 `config_json`，也不需要 `jq`。package 可以把 `cfg` 中明确声明的 `params_file` 当作业务配置读取；路径相对部署清单目录解析。Mapping、Navigation 这类机器人参数较多的 service 就采用这种方式，由 robot deployment 自己保存完整 YAML。`rbnx start -p <path> -c local.yaml` 单包调试时，`-c` 的 YAML 仍走同一条 Driver 路径。
+单 package 调试使用同一条配置路径：
 
-### 多实例（同一个包跑多份）
-
-一台车两个 MID360，或者同一个 camera 驱动挂两个摄像头：deploy manifest 里写两条，**path 相同 / name 不同 / config 不同**。
-
-```yaml
-primitive:
-  - name: lidar_front
-    path: ./primitives/mid360
-    config: { ip: 192.168.1.161, mounted_frame: livox_front, topic_prefix: /lidar_front }
-  - name: lidar_rear
-    path: ./primitives/mid360
-    config: { ip: 192.168.1.162, mounted_frame: livox_rear, topic_prefix: /lidar_rear }
+```bash
+rbnx start -p ./services/example \
+  --endpoint 127.0.0.1:50051 \
+  --config ./local-config.yaml \
+  --set timeout_s=30
 ```
 
-`rbnx boot` 分别 spawn 两个 `rbnx start`，给两个 instance 各自下发对应 `config`。包代码在 `on_init(cfg)` 里按 `cfg["topic_prefix"]` 等决定发什么 topic、用什么 id 注册到 atlas（如 `Primitive(id="lidar_front", namespace="robonix/primitive/lidar")` vs `Primitive(id="lidar_rear", ...)`）——id 通常直接读 `cfg`，让两份实例分得清楚。
+`--set` 覆盖配置文件，值会尽量按 JSON 解析。Provider 不应通过私有环境变量重复接收同一实例参数；环境变量保留给进程级选择和 secret。
 
-### Primitive 的 driver 生命周期
+### 3.4 部署拥有算法参数
 
-每个抽象硬件类别对应一个 driver contract（如 `robonix/primitive/lidar/driver`）。Driver 是普通的 RPC capability，按 `command` 字段区分四个操作 —— 同一组命令 service 和 skill 包也用，区别只在 rbnx 替哪一类自动发哪些。完整状态机见[开发者指南](../developer-guide.md)的“生命周期”一章。
+Mapping 和 Navigation 的 `params_file` 都相对 deployment manifest 目录解析：
 
-Driver IDL（共享）：`capabilities/lib/lifecycle/srv/Driver.srv`：
-
-```
-uint8 CMD_INIT       = 0   # 解析 config_json、resolve atlas 上的依赖
-uint8 CMD_ACTIVATE   = 1   # 申请热资源、起线程、订阅 ROS、加载模型
-uint8 CMD_DEACTIVATE = 2   # 释放热资源；保留 atlas 注册（skill-only 才有意义）
-uint8 CMD_SHUTDOWN   = 3   # SIGTERM 之前的优雅退出（可选实现）
-uint8 command
-string config_json         # 从 boot manifest 的 config: 块透传下来
----
-bool ok
-string state             # REGISTERED | INACTIVE | ACTIVE | ERROR | TERMINATED
-string error
+```text
+robot-acme-rover/
+├── robonix_manifest.yaml
+└── config/
+    ├── rtabmap_params.yaml
+    └── nav2_params.yaml
 ```
 
-`rbnx boot` 对每个 primitive / service 自动发 `CMD_INIT` → `CMD_ACTIVATE`，到 ACTIVE 就常驻；对 skill 只发 `CMD_INIT`，停在 INACTIVE，`CMD_ACTIVATE` 由 executor 在第一次路由 MCP 调用时按需触发。`config_json` 永远是 manifest 的 `config:` 字段透传，包自己解析。
+Mapping 上游的 `config/rtabmap_params.template.yaml` 和 Navigation 上游的参数文件只作为复制起点，运行时不会自动加载。新部署必须把修改后的完整文件提交到机器人仓库。Mapping 还允许 `rtabmap_params` 在 manifest 中做少量最终覆盖。
 
-## 开发自己的包
+兼容字段仍能启动并发出 warning：
 
-### 接口（contract）来源：官方 vs 包内
+| 旧字段 | 新字段 |
+|---|---|
+| Mapping `rtabmap_profile` | deployment 自有 `params_file`，必要时加 `rtabmap_params` |
+| Mapping `sensors` | `sensor_providers` |
+| Navigation `params_profile` | deployment 自有 `params_file` |
+| Navigation flat scan aliases | `scan_projection.*` |
 
-| 层 | contract 在哪 | 说明 |
-|---|---|---|
-| **primitive** | robonix 源码仓库的 `capabilities/primitive/` | 官方标准，接入新硬件按已有 contract 实现；缺接口提 PR 新增 |
-| **service** | `capabilities/service/`（多数）+ 少量包内 | 场景服务大多复用官方 contract（map / navigation / memory / speech / voiceprint 等），明确私有的才自定义 |
-| **system** | `capabilities/system/` | 仓库内置（atlas / pilot / executor / liaison / scene），不外开 |
-| **skill** | **全部在包内** | skill 是 agent 层，每个包自己定义，不进主仓库 |
+完整配置面以每个上游仓库根目录 `config.spec` 为准；本页不复制所有算法参数，避免与实现漂移。
 
-### Primitive / Service 包：实现官方 contract
+## 4. 生命周期与启动责任
 
-`capabilities:` 里只写 `name`，不写 `path`：
+所有 Primitive、Service 和 Skill 都通过同类 Driver contract 接收生命周期命令：
 
-```yaml
-capabilities:
-  - name: robonix/primitive/lidar/lidar
-  - name: robonix/primitive/lidar/driver
+```text
+CMD_INIT       parse and validate config, resolve dependencies
+CMD_ACTIVATE   acquire hot resources and begin serving
+CMD_DEACTIVATE release hot resources while remaining registered
+CMD_SHUTDOWN   stop workers, child processes and hardware output
 ```
 
-`rbnx codegen` 去 `<robonix-repo>/capabilities/primitive/lidar/lidar.v1.toml` 查接口形状，代码按 TOML 里指向的 ROS IDL 实现。下游消费者只看 contract id 就能对接。
+Primitive/Service 在 boot 时走向 `ACTIVE`；Skill 完成 `CMD_INIT` 后通常保持 `INACTIVE`，第一次需要时再激活。重复 `ACTIVATE` 必须幂等；`CMD_SHUTDOWN` 必须停止 package 启动的子进程和设备输出。
 
-### Skill 包：contract 写在包里
+`rbnx boot` 的配置与进程责任如下：
 
-skill 的接口是 agent 层面的，每个应用都不一样，**没有官方标准**。把 TOML 放包内 `capabilities/`，`capabilities:` 里用 `path` 指：
+1. 读取 manifest，应用 `env` 并展开字符串变量；
+2. 启动系统组件；
+3. 通过 Soma/`rbnx start` 启动 package，等待它向 Atlas 注册；
+4. 找到该 provider 的 Driver，发送 `CMD_INIT(config_json)` 并等待目标状态；
+5. 将系统和 provider 日志写入 deployment 的 `rbnx-boot/logs/`；
+6. 收到 Ctrl-C 或 `rbnx shutdown` 后按生命周期关闭整套部署。
 
-```yaml
-capabilities:
-  - name: robonix/skill/my_stack/weird_thing
-    path: capabilities/weird_thing.v1.toml
+不要依赖列表顺序替代真实依赖处理。Consumer 应按 contract 和指定 provider id 从 Atlas 发现 endpoint；依赖暂未 ACTIVE 时返回可恢复的 deferred 状态。
+
+## 5. 约束与验收
+
+以下规则保证 package 可以跨机器人复用：
+
+- 跨 package 数据通过 Atlas contract 与 endpoint 绑定；通用 Service 不硬编码某台机器的话题名。
+- 设备专属的 frame、消息修正和 SDK 启动留在 Primitive；Mapping/Nav2 不包含 `if robot == ...`。
+- `package_manifest.yaml::capabilities` 只列运行时真实声明的接口。
+- 同一 Service 的不同算法后端维持相同的公开 contract，后端差异通过内部 adapter 消化。
+- Secrets 由操作者环境提供，不提交到 manifest 或 `.env.example` 的真实值。
+
+提交前执行：
+
+```bash
+rbnx validate ./path/to/package
+rbnx build -p ./path/to/package
+rbnx build -f ./robonix_manifest.yaml
+rbnx boot -f ./robonix_manifest.yaml
+rbnx caps -v
+rbnx shutdown
 ```
 
-TOML 字段格式跟官方 contract 一致（`[contract]` 内含 `idl` + `[mode]`），但 IDL 的**路径解析规则不同**：
-
-- **官方 TOML**（在 robonix 源码仓库 `capabilities/` 里）：`[contract] idl = "lidar/srv/Foo.srv"` → 去 `capabilities/lib/lidar/srv/Foo.srv` 找
-- **包内 TOML**（在自己 package 的 `capabilities/` 里）：`[contract] idl = "my_stack/srv/MyRequest.srv"` → 去**包的 `capabilities/lib/my_stack/srv/MyRequest.srv`** 找
-
-典型 skill 包 `capabilities/` 布局：
-
-```
-capabilities/
-├── weird_thing.v1.toml
-└── lib/
-    └── my_stack/
-        ├── msg/
-        │   └── MyStructure.msg
-        └── srv/
-            └── MyRequest.srv
-```
-
-`weird_thing.v1.toml`：
-```toml
-[contract]
-id      = "robonix/skill/my_stack/weird_thing"
-version = "1"
-kind    = "skill"
-idl     = "my_stack/srv/MyRequest.srv"   # 指向包内 capabilities/lib/my_stack/srv/MyRequest.srv
-
-[mode]
-type = "rpc"
-```
-
-`rbnx codegen` 会把包内 `capabilities/lib/` 下的 `.msg` / `.srv` 一起 codegen 到包的 `rbnx-build/codegen/`，跟引用官方 contract 时一样 import 使用。
-
-## CAPABILITY.md — 给 LLM 看的包级手册
-
-包根可以放一个 `CAPABILITY.md`：它是**整个包共享的一份自然语言手册**，注册时随包上报到 atlas，Pilot 把所有带 `CAPABILITY.md` 的 provider 列进系统提示，LLM 需要时再用 `read_capability_doc` 按需拉全文。正文随便写（用法、约束、示例、注意事项都行）。
-
-**唯一的格式要求：文件开头一段 YAML frontmatter，里面只有 `description` 一个键。**
-
-```markdown
----
-description: <一句话，说明这个包是干嘛的、什么时候该用它>
----
-
-# 标题随意
-
-正文随便写……
-```
-
-- `description`：单行字符串，包级一句话摘要。Pilot 把它放进能力索引，供 LLM 判断相关性，不用读全文。
-- **不要写 `kind` / `provider` 等字段。** provider 的种类（primitive / service / skill）和 id 在注册时就由 `Primitive()` / `Service()` / `Skill()` 决定、atlas 权威保存，Pilot 从 atlas 取——在手写 markdown 里再写一遍只会和注册信息漂移（写了也不会被读）。frontmatter 只承载 atlas 没有的那一样东西：这句人话描述。
-- 没有 frontmatter、或没有 `description:` 键都不致命：provider 照样出现在索引里，只是暂时没有这句摘要。
-
-> 单一事实源：**种类/身份看注册（atlas），一句话描述看 frontmatter，详细用法看正文。** 三者各管一摊，不重复。
-
-## 设计不变量 — 包里**不能**做的事
-
-下面这些不是"建议"，是**正确性约束**。违反任意一条都会让包失去跨机器人 / 跨仿真 / 跨硬件版本的可移植性，未来 CI 会强制检查。
-
-### 1. 跨包 topic 名走 atlas，绝不硬编码
-
-如果你的包消费另一个包产出的数据（如导航服务订阅 SLAM 服务的占据栅格），用 `ATLAS.find_capability` + `connect_capability` 按对方 **contract** 查 endpoint。**不要**把字面 topic 名写在代码里当常量或 default。
-
-理由：同一个 nav service 要做到不改一行即可运行在 webots（`/scanner_normalized`）、Mid360 真机（`/mid360/scan`）、turtlebot（`/scan`）上。任何一个 topic 硬编码，跨机部署即失效，抽象也就不成立。
-
-允许硬编码的例外：
-- 包内自用的 topic（如内部同步队列）
-- 同一个 primitive 包内的 hardware fix-up（见不变量 §3）
-
-### 2. manifest 即运行时声明
-
-`package_manifest.yaml::capabilities` 列出的每条 contract **必须**在启动时真正 `DeclareCapability`。占位条目（例如尚未实现的 save_map）会成为陈旧声明——使 `rbnx caps` 输出与实际不符，故障被推迟到下游 `ConnectCapability` 的运行期才暴露，而非部署解析时即被发现。**未实现的能力不写进 manifest。**
-
-### 3. 平台相关补丁住在 primitive 包里，不能进通用服务
-
-Webots 的 lidar 发反向角度的 scan、URDF link 名带空格（"Astra rgb"）跟 frame_id 不一致、轮编码器打滑时漂移——所有这类 fix-up **必须**在对应的 primitive 包内处理（`tiago_lidar/scan_normalize.py`、`tiago_camera` 的静态 TF bridge 等），**不要**进 mapping / nav。
-
-通用服务绝不能写 "if 跑在 webots 上 do X" 这种代码。primitive 包通过自己的 atlas contract 输出干净的、合规的数据；下游服务信 contract。
-
-### 4. 多算法 service 共享同一组 contract
-
-一个 service 支持多后端时（例如 Mapping 的 RTAB-Map、DLIO 与 Fast-LIO2），**每个后端必须声明同一组 contract**。内部 topic 名可以不同——bridge 负责把 contract 映射到当前算法实际发的 topic。算法天生产不出某条能力约定输出时，launch 文件起一个 adapter 补上。
-
-往 contract 集合里加新条目是**包的版本事件**——bump `package.version` + 更新所有后端。**不要**写 "这条 contract 只在算法 X 上有"——这破坏了消费者赖以为生的算法无关担保。
+Package 发布与整机 Catalog metadata 见 [Package Catalog 发布流程](package-catalog.md)；从硬件 SDK 到完整机器人部署的逐步流程见[机器人本体接入指南](vendor-onboarding.md)。

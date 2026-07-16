@@ -1,8 +1,8 @@
 # ROS IDL 参考（自动生成）
 
-> 由 robonix v0.1.0 · commit 76671168-dirty · 2026-07-04 自动生成，请勿手改。重新生成：`rbnx docs`。
+> 由 robonix v0.1.0 · commit 47632ee · 2026-07-15 自动生成，请勿手改。重新生成：`rbnx docs`。
 
-本页收录从 IDL 包含根（`rbnx docs --include`，默认 `capabilities/lib/`）收集的全部 ROS IDL（`.msg` / `.srv`）原文，按 ROS 包分组（共 261 个文件）。[能力约定参考](contracts.md) 的载荷列链到这里对应的锚点。
+本页收录从 IDL 包含根（`rbnx docs --include`，默认 `capabilities/lib/`）收集的全部 ROS IDL（`.msg` / `.srv`）原文，按 ROS 包分组（共 303 个文件）。[能力约定参考](contracts.md) 的载荷列链到这里对应的锚点。
 
 [toc]
 
@@ -310,6 +310,22 @@ bool is_default           # true if this is the OS-level default for its kind
 uint32 channels           # max channels at the impl's preferred rate
 string note               # free-form hint: "bluetooth" / "usb" / "airpods"
                           # — pickers can warn or auto-skip on these
+```
+
+<a id="audio-srv-getaudiobridgeinfo-srv"></a>
+### GetAudioBridgeInfo `srv`
+
+`audio/srv/GetAudioBridgeInfo.srv`
+
+```rosidl
+# robonix/primitive/audio/bridge_info -- return the reverse-audio listener
+# that a robonix-client should connect to. Only the client-bridge provider
+# exposes this optional contract; fixed local audio drivers do not need it.
+---
+bool reverse
+string endpoint          # ws://<robot-reachable-host>:<port>/client, or empty
+bool connected           # whether a client currently has an active session
+string detail
 ```
 
 <a id="audio-srv-listaudiodevices-srv"></a>
@@ -707,6 +723,24 @@ string description
 string input_schema_json
 ```
 
+<a id="executor-srv-controlplan-srv"></a>
+### ControlPlan `srv`
+
+`executor/srv/ControlPlan.srv`
+
+```rosidl
+string action
+string plan_id
+string op_id
+string when
+uint64 wait_ms
+---
+bool success
+bool completed
+string message
+string error
+```
+
 <a id="executor-srv-execute-srv"></a>
 ### Execute `srv`
 
@@ -716,6 +750,18 @@ string input_schema_json
 pilot/Plan plan
 ---
 executor/RtdlEvent event
+```
+
+<a id="executor-srv-listactiveplans-srv"></a>
+### ListActivePlans `srv`
+
+`executor/srv/ListActivePlans.srv`
+
+```rosidl
+---
+bool success
+string plans_json
+string error
 ```
 
 <a id="executor-msg-rtdlevent-msg"></a>
@@ -1207,7 +1253,72 @@ std_msgs/Header header
 Wrench wrench
 ```
 
+## health
+
+<a id="health-srv-gethealthstate-srv"></a>
+### GetHealthState `srv`
+
+`health/srv/GetHealthState.srv`
+
+```rosidl
+---
+HealthState state
+```
+
+<a id="health-msg-healthstate-msg"></a>
+### HealthState `msg`
+
+`health/msg/HealthState.msg`
+
+```rosidl
+float32 voltage              # system voltage in V, -1 unknown
+bool charging                # whether charging
+int64 remaining_s            # estimated remaining seconds, -1 unknown
+SensorReading[] readings     # all raw sensor readings
+```
+
+<a id="health-msg-sensorreading-msg"></a>
+### SensorReading `msg`
+
+`health/msg/SensorReading.msg`
+
+```rosidl
+string name                  # sensor name, e.g. "cpu", "gpu", "nvme"
+float32 temp_c               # temperature in °C, -1 if unavailable
+float32 voltage              # voltage in V, -1 if unavailable
+float32 current_a            # current in A, -1 if unavailable
+float32 battery_percent      # battery percentage 0-100, -1 if no battery
+```
+
+<a id="health-srv-streamhealthstate-srv"></a>
+### StreamHealthState `srv`
+
+`health/srv/StreamHealthState.srv`
+
+```rosidl
+---
+HealthState state            # server_stream: push 1 frame per cycle
+```
+
 ## liaison
+
+<a id="liaison-srv-gethandsfreestatus-srv"></a>
+### GetHandsfreeStatus `srv`
+
+`liaison/srv/GetHandsfreeStatus.srv`
+
+```rosidl
+# Read the current robot-local wake-word interaction state.
+---
+bool enabled
+string state
+string keyword
+string mic_provider_id
+string speaker_provider_id
+uint64 last_wake_ms
+string last_transcript
+string last_error
+```
 
 <a id="liaison-srv-interrupt-srv"></a>
 ### Interrupt `srv`
@@ -1220,6 +1331,23 @@ string reason
 ---
 bool ok
 string session_id
+```
+
+<a id="liaison-srv-sethandsfree-srv"></a>
+### SetHandsfree `srv`
+
+`liaison/srv/SetHandsfree.srv`
+
+```rosidl
+# Enable or disable robot-local wake-word interaction.
+bool enabled
+string mic_provider_id
+string speaker_provider_id
+---
+bool ok
+bool enabled
+string state
+string detail
 ```
 
 <a id="liaison-srv-startvoicesession-srv"></a>
@@ -1285,6 +1413,18 @@ pilot/PilotEvent pilot
 string           error
 string           status_message
 uint64           timestamp_ms
+```
+
+<a id="liaison-srv-watchhandsfreeevents-srv"></a>
+### WatchHandsfreeEvents `srv`
+
+`liaison/srv/WatchHandsfreeEvents.srv`
+
+```rosidl
+# Subscribe to voice events emitted by Liaison's current robot-local
+# hands-free loop. This is observational; it does not own microphone input.
+---
+liaison/VoiceEvent event
 ```
 
 ## lidar
@@ -1628,6 +1768,23 @@ string frame_id     # map frame id (usually "map")
 string detail
 ```
 
+<a id="map-srv-listmaps-srv"></a>
+### ListMaps `srv`
+
+`map/srv/ListMaps.srv`
+
+```rosidl
+# robonix/service/map/list_maps — list saved maps available for load/delete.
+# maps_json is a UTF-8 JSON array so the contract can remain flat while map
+# library metadata evolves. Current entries include map_id, has_spatial_artifact,
+# spatial_ok, artifact_size, has_preview, updated, and meta. Provider artifacts
+# are opaque; callers must load/delete them by map_id rather than by path.
+---
+bool ok
+string detail
+string maps_json
+```
+
 <a id="map-srv-loadmap-srv"></a>
 ### LoadMap `srv`
 
@@ -1635,8 +1792,8 @@ string detail
 
 ```rosidl
 # robonix/service/map/load_map — switch SLAM onto a previously-saved map (RPC).
-# Loads <map_id>'s rtabmap database and, in localization mode, freezes the
-# graph so the robot relocalizes against the saved map and the map frame
+# Loads <map_id>'s opaque spatial artifact and, in localization mode, freezes
+# map growth so the robot relocalizes against the saved map and the map frame
 # becomes stable across runs (scene keys its objects to that frame). With
 # has_initial_pose set, the pose guess below is seeded before relocalizing so
 # convergence is fast and unambiguous in repetitive spaces.
@@ -1649,6 +1806,31 @@ float64 theta      # initial yaw, map frame, radians
 ---
 bool ok
 string detail      # human-readable status / error
+```
+
+<a id="map-msg-maplifecycle-msg"></a>
+### MapLifecycle `msg`
+
+`map/msg/MapLifecycle.msg`
+
+```rosidl
+# Map identity + lifecycle broadcast from the mapping service.
+#
+# Published latched (transient_local) so late-joining consumers (e.g. the
+# scene service) learn the current map identity at startup, and re-published
+# on every lifecycle transition (init / load / reset / mode switch; save
+# does not change the live identity — its re-key semantics are a later,
+# separate design).
+#
+# The (map_id, generation) pair is the map-frame identity key: consumers
+# holding map-frame coordinates must treat a change in EITHER field as
+# "previous coordinates are no longer anchored" — reset_map keeps map_id
+# but moves the map origin, which only generation makes visible.
+string map_id      # named-map id currently bound; empty when ephemeral (no map_id configured)
+string mode        # "mapping" or "localization"
+uint64 generation  # monotonic; +1 when the map origin may have changed: mapping-mode
+                   # session start/load and reset_map. NEVER bumped by a localization
+                   # load (stable frame is the point) or by a mode switch.
 ```
 
 <a id="map-srv-poseestimate-srv"></a>
@@ -1694,17 +1876,16 @@ string detail
 
 ```rosidl
 # robonix/service/map/save_map — snapshot the current SLAM map to disk (RPC).
-# Persists the live rtabmap database plus portable preview artifacts
-# (occupancy pgm/png, cloud pcd, meta.yaml) under {MAPPING_MAPS_DIR}/<map_id>/.
-# The database keeps receiving updates after the call — this is a durable,
-# loadable checkpoint, not a stop. Reuse the same <map_id> with load_map and
-# with scene's semantic map so the spatial and semantic maps stay aligned.
+# Persists the provider's current spatial map under a stable map_id. Backends
+# may use RTAB-Map, occupancy-grid files, or another representation internally;
+# callers must treat the artifact as opaque and address it only by map_id.
+# Reuse the same map_id with scene's semantic map so spatial and semantic state
+# stays aligned.
 string map_id      # stable id; sanitized to a filesystem-safe directory name
 string note        # optional human note recorded in meta.yaml (may be empty)
 ---
 bool ok
 string map_id          # sanitized id actually written
-string database_path   # absolute path of the saved rtabmap.db
 string detail          # human-readable status / error
 ```
 
@@ -1761,6 +1942,87 @@ std_msgs/String confirmation
 std_msgs/String query
 ---
 std_msgs/String results
+```
+
+## module_health
+
+<a id="module-health-srv-getmodulehealth-srv"></a>
+### GetModuleHealth `srv`
+
+`module_health/srv/GetModuleHealth.srv`
+
+```rosidl
+---
+ModuleHealthReport report
+```
+
+<a id="module-health-srv-getmodulehealthsnapshot-srv"></a>
+### GetModuleHealthSnapshot `srv`
+
+`module_health/srv/GetModuleHealthSnapshot.srv`
+
+```rosidl
+---
+ModuleHealthSnapshot snapshot
+```
+
+<a id="module-health-msg-modulehealth-msg"></a>
+### ModuleHealth `msg`
+
+`module_health/msg/ModuleHealth.msg`
+
+```rosidl
+string module_key
+string module_id
+string provider_id
+
+uint8 health
+string state
+string reason_code
+string detail
+string source
+
+uint64 received_ts_ns
+uint32 ttl_ms
+```
+
+<a id="module-health-msg-modulehealthevent-msg"></a>
+### ModuleHealthEvent `msg`
+
+`module_health/msg/ModuleHealthEvent.msg`
+
+```rosidl
+uint64 ts_ns
+uint64 seq
+
+string module_key
+uint8 previous_health
+uint8 current_health
+string reason_code
+string detail
+string source
+```
+
+<a id="module-health-msg-modulehealthreport-msg"></a>
+### ModuleHealthReport `msg`
+
+`module_health/msg/ModuleHealthReport.msg`
+
+```rosidl
+uint32 schema_version
+ModuleHealth module
+```
+
+<a id="module-health-msg-modulehealthsnapshot-msg"></a>
+### ModuleHealthSnapshot `msg`
+
+`module_health/msg/ModuleHealthSnapshot.msg`
+
+```rosidl
+uint32 schema_version
+uint64 ts_ns
+uint64 seq
+ModuleHealth[] modules
 ```
 
 ## nav_msgs
@@ -2751,6 +3013,31 @@ SceneGraphEdge[] relations
 Object[] nearby_objects
 ```
 
+<a id="semantic-map-srv-getrobotcontext-srv"></a>
+### GetRobotContext `srv`
+
+`semantic_map/srv/GetRobotContext.srv`
+
+```rosidl
+# Return the current spatial context used by Pilot before planning.
+---
+bool pose_known
+string map_id
+float64 x
+float64 y
+float64 z
+float64 yaw
+string room_id
+string room_name
+string[] containing_area_ids
+string[] containing_area_names
+Object[] nearby_objects
+float64 observed_at_unix
+float64 snapshot_at_unix
+bool stale
+string reason
+```
+
 <a id="semantic-map-srv-getscenegraph-srv"></a>
 ### GetSceneGraph `srv`
 
@@ -2762,6 +3049,7 @@ Object[] nearby_objects
 ---
 SceneGraphNode[] nodes
 SceneGraphEdge[] edges
+SceneAnnotation[] annotations
 float64 updated_at
 ```
 
@@ -2772,7 +3060,8 @@ float64 updated_at
 
 ```rosidl
 # robonix/system/scene/goal_near — find a navigation-safe approach pose
-# near a registered scene object. Map-frame (x, y, yaw); pass to
+# near a registered physical scene object. Room annotations are rejected;
+# use robonix/system/scene/goal_room for rooms. Map-frame (x, y, yaw); pass to
 # robonix/service/navigation/navigate after.
 #
 # `reachable=false` when the occupancy grid has no free cell within
@@ -2781,6 +3070,25 @@ float64 updated_at
 # string for both branches.
 
 string object_id
+---
+bool reachable
+float64 x
+float64 y
+float64 yaw
+string reason
+```
+
+<a id="semantic-map-srv-goalroom-srv"></a>
+### GoalRoom `srv`
+
+`semantic_map/srv/GoalRoom.srv`
+
+```rosidl
+# robonix/system/scene/goal_room - find a navigation-safe pose inside
+# a user-defined room annotation. The returned map-frame pose is always
+# inside the room polygon; pass it to navigation/navigate.
+
+string room_id
 ---
 bool reachable
 float64 x
@@ -2839,6 +3147,27 @@ float64 y
 float64 z
 float64 yaw
 float64 last_seen_unix
+```
+
+<a id="semantic-map-msg-sceneannotation-msg"></a>
+### SceneAnnotation `msg`
+
+`semantic_map/msg/SceneAnnotation.msg`
+
+```rosidl
+# User-authored semantic annotation anchored to the SLAM map.
+# Rooms and POIs are maintained by scene, persisted per map_id, and
+# returned with the scene graph so clients/agents can reason about
+# human-provided regions as first-class scene context.
+
+string annotation_id
+string kind
+string name
+float64[] points_xy
+float64 theta
+bool stale
+string stale_reason
+float64 updated_at_unix
 ```
 
 <a id="semantic-map-msg-scenegraphedge-msg"></a>
@@ -3899,6 +4228,106 @@ geometry_msgs/Polygon polygon
 
 ## soma
 
+<a id="soma-msg-actuatorstate-msg"></a>
+### ActuatorState `msg`
+
+`soma/msg/ActuatorState.msg`
+
+```rosidl
+string component_id
+string joint_name
+
+Scalar position
+Scalar velocity
+Scalar effort
+Scalar current
+Scalar voltage
+Scalar motor_temp
+Scalar driver_temp
+
+bool torque_enabled
+bool brake_engaged
+bool communication_ok
+
+uint32 vendor_mode
+uint32 vendor_error_code
+uint32 status_flags
+```
+
+<a id="soma-msg-componentstatus-msg"></a>
+### ComponentStatus `msg`
+
+`soma/msg/ComponentStatus.msg`
+
+```rosidl
+uint8 HEALTH_OK=0
+uint8 HEALTH_WARN=1
+uint8 HEALTH_ERROR=2
+uint8 HEALTH_STALE=3
+uint8 HEALTH_UNKNOWN=4
+
+uint8 KIND_UNKNOWN=0
+uint8 KIND_BODY=1
+uint8 KIND_ARM=2
+uint8 KIND_LEG=3
+uint8 KIND_JOINT=4
+uint8 KIND_WHEEL=5
+uint8 KIND_GRIPPER=6
+uint8 KIND_BATTERY=7
+uint8 KIND_COMPUTER=8
+uint8 KIND_SENSOR=9
+uint8 KIND_CONTROLLER=10
+uint8 KIND_END_EFFECTOR=11
+
+uint8 OP_UNKNOWN=0
+uint8 OP_OFFLINE=1
+uint8 OP_POWERED_OFF=2
+uint8 OP_IDLE=3
+uint8 OP_ACTIVE=4
+uint8 OP_DEGRADED=5
+uint8 OP_PROTECTIVE_STOP=6
+uint8 OP_ESTOP=7
+uint8 OP_FAULT=8
+
+string id
+string parent_id
+uint8 kind
+string name
+string frame_id
+string model
+string serial
+uint8 health
+uint8 operational_state
+bool present
+bool online
+string detail
+```
+
+<a id="soma-msg-faultstate-msg"></a>
+### FaultState `msg`
+
+`soma/msg/FaultState.msg`
+
+```rosidl
+uint8 INFO=0
+uint8 WARN=1
+uint8 ERROR=2
+uint8 CRITICAL=3
+
+string component_id
+string fault_id
+uint8 severity
+bool active
+bool clearable
+int64 onset_ts_ns
+
+uint32 vendor_code
+string vendor_code_text
+string message
+string[] attributes
+string vendor_raw_json
+```
+
 <a id="soma-srv-getdescription-srv"></a>
 ### GetDescription `srv`
 
@@ -3940,6 +4369,16 @@ float64 inscribed_radius_m      # largest disc fitting inside the polygon
 float64 circumscribed_radius_m  # smallest disc enclosing the polygon
 ```
 
+<a id="soma-srv-gethealth-srv"></a>
+### GetHealth `srv`
+
+`soma/srv/GetHealth.srv`
+
+```rosidl
+---
+SomaHealthSnapshot snapshot
+```
+
 <a id="soma-srv-getsensorextrinsics-srv"></a>
 ### GetSensorExtrinsics `srv`
 
@@ -3961,6 +4400,120 @@ string sensor_kind  # filter; empty = all
 soma/SensorExtrinsic[] sensors
 ```
 
+<a id="soma-srv-geturdf-srv"></a>
+### GetUrdf `srv`
+
+`soma/srv/GetUrdf.srv`
+
+```rosidl
+# Return the URDF text referenced by one loaded robot's Soma YAML.
+string robot_id  # empty = default robot
+---
+string robot_id
+string urdf_xml
+```
+
+<a id="soma-srv-getyaml-srv"></a>
+### GetYaml `srv`
+
+`soma/srv/GetYaml.srv`
+
+```rosidl
+# Return the raw Soma YAML text for one loaded robot.
+string robot_id  # empty = default robot
+---
+string robot_id
+string yaml_text
+```
+
+<a id="soma-msg-metric-msg"></a>
+### Metric `msg`
+
+`soma/msg/Metric.msg`
+
+```rosidl
+string component_id
+string name
+Scalar value
+string source_key
+```
+
+<a id="soma-msg-powersourcestate-msg"></a>
+### PowerSourceState `msg`
+
+`soma/msg/PowerSourceState.msg`
+
+```rosidl
+string component_id
+
+Scalar soc_percent
+Scalar soh_percent
+Scalar voltage
+Scalar current
+Scalar temperature
+Scalar remaining_s
+
+uint32 cycle_count
+Scalar[] cell_voltages
+uint32 vendor_status_code
+```
+
+<a id="soma-msg-safetyendpointstate-msg"></a>
+### SafetyEndpointState `msg`
+
+`soma/msg/SafetyEndpointState.msg`
+
+```rosidl
+uint8 TYPE_UNKNOWN=0
+uint8 TYPE_HARDWARE=1
+uint8 TYPE_SOFTWARE=2
+uint8 TYPE_REMOTE=3
+uint8 TYPE_PAYLOAD=4
+
+uint8 RELEASED=0
+uint8 ACTIVE=1
+
+string name
+uint8 type
+uint8 state
+string detail
+```
+
+<a id="soma-msg-safetystate-msg"></a>
+### SafetyState `msg`
+
+`soma/msg/SafetyState.msg`
+
+```rosidl
+uint8 UNKNOWN=0
+uint8 NORMAL=1
+uint8 REDUCED=2
+uint8 PROTECTIVE_STOP=3
+uint8 ESTOP=4
+uint8 FAULT=5
+
+bool motion_allowed
+bool motor_power_allowed
+uint8 aggregate_state
+string detail
+```
+
+<a id="soma-msg-scalar-msg"></a>
+### Scalar `msg`
+
+`soma/msg/Scalar.msg`
+
+```rosidl
+uint8 VALID=0
+uint8 STALE=1
+uint8 UNAVAILABLE=2
+uint8 INVALID=3
+
+float64 value
+string unit
+uint8 quality
+```
+
 <a id="soma-msg-sensorextrinsic-msg"></a>
 ### SensorExtrinsic `msg`
 
@@ -3979,7 +4532,54 @@ string child_frame        # e.g. "camera_color_optical_frame"
 geometry_msgs/Transform transform   # parent → child
 ```
 
+<a id="soma-msg-somahealthsnapshot-msg"></a>
+### SomaHealthSnapshot `msg`
+
+`soma/msg/SomaHealthSnapshot.msg`
+
+```rosidl
+uint32 schema_version
+string body_id
+uint64 seq
+int64 source_ts_ns
+int64 soma_ts_ns
+uint32 ttl_ms
+
+ComponentStatus[] components
+ActuatorState[] actuators
+PowerSourceState[] power_sources
+SafetyState safety
+SafetyEndpointState[] safety_endpoints
+FaultState[] faults
+Metric[] metrics
+```
+
+<a id="soma-srv-streamhealth-srv"></a>
+### StreamHealth `srv`
+
+`soma/srv/StreamHealth.srv`
+
+```rosidl
+---
+SomaHealthSnapshot snapshot
+```
+
 ## speech
+
+<a id="speech-srv-detectwakeword-srv"></a>
+### DetectWakeWord `srv`
+
+`speech/srv/DetectWakeWord.srv`
+
+```rosidl
+# Stream microphone PCM to the speech service until a configured wake phrase is detected.
+audio/msg/AudioChunk chunk
+---
+bool detected
+string keyword
+float32 confidence
+string error
+```
 
 <a id="speech-msg-dialogevent-msg"></a>
 ### DialogEvent `msg`
@@ -5506,6 +6106,101 @@ uint8[] data
 # Values should be in range: [0.0-1.0].
 float32 u
 float32 v
+```
+
+## vitals
+
+<a id="vitals-msg-bodycomponent-msg"></a>
+### BodyComponent `msg`
+
+`vitals/msg/BodyComponent.msg`
+
+```rosidl
+string name                  # "joint_1" / "motor_drive" / "display"
+string kind                  # "joint" | "motor" | "actuator" | "sensor" | "other"
+float32 temperature          # °C, -1 if unavailable
+uint32 error_code            # 0 = OK, model-defined bitmask otherwise
+bool enabled                 # torque / driver enable status
+string id                    # stable component path, e.g. "body/arm_right/joint_1"
+string parent_id             # parent component path, empty for root
+string model                 # component model, e.g. "piper_motor" / "jetson_agx_orin"
+```
+
+<a id="vitals-msg-bodyhealth-msg"></a>
+### BodyHealth `msg`
+
+`vitals/msg/BodyHealth.msg`
+
+```rosidl
+uint32 NORMAL=0
+uint32 FAULT=1
+uint32 ESTOP=2
+
+string body_type             # root child id/name, e.g. "computer_jetson" | "arm_right"
+string model                 # "jetson_agx_orin" | "piper" | "mock_bms" | ...
+uint32 state                 # NORMAL / FAULT / ESTOP
+string message               # human-readable status summary (can be empty)
+BodyComponent[] components   # component-tree entries below this root child
+```
+
+<a id="vitals-msg-componenthealth-msg"></a>
+### ComponentHealth `msg`
+
+`vitals/msg/ComponentHealth.msg`
+
+```rosidl
+uint8 OK=0
+uint8 WARN=1
+uint8 ERROR=2
+string name                  # component name, e.g. "cpu", "gpu", "battery"
+uint8 health                 # OK / WARN / ERROR
+string detail                # human-readable detail, e.g. "CPU temp 85C exceeds 80C threshold"
+float32 value                # current value (temp:°C, voltage:V, current:A), -1 if absent
+float32 threshold            # threshold that was crossed, -1 if absent
+```
+
+<a id="vitals-srv-getvitals-srv"></a>
+### GetVitals `srv`
+
+`vitals/srv/GetVitals.srv`
+
+```rosidl
+---
+VitalsSnapshot snapshot
+```
+
+<a id="vitals-msg-powerstate-msg"></a>
+### PowerState `msg`
+
+`vitals/msg/PowerState.msg`
+
+```rosidl
+float32 battery_percent      # battery percentage 0-100, -1 if no battery
+float32 voltage              # battery/system voltage (V), -1 if unknown
+bool charging                # charging status
+int64 remaining_s            # estimated remaining seconds, -1 if unknown
+```
+
+<a id="vitals-srv-streamvitals-srv"></a>
+### StreamVitals `srv`
+
+`vitals/srv/StreamVitals.srv`
+
+```rosidl
+---
+VitalsSnapshot snapshot      # server_stream: one frame per push
+```
+
+<a id="vitals-msg-vitalssnapshot-msg"></a>
+### VitalsSnapshot `msg`
+
+`vitals/msg/VitalsSnapshot.msg`
+
+```rosidl
+uint64 ts_ns                 # chronos canonical timestamp (CLOCK_MONOTONIC ns)
+PowerState power
+ComponentHealth[] components
+BodyHealth[] bodies          # zero or more body health entries
 ```
 
 ## voiceprint

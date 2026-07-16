@@ -1,8 +1,8 @@
 # 能力约定参考（自动生成）
 
-> 由 robonix v0.1.0 · commit 76671168-dirty · 2026-07-04 自动生成，请勿手改。重新生成：`rbnx docs`。
+> 由 robonix v0.1.0 · commit 47632ee · 2026-07-15 自动生成，请勿手改。重新生成：`rbnx docs`。
 
-本页罗列 `capabilities/` 下的所有标准能力约定（共 67 条）。
+本页罗列 `capabilities/` 下的所有标准能力约定（共 95 条）。
 载荷列链到对应的 [ROS IDL](idl.md)。概念与字段含义见 [接口目录](../interface-catalog/index.md)。
 
 [toc]
@@ -11,6 +11,11 @@
 
 | 能力约定 ID | 接口含义 | kind | mode | 载荷（IDL） | 能力约定 TOML |
 |---|---|---|---|---|---|
+| `robonix/primitive/arm/driver` | Lifecycle control interface for arm primitive providers. | primitive | `rpc` | [`lifecycle/srv/Driver.srv`](idl.md#lifecycle-srv-driver-srv) | `primitive/arm/driver.v1.toml` |
+| `robonix/primitive/arm/end_pose` | Measured end-effector pose in the arm provider's documented base frame. | primitive | `topic_out` | [`common_interfaces/geometry_msgs/msg/Pose.msg`](idl.md#common-interfaces-geometry-msgs-msg-pose-msg) | `primitive/arm/end_pose.v1.toml` |
+| `robonix/primitive/arm/joint_command` | Named arm and gripper joint command input using standard JointState units. | primitive | `topic_in` | [`common_interfaces/sensor_msgs/msg/JointState.msg`](idl.md#common-interfaces-sensor-msgs-msg-jointstate-msg) | `primitive/arm/joint_command.v1.toml` |
+| `robonix/primitive/arm/joint_states` | Measured arm and gripper joint positions, velocities, and efforts. | primitive | `topic_out` | [`common_interfaces/sensor_msgs/msg/JointState.msg`](idl.md#common-interfaces-sensor-msgs-msg-jointstate-msg) | `primitive/arm/joint_states.v1.toml` |
+| `robonix/primitive/audio/bridge_info` | Discover the reverse client-audio endpoint exposed by an audio bridge provider. | primitive | `rpc` | [`audio/srv/GetAudioBridgeInfo.srv`](idl.md#audio-srv-getaudiobridgeinfo-srv) | `primitive/audio/bridge_info.v1.toml` |
 | `robonix/primitive/audio/driver` | Lifecycle control interface for audio primitive providers. | primitive | `rpc` | [`lifecycle/srv/Driver.srv`](idl.md#lifecycle-srv-driver-srv) | `primitive/audio/driver.v1.toml` |
 | `robonix/primitive/audio/list_devices` | List audio input and output devices visible to the audio primitive. | primitive | `rpc` | [`audio/srv/ListAudioDevices.srv`](idl.md#audio-srv-listaudiodevices-srv) | `primitive/audio/list_devices.v1.toml` |
 | `robonix/primitive/audio/mic` | Continuous microphone audio stream produced by an audio input primitive. | primitive | `topic_out` | [`audio/msg/AudioChunk.msg`](idl.md#audio-msg-audiochunk-msg) | `primitive/audio/mic.v1.toml` |
@@ -27,12 +32,16 @@
 | `robonix/primitive/chassis/move` | Low-level bounded chassis motion command without global path planning. | primitive | `rpc` | [`chassis/srv/ExecuteMoveCommand.srv`](idl.md#chassis-srv-executemovecommand-srv) | `primitive/chassis/move.v1.toml` |
 | `robonix/primitive/chassis/odom` | Raw chassis odometry in the local odom frame. | primitive | `topic_out` | [`common_interfaces/nav_msgs/msg/Odometry.msg`](idl.md#common-interfaces-nav-msgs-msg-odometry-msg) | `primitive/chassis/odom.v1.toml` |
 | `robonix/primitive/chassis/twist_in` | Velocity command input consumed by a chassis controller. | primitive | `topic_in` | [`common_interfaces/geometry_msgs/msg/Twist.msg`](idl.md#common-interfaces-geometry-msgs-msg-twist-msg) | `primitive/chassis/twist_in.v1.toml` |
+| `robonix/primitive/health/driver` | - | primitive | `rpc` | [`lifecycle/srv/Driver.srv`](idl.md#lifecycle-srv-driver-srv) | `primitive/health/driver.v1.toml` |
+| `robonix/primitive/health/state` | - | primitive | `rpc` | [`health/srv/GetHealthState.srv`](idl.md#health-srv-gethealthstate-srv) | `primitive/health/state.v1.toml` |
+| `robonix/primitive/health/stream` | - | primitive | `rpc_server_stream` | [`health/srv/StreamHealthState.srv`](idl.md#health-srv-streamhealthstate-srv) | `primitive/health/stream.v1.toml` |
 | `robonix/primitive/imu/driver` | Lifecycle control interface for IMU primitive providers. | primitive | `rpc` | [`lifecycle/srv/Driver.srv`](idl.md#lifecycle-srv-driver-srv) | `primitive/imu/driver.v1.toml` |
 | `robonix/primitive/imu/imu` | Continuous inertial measurement stream from an IMU primitive. | primitive | `topic_out` | [`common_interfaces/sensor_msgs/msg/Imu.msg`](idl.md#common-interfaces-sensor-msgs-msg-imu-msg) | `primitive/imu/imu.v1.toml` |
 | `robonix/primitive/lidar/driver` | Lifecycle control interface for lidar primitive providers. | primitive | `rpc` | [`lifecycle/srv/Driver.srv`](idl.md#lifecycle-srv-driver-srv) | `primitive/lidar/driver.v1.toml` |
 | `robonix/primitive/lidar/lidar` | Continuous 2D laser scan stream from a lidar primitive. | primitive | `topic_out` | [`common_interfaces/sensor_msgs/msg/LaserScan.msg`](idl.md#common-interfaces-sensor-msgs-msg-laserscan-msg) | `primitive/lidar/lidar.v1.toml` |
 | `robonix/primitive/lidar/lidar3d` | Continuous 3D point cloud stream from a lidar primitive. | primitive | `topic_out` | [`common_interfaces/sensor_msgs/msg/PointCloud2.msg`](idl.md#common-interfaces-sensor-msgs-msg-pointcloud2-msg) | `primitive/lidar/lidar3d.v1.toml` |
 | `robonix/primitive/lidar/snapshot` | Capture one 2D laser scan on demand. | primitive | `rpc` | [`lidar/srv/GetLaserScan.srv`](idl.md#lidar-srv-getlaserscan-srv) | `primitive/lidar/lidar_snapshot.v1.toml` |
+| `robonix/primitive/robot_description/driver` | Lifecycle control interface for robot-description primitive providers. | primitive | `rpc` | [`lifecycle/srv/Driver.srv`](idl.md#lifecycle-srv-driver-srv) | `primitive/robot_description/driver.v1.toml` |
 
 ## service
 
@@ -42,6 +51,8 @@
 | `robonix/service/map/driver` | Lifecycle control interface for map service providers. | service | `rpc` | [`lifecycle/srv/Driver.srv`](idl.md#lifecycle-srv-driver-srv) | `service/map/driver.v1.toml` |
 | `robonix/service/map/get_mode` | Read whether the map service is currently mapping or localizing. | service | `rpc` | [`map/srv/GetMode.srv`](idl.md#map-srv-getmode-srv) | `service/map/get_mode.v1.toml` |
 | `robonix/service/map/get_pose` | Read the robot pose in the map frame as scalar x, y, and yaw. | service | `rpc` | [`map/srv/GetPose.srv`](idl.md#map-srv-getpose-srv) | `service/map/get_pose.v1.toml` |
+| `robonix/service/map/lifecycle` | Latched map identity and lifecycle events ({map_id, mode, generation}) from the mapping service. | service | `topic_out` | [`map/msg/MapLifecycle.msg`](idl.md#map-msg-maplifecycle-msg) | `service/map/lifecycle.v1.toml` |
+| `robonix/service/map/list_maps` | List saved maps and metadata available for load/delete. | service | `rpc` | [`map/srv/ListMaps.srv`](idl.md#map-srv-listmaps-srv) | `service/map/list_maps.v1.toml` |
 | `robonix/service/map/load_map` | Load a saved map for localization or continued mapping. | service | `rpc` | [`map/srv/LoadMap.srv`](idl.md#map-srv-loadmap-srv) | `service/map/load_map.v1.toml` |
 | `robonix/service/map/occupancy_grid` | 2D occupancy grid output produced by the mapping service. | service | `topic_out` | [`common_interfaces/nav_msgs/msg/OccupancyGrid.msg`](idl.md#common-interfaces-nav-msgs-msg-occupancygrid-msg) | `service/map/occupancy_grid.v1.toml` |
 | `robonix/service/map/odom` | Continuous SLAM or localization odometry suitable for controllers. | service | `topic_out` | [`common_interfaces/nav_msgs/msg/Odometry.msg`](idl.md#common-interfaces-nav-msgs-msg-odometry-msg) | `service/map/odom.v1.toml` |
@@ -66,6 +77,7 @@
 | `robonix/service/speech/speak` | Speak text aloud through a selected audio output target. | service | `rpc` | [`speech/srv/Speak.srv`](idl.md#speech-srv-speak-srv) | `service/speech/speak.v1.toml` |
 | `robonix/service/speech/tts` | Synthesize one text input into audio. | service | `rpc` | [`tts/srv/Synthesize.srv`](idl.md#tts-srv-synthesize-srv) | `service/speech/tts.v1.toml` |
 | `robonix/service/speech/tts_stream` | Streaming text-to-speech synthesis that returns audio chunks. | service | `rpc_server_stream` | [`tts/srv/SynthesizeStream.srv`](idl.md#tts-srv-synthesizestream-srv) | `service/speech/tts_stream.v1.toml` |
+| `robonix/service/speech/wake_word` | Detect a configured wake phrase from a client-streamed PCM audio source. | service | `rpc_client_stream` | [`speech/srv/DetectWakeWord.srv`](idl.md#speech-srv-detectwakeword-srv) | `service/speech/wake_word.v1.toml` |
 | `robonix/service/voiceprint/delete` | Delete an enrolled speaker identity from the voiceprint database. | service | `rpc` | [`voiceprint/srv/DeleteEnrolled.srv`](idl.md#voiceprint-srv-deleteenrolled-srv) | `service/voiceprint/delete.v1.toml` |
 | `robonix/service/voiceprint/enroll` | Enroll a speaker identity from voice samples. | service | `rpc` | [`voiceprint/srv/Enroll.srv`](idl.md#voiceprint-srv-enroll-srv) | `service/voiceprint/enroll.v1.toml` |
 | `robonix/service/voiceprint/identify` | Identify whether an audio sample matches an enrolled speaker. | service | `rpc` | [`voiceprint/srv/Identify.srv`](idl.md#voiceprint-srv-identify-srv) | `service/voiceprint/identify.v1.toml` |
@@ -76,15 +88,31 @@
 | 能力约定 ID | 接口含义 | kind | mode | 载荷（IDL） | 能力约定 TOML |
 |---|---|---|---|---|---|
 | `robonix/system/executor/cancel_all_plans` | Cancel all currently running executor plans. | service | `rpc` | [`executor/srv/CancelAll.srv`](idl.md#executor-srv-cancelall-srv) | `system/executor/cancel_all_plans.v1.toml` |
+| `robonix/system/executor/control_plan` | Apply an out-of-band RTDL meta operation without creating another plan. | service | `rpc` | [`executor/srv/ControlPlan.srv`](idl.md#executor-srv-controlplan-srv) | `system/executor/control_plan.v1.toml` |
 | `robonix/system/executor/execute` | Execute an RTDL plan and stream execution events. | service | `rpc_server_stream` | [`executor/srv/Execute.srv`](idl.md#executor-srv-execute-srv) | `system/executor/execute.v1.toml` |
-| `robonix/system/liaison/submit` | Submit a user task through Liaison and stream Pilot events back. | system | `rpc_server_stream` | [`liaison/srv/SubmitTask.srv`](idl.md#liaison-srv-submittask-srv) | `system/liaison/submit.v1.toml` |
-| `robonix/system/liaison/voice` | Run a voice interaction session through Liaison. | system | `rpc_server_stream` | [`liaison/srv/StartVoiceSession.srv`](idl.md#liaison-srv-startvoicesession-srv) | `system/liaison/voice.v1.toml` |
+| `robonix/system/executor/get_health` | Return the current health report of the Executor module. | service | `rpc` | [`module_health/srv/GetModuleHealth.srv`](idl.md#module-health-srv-getmodulehealth-srv) | `system/executor/get_health.toml` |
+| `robonix/system/executor/list_active_plans` | Read the authoritative set of RTDL plans currently owned by Executor without creating a new plan. | service | `rpc` | [`executor/srv/ListActivePlans.srv`](idl.md#executor-srv-listactiveplans-srv) | `system/executor/list_active_plans.v1.toml` |
+| `robonix/system/liaison/handsfree/events` | Subscribe to events from Liaison's robot-local hands-free voice turns. | service | `rpc_server_stream` | [`liaison/srv/WatchHandsfreeEvents.srv`](idl.md#liaison-srv-watchhandsfreeevents-srv) | `system/liaison/handsfree/events.v1.toml` |
+| `robonix/system/liaison/handsfree/set_enabled` | Enable or disable Liaison's robot-local wake-word interaction mode. | service | `rpc` | [`liaison/srv/SetHandsfree.srv`](idl.md#liaison-srv-sethandsfree-srv) | `system/liaison/handsfree/set_enabled.v1.toml` |
+| `robonix/system/liaison/handsfree/status` | Read Liaison's robot-local wake-word interaction state. | service | `rpc` | [`liaison/srv/GetHandsfreeStatus.srv`](idl.md#liaison-srv-gethandsfreestatus-srv) | `system/liaison/handsfree/status.v1.toml` |
+| `robonix/system/liaison/submit` | Submit a user task through Liaison and stream Pilot events back. | service | `rpc_server_stream` | [`liaison/srv/SubmitTask.srv`](idl.md#liaison-srv-submittask-srv) | `system/liaison/submit.v1.toml` |
+| `robonix/system/liaison/voice` | Run a voice interaction session through Liaison. | service | `rpc_server_stream` | [`liaison/srv/StartVoiceSession.srv`](idl.md#liaison-srv-startvoicesession-srv) | `system/liaison/voice.v1.toml` |
 | `robonix/system/pilot` | Submit a task to Pilot and stream planning events. | service | `rpc_server_stream` | [`pilot/srv/SubmitTask.srv`](idl.md#pilot-srv-submittask-srv) | `system/pilot.v1.toml` |
+| `robonix/system/pilot/get_health` | Return the current health report of the Pilot module. | service | `rpc` | [`module_health/srv/GetModuleHealth.srv`](idl.md#module-health-srv-getmodulehealth-srv) | `system/pilot/get_health.toml` |
 | `robonix/system/scene/get_object_context` | Return one scene object's node, relations, and nearby context. | service | `rpc` | [`semantic_map/srv/GetObjectContext.srv`](idl.md#semantic-map-srv-getobjectcontext-srv) | `system/scene/get_object_context.v1.toml` |
+| `robonix/system/scene/get_robot_context` | Return the robot pose, containing room and areas, and nearby objects as one current Scene snapshot. | service | `rpc` | [`semantic_map/srv/GetRobotContext.srv`](idl.md#semantic-map-srv-getrobotcontext-srv) | `system/scene/get_robot_context.v1.toml` |
 | `robonix/system/scene/get_scene_graph` | Return the current scene graph snapshot. | service | `rpc` | [`semantic_map/srv/GetSceneGraph.srv`](idl.md#semantic-map-srv-getscenegraph-srv) | `system/scene/get_scene_graph.v1.toml` |
-| `robonix/system/scene/goal_near` | Compute a navigation-safe approach pose near a known scene object. | service | `rpc` | [`semantic_map/srv/GoalNear.srv`](idl.md#semantic-map-srv-goalnear-srv) | `system/scene/goal_near.v1.toml` |
+| `robonix/system/scene/goal_near` | Compute a navigation-safe approach pose near a known physical scene object. Room annotations are not accepted; use robonix/system/scene/goal_room for rooms or named regions. | service | `rpc` | [`semantic_map/srv/GoalNear.srv`](idl.md#semantic-map-srv-goalnear-srv) | `system/scene/goal_near.v1.toml` |
+| `robonix/system/scene/goal_room` | Resolve a room annotation to a navigation-safe pose inside its polygon. Use this for named rooms or regions before navigation/navigate. | service | `rpc` | [`semantic_map/srv/GoalRoom.srv`](idl.md#semantic-map-srv-goalroom-srv) | `system/scene/goal_room.v1.toml` |
 | `robonix/system/scene/list_objects` | List all objects currently known to the scene registry. | service | `rpc` | [`semantic_map/srv/ListObjects.srv`](idl.md#semantic-map-srv-listobjects-srv) | `system/scene/list_objects.v1.toml` |
 | `robonix/system/scene/list_relations` | List scene graph relations, optionally filtered by relation type. | service | `rpc` | [`semantic_map/srv/ListRelations.srv`](idl.md#semantic-map-srv-listrelations-srv) | `system/scene/list_relations.v1.toml` |
 | `robonix/system/soma/description` | Return the robot body description, including URDF and high-level metadata. | service | `rpc` | [`soma/srv/GetDescription.srv`](idl.md#soma-srv-getdescription-srv) | `system/soma/description.v1.toml` |
 | `robonix/system/soma/footprint` | Return the robot 2D collision footprint in the base frame. | service | `rpc` | [`soma/srv/GetFootprint.srv`](idl.md#soma-srv-getfootprint-srv) | `system/soma/footprint.v1.toml` |
+| `robonix/system/soma/get_health` | - | service | `rpc` | [`soma/srv/GetHealth.srv`](idl.md#soma-srv-gethealth-srv) | `system/soma/get_health.v1.toml` |
+| `robonix/system/soma/get_urdf` | - | service | `rpc` | [`soma/srv/GetUrdf.srv`](idl.md#soma-srv-geturdf-srv) | `system/soma/get_urdf.v1.toml` |
+| `robonix/system/soma/get_yaml` | - | service | `rpc` | [`soma/srv/GetYaml.srv`](idl.md#soma-srv-getyaml-srv) | `system/soma/get_yaml.v1.toml` |
+| `robonix/system/soma/health` | - | service | `rpc_server_stream` | [`soma/srv/StreamHealth.srv`](idl.md#soma-srv-streamhealth-srv) | `system/soma/health.v1.toml` |
 | `robonix/system/soma/sensor_extrinsics` | Return static sensor mount transforms from the robot body model. | service | `rpc` | [`soma/srv/GetSensorExtrinsics.srv`](idl.md#soma-srv-getsensorextrinsics-srv) | `system/soma/sensor_extrinsics.v1.toml` |
+| `robonix/system/vitals/get` | - | service | `rpc` | [`vitals/srv/GetVitals.srv`](idl.md#vitals-srv-getvitals-srv) | `system/vitals/get.v1.toml` |
+| `robonix/system/vitals/modules/get` | Return the current aggregated module health snapshot from Vitals. | service | `rpc` | [`module_health/srv/GetModuleHealthSnapshot.srv`](idl.md#module-health-srv-getmodulehealthsnapshot-srv) | `system/vitals/modules/get.toml` |
+| `robonix/system/vitals/stream` | - | service | `rpc_server_stream` | [`vitals/srv/StreamVitals.srv`](idl.md#vitals-srv-streamvitals-srv) | `system/vitals/stream.v1.toml` |

@@ -2,89 +2,169 @@
 
 [toc]
 
-本页讲清楚一次完整的 Robonix 部署在终端里发生了什么——从 `rbnx boot` 第一行 log 到 `rbnx chat` 收到第一个工具调用之间的所有事件。读完应该能：自己写一份 deploy manifest、看懂 `rbnx-boot/logs/` 里的输出、定位"组件起不来"或"LLM 看不到工具"这类问题在哪个阶段。
+本页解释 `rbnx build` 和 `rbnx boot` 如何把一份机器人部署清单变成正在运行的 Robonix 系统。它面向需要定位启动失败、能力未注册或配置未生效问题的开发者。
 
-## 两层 manifest
+## 两层清单各自负责什么
 
-| 文件 | 谁读 | 范围 |
+| 文件 | 读取方 | 负责内容 |
 |---|---|---|
-| `<deployment>/robonix_manifest.yaml` | `rbnx boot` | 一次部署：列系统服务的配置、哪些设备、服务，对应的代码包路径，实例名…… |
-| `<package>/package_manifest.yaml`    | `rbnx start` | 单个包：build 命令、start 命令、提供哪些 capability、依赖哪些其他包 |
+| `<deploy>/robonix_manifest.yaml` | `rbnx build`、`rbnx boot`、Soma | 选择系统组件、Primitive、Service 和 Skill 实例；指定包来源、分支、目标 manifest 和实例配置 |
+| `<package>/package_manifest.yaml` | `rbnx build`、`rbnx start` | 定义一个包的元数据、构建命令、启动命令、停止命令和 contract 列表 |
 
+部署清单中的 `name` 是运行时 provider ID。一个包可以在同一部署中出现多次，但每个实例必须使用不同的 `name`。对于 `url:` 包，代码缓存目录按 Git 仓库名创建，而不是按实例名创建；多个实例可以复用同一份 checkout。
 
-## Webots Tiago 例子的两个终端
+```yaml
+service:
+  - name: mapping
+    url: https://github.com/syswonder/service-map-rbnx
+    branch: main
+    manifest: package_manifest.jetson-native.yaml
+    config:
+      params_file: config/rtabmap_params.yaml
+      sensor_providers:
+        lidar3d: roof_lidar
+        odom: base_chassis
+```
 
-`examples/webots/` 是仓库内置的端到端样例——驱动在仿真容器里跑，Robonix 系统服务和 Pilot 在主机上跑。部署 layout 见 [快速上手](../getting-started/quickstart.md)。整个栈分两个终端启动：
+这里的 `manifest:` 选择该包目录中的 package manifest 文件。文件不存在时，构建和启动都会直接报错，不会回退到默认 manifest。
+
+## 构建阶段
+
+在部署目录运行：
 
 ```bash
-# T1：仿真环境（默认本地 Webots GUI，Ctrl-C 停）
-export DISPLAY=:0
+rbnx build -f robonix_manifest.yaml
+```
+
+`rbnx build` 会完成以下工作：
+
+1. 解析部署清单并展开其中的环境变量。
+2. 将 `url:` 包克隆到 `<deploy>/rbnx-boot/cache/<repository-name>/`；已有 checkout 会被复用。
+3. 对每个包读取部署项选定的 package manifest。
+4. 在包根目录执行该 manifest 的 `build:` 命令。
+5. 构建成功后写入 `<package>/rbnx-build/.rbnx-built`。
+
+`rbnx boot` 发现缺少 checkout 或 build sentinel 时会警告并尝试补做克隆和构建。这是首次启动的容错路径，不应代替显式的 `rbnx build`。
+
+## 启动阶段
+
+当前 `dev-next` 的启动顺序由 `rbnx` 与 Soma 共同完成。
+
+### 1. 启动内置系统组件
+
+`rbnx boot` 按下面的固定顺序启动部署清单中声明的内置二进制：
+
+1. Atlas
+2. Executor
+3. Soma
+4. Vitals
+5. Pilot
+6. Liaison
+
+每个系统块的字段会转换为对应二进制的命令行参数。监听端口已被占用或必填参数为空时，`rbnx boot` 会在启动该组件前失败，避免连接到遗留进程。
+
+### 2. Soma 启动 Primitive
+
+只要部署声明了 `primitive:` 或 `skill:`，`rbnx boot` 就会确保 Soma 已配置为读取当前选中的部署清单。Soma 在第一阶段按部署清单启动 Primitive，并等待它们完成注册和生命周期初始化。`rbnx` 通过 Atlas 观察这些 provider 的状态，全部就绪后才继续。
+
+### 3. 启动其余 System package 和 Service
+
+不属于内置二进制的 `system:` 项，以及 `service:` 中的包，由 `rbnx` 逐个启动：
+
+1. 记录启动前的 Atlas provider 集合。
+2. 执行 `rbnx start -p <package>`。
+3. 等待恰好一个新 provider 注册。
+4. 校验注册的 provider ID 与部署项 `name` 一致。
+5. 如果 provider 声明了 `*/driver` gRPC contract，调用 `Driver(CMD_INIT)`，并把部署项 `config:` 编码为 `config_json`。
+6. 对非 Skill provider 再调用 `Driver(CMD_ACTIVATE)`，等待其进入 `ACTIVE`。
+
+没有 driver contract 的 package 必须自行完成 readiness 与状态上报；注册完成后，启动器将其显示为 `ACTIVE (no driver)`。
+
+某个非内置 package 启动失败时，`rbnx boot` 会将它列入最终 `failures` 段，并保留其他已成功启动的组件。Atlas、Executor 等内置系统组件启动失败则会终止本次启动并清理已启动的子进程。
+
+### 4. Soma 启动 Skill
+
+System package 和 Service 启动结束后，`rbnx` 通知 Soma 进入 Skill 阶段。Soma 启动并初始化 `skill:` 包；带 driver 的 Skill 停在 `INACTIVE`，首次实际调用时由 Executor 激活。
+
+## 配置如何到达 provider
+
+部署项的 `config:` 不是一组自动导出的环境变量。`rbnx boot` 将它序列化为 JSON，并通过 provider 的 `Driver(CMD_INIT, config_json)` 发送。provider 应在 `on_init` 中解析配置。
+
+`rbnx boot` 会在 `<deploy>/rbnx-boot/instances/<provider-id>.json` 保存一份实例配置，供诊断使用；该文件路径不会传给 provider。
+
+单独调试 package 时，可使用：
+
+```bash
+rbnx start -p /path/to/package \
+  --endpoint 127.0.0.1:50051 \
+  --config /path/to/instance.yaml \
+  --set camera.width=640
+```
+
+`--set` 覆盖 `--config` 中的同名字段；两者最终仍通过 `Driver(CMD_INIT)` 发送。
+
+## 日志与状态
+
+默认日志目录为：
+
+```text
+<deploy>/rbnx-boot/logs/
+```
+
+package 日志文件名使用部署项的 provider ID，例如 `mapping.log`。系统启动器日志写入 `bootstrap.log`。推荐的检查顺序是：
+
+```bash
+rbnx caps -v
+rbnx tools
+rg -n "ERROR|FAIL|timeout|Deferred" rbnx-boot/logs
+```
+
+普通模式使用可回写的启动动画。需要完整逐行日志时使用：
+
+```bash
+rbnx boot -v -f robonix_manifest.yaml
+```
+
+`-v` 会关闭 spinner 和光标回写，并将 Scribe 组件日志追加输出到终端。
+
+## Webots 示例的实际进程边界
+
+Webots 示例需要先启动仿真，再构建和启动 Robonix：
+
+```bash
+# 终端 1：Webots、ROS 2 graph、Zenoh router 和 RViz
 bash examples/webots/sim/start.sh
 
-# 可选：仅 CI/headless 调试时打开 stream；普通 quickstart 默认用 Webots GUI
-# export ROBONIX_SIM_STREAM=1
-# export WEBOTS_HEADLESS_MODE=auto
-# bash examples/webots/sim/start.sh
-
-# T2：Robonix 系统服务 + primitives / services / skills
+# 终端 2：Robonix
 cd examples/webots
-export RMW_IMPLEMENTATION=rmw_zenoh_cpp
 export VLM_BASE_URL=https://api.openai.com/v1
-export VLM_API_KEY=sk-...
-export VLM_MODEL=gpt-5.5
-rbnx build
-rbnx boot
+export VLM_API_KEY=...
+export VLM_MODEL=...
+rbnx build -f robonix_manifest.yaml
+rbnx boot -f robonix_manifest.yaml
+
+# 终端 3：交互与诊断
+rbnx caps -v
+rbnx tools
+rbnx chat
 ```
 
-> 仿真容器（Webots + ROS 2）不是 Robonix 包，它就是个 docker compose 栈。Robonix 不管它的生命周期；T1 终端 Ctrl-C 即可停。
->
-> driver 进程（chassis、camera、lidar、audio）跑在仿真容器**里面**——`rbnx boot` 通过 `docker exec robonix_tiago_sim ...` 把 Python driver 起在容器进程空间，让它们与 Webots 共享同一个 ROS 2 graph。mapping、nav2、scene 等服务可在各自容器里加入这个 graph；底层通信由 `RMW_IMPLEMENTATION` 选择的 RMW transport 承载（默认 Zenoh）。host 上不需要 ROS 2 环境。
+Tiago chassis、camera 和 lidar provider 由 package 的 `start.sh` 使用 `docker exec` 放进仿真容器；本地音频 provider 运行在宿主机；Mapping、Navigation、Scene 等 package 按各自 package manifest 决定运行在容器还是宿主机。`rbnx chat` 通过 Atlas 发现 Liaison，再由 Liaison 连接 Pilot，不是直接连接 Pilot。
 
-整个栈起来后开第三个终端：
+所有参与同一 ROS 2 graph 的进程必须使用一致的 `RMW_IMPLEMENTATION`。Webots 示例默认使用 `rmw_zenoh_cpp`，仿真容器负责启动 `rmw_zenohd`。Primitive、Service 本身仍使用标准 ROS 2 API；需要跨容器时，它们的启动脚本负责转发 `RMW_IMPLEMENTATION` 和相应的 Zenoh session 配置。
+
+## 停止
+
+正常部署使用：
 
 ```bash
-rbnx caps        # 列出所有注册的 capability 和它们的 interface
-rbnx tools       # LLM 看到的工具列表（MCP transport 子集）
-rbnx chat        # ratatui TUI，直连 Pilot
+rbnx shutdown
 ```
 
-清栈：`bash examples/webots/sim/stop.sh`——脚本会一并 kill 容器内 driver 进程、`rbnx boot` 子进程组、并 `docker compose down` 仿真栈。
+前台 `rbnx boot` 也可用 `Ctrl-C` 停止。Webots 仿真结束后再运行：
 
-## `rbnx boot` 生命周期
-
-`rbnx boot` 主流程在 `tools/rbnx/src/cmd/deploy.rs`，七步：
-
-1. **解析 manifest**：读 `robonix_manifest.yaml`，展开 `${VAR}` 环境变量，校验声明的 package 存在、capability 引用合法。
-2. **初始化日志目录**：默认 `<manifest-dir>/rbnx-boot/logs/`，每个组件一个 `<name>.log` 文件。可用 `--log-dir` 改路径。
-3. **起 system 块**：按 `system:` 下的字段顺序起 atlas → scene → executor → pilot → liaison。
-4. **轮询 atlas 就绪**：调 `Query`（kind=Primitive，空过滤）直到返回非错（atlas 完全起来需 ~200 ms）。
-5. **逐个起 primitive / service / skill**：按 manifest 声明顺序，一条一条 spawn，**每条等它在 atlas 里完成 `RegisterPrimitive` / `RegisterService` / `RegisterSkill` 才进入下一条**。
-6. **driver init dance**：如果新注册的 provider 声明了 `*/driver` capability（如 `robonix/primitive/lidar/driver`），调一次 `Driver(CMD_INIT, config_json)`（per-contract Driver gRPC 服务）完成硬件初始化。
-7. **守候**：sit-on-Ctrl-C/SIGTERM 循环，收到信号后向所有子进程发 SIGTERM、等回收，再退出。
-
-每个子进程的 stdout / stderr 重定向到 `<log-dir>/<name>.log`，前台终端只看 `[deploy]` 自己的状态行。组件 panic 或 register 超时时 `rbnx boot` 会打印失败摘要并指向对应 log 文件。
-
-
-时间线大致如下（host = 主 Robonix 终端，sim = 仿真容器）：
-
-```
-T+0     T1: bash sim/start.sh           # docker compose up，Webots GUI 弹出
-T+10s   sim:  Webots + ROS 2 graph 就绪，RMW transport 准备好
-T+15s   T2: rbnx boot                 # 读 robonix_manifest.yaml
-T+15s   host: spawn robonix-atlas       # listen 50051
-T+16s   host: atlas RegisterService "robonix/system/atlas"   # self-register
-T+16s   host: spawn robonix-executor    # connect to atlas，RegisterService
-T+17s   host: spawn robonix-pilot       # 加载 memory + LLM（VLM 由环境变量配置，非 atlas 注册）
-T+18s   host: docker exec sim python chassis_driver/driver.py
-T+19s   sim:  chassis driver RegisterPrimitive + DeclareCapability
-T+19s   host: deploy 收到 register 通知 → Driver(CMD_INIT/ACTIVATE) → 下一条 primitive
-T+20s   ...重复 camera / lidar / audio，然后启动 mapping / nav2 / memory / speech / voiceprint / explore...
-T+60s   host: 全部 manifest 组件 up（首次构建或冷启动会更久）
-T+25s   T3: rbnx caps                  # 看到全部能力
-T+25s   T3: rbnx chat                  # 直连 pilot SubmitTask
-T+26s   user: "what can you see?"      # → pilot → vlm → tool_calls
-T+27s   pilot: read_file CAPABILITY.md（懒加载） → camera_snapshot →
-                 executor → docker exec MCP HTTP → driver → image
+```bash
+bash examples/webots/sim/stop.sh
 ```
 
-第一次部署慢主要在仿真容器拉镜像、Webots 启动、远端包构建和 scene 镜像/权重缓存。后续在镜像与 cache 已就绪时，`rbnx boot` 主要是启动进程、注册 capability、驱动 lifecycle，并等待 ROS 2 / service readiness。
+该脚本清理仿真容器、RViz 和示例 package 可能遗留的进程。真实机器人部署应优先使用 `rbnx shutdown`，并由各 package 的 `stop:` 或 shutdown hook 释放硬件资源。

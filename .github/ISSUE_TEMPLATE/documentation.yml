@@ -1,0 +1,53 @@
+name: Documentation problem
+description: Report an inaccurate, incomplete, or unreproducible Robonix documentation page.
+title: "docs: "
+labels: [documentation]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Include copyable commands and logs. Remove API keys, credentials, personal data, and private robot data before submitting.
+  - type: input
+    id: page
+    attributes:
+      label: Documentation page
+      description: Paste the published page URL or source Markdown path.
+      placeholder: https://robonix.syswonder.org/...
+    validations:
+      required: true
+  - type: input
+    id: revision
+    attributes:
+      label: Robonix source revision
+      description: Branch and full commit tested. The published revision is shown in the page header.
+      placeholder: dev-next @ 0123456789abcdef...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, architecture, robot/simulator, target manifest, and relevant package revisions.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction
+      description: List the exact commands or UI actions in order.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+      description: Paste the complete relevant output as text.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected documentation or result
+    validations:
+      required: true

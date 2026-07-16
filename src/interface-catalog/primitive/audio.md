@@ -1,6 +1,6 @@
 # 音频 robonix/primitive/audio
 
-音频原语覆盖麦克风采集与扬声器播放，是 [Liaison](../system/liaison.md) 语音 pipeline 的两端。`mic`（`topic_out`）持续吐音频块，`speaker`（`topic_in`）接收音频块播放；`list_devices` / `select_device` 让上层在多声卡设备里选具体输入/输出。
+音频原语覆盖麦克风采集与扬声器播放，是 [Liaison](../system/liaison.md) 语音 pipeline 的两端。`mic`（`topic_out`）持续吐音频块，`speaker`（`topic_in`）接收音频块播放；`list_devices` / `select_device` 让上层在多声卡设备里选具体输入/输出，`bridge_info` 用于发现客户端音频桥的反向 WebSocket endpoint。
 
 能力约定 TOML 在 `capabilities/primitive/audio/`，IDL 在 `capabilities/lib/audio/`。
 
@@ -9,6 +9,7 @@
 | 能力约定 ID | 模式 | 载荷（IDL） | 能力约定 TOML |
 |---|---|---|---|
 | `robonix/primitive/audio/driver` | `rpc` | [`lifecycle/Driver`](../../reference/idl.md#lifecycle-srv-driver-srv) | `primitive/audio/driver.v1.toml` |
+| `robonix/primitive/audio/bridge_info` | `rpc` | [`audio/GetAudioBridgeInfo`](../../reference/idl.md#audio-srv-getaudiobridgeinfo-srv) | `primitive/audio/bridge_info.v1.toml` |
 | `robonix/primitive/audio/mic` | `topic_out` | [`audio/AudioChunk`](../../reference/idl.md#audio-msg-audiochunk-msg) | `primitive/audio/mic.v1.toml` |
 | `robonix/primitive/audio/speaker` | `topic_in` | [`audio/AudioChunk`](../../reference/idl.md#audio-msg-audiochunk-msg) | `primitive/audio/speaker.v1.toml` |
 | `robonix/primitive/audio/list_devices` | `rpc` | [`audio/ListAudioDevices`](../../reference/idl.md#audio-srv-listaudiodevices-srv) | `primitive/audio/list_devices.v1.toml` |

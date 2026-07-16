@@ -1,23 +1,54 @@
-<br>
+# Robonix 开发手册
 
-<img src="robonix.svg" alt="robonix" width="350px" style="display: block; margin: 0 auto;">
+Robonix 是面向具身智能机器人的操作系统运行时。它把本体驱动、感知与导航服务、可复用技能和模型规划连接成一套可发现、可组合、可观测的系统，使同一套模型与技能能够部署到不同机器人上。
 
-<br>
+本手册服务于第一次运行 Robonix、接入新机器人、开发 Primitive / Service / Skill，以及查询标准接口的读者。所有可执行说明都以页面顶部显示的 `dev-next` 源码 revision 为校验基线。
 
-Robonix 具身智能操作系统
+<div class="task-grid">
+  <a class="task-card" href="getting-started/quickstart.html">
+    <span class="task-card__eyebrow">第一次使用</span>
+    <span class="task-card__title">运行 Webots 示例</span>
+    <span class="task-card__description">检查主机环境，安装 dev-next，在仿真中启动完整 Robonix 栈并提交第一条任务。</span>
+  </a>
+  <a class="task-card" href="integration-guide/vendor-onboarding.html">
+    <span class="task-card__eyebrow">机器人集成</span>
+    <span class="task-card__title">接入一个新本体</span>
+    <span class="task-card__description">创建 robot deployment，接入底盘、相机、雷达等 Primitive，配置 Soma、TF、Mapping 与 Navigation。</span>
+  </a>
+  <a class="task-card" href="developer-guide.html">
+    <span class="task-card__eyebrow">能力开发</span>
+    <span class="task-card__title">开发一个 Package</span>
+    <span class="task-card__description">从可运行模板开始，开发 Primitive、Service 或 Skill，并通过 contract 暴露标准能力。</span>
+  </a>
+  <a class="task-card" href="interface-catalog/index.html">
+    <span class="task-card__eyebrow">接口查询</span>
+    <span class="task-card__title">查标准能力与数据结构</span>
+    <span class="task-card__description">按 Primitive、Service 和 System 查找 contract、传输模式、ROS IDL 与运行时职责。</span>
+  </a>
+</div>
 
-> 犀照世界 灵通万物 为机器筑心 为具身立智
+## 先选择源码分支
 
-Robonix 从系统层面构造具身智能的运行时底座，将 AI 模型与异构硬件软硬解耦，使模型成为可在运行时加载与组合的程序，朝"一次训练，任意机器部署运行"的方向演进。
+| 分支 | 用途 | 本手册的关系 |
+|---|---|---|
+| [`dev-next`](https://github.com/syswonder/robonix/tree/dev-next) | 新功能集成与跨仓库联调，变化较快 | **本手册的实验基线** |
+| [`dev`](https://github.com/syswonder/robonix/tree/dev) | 更稳定的日常开发线 | 新项目优先考虑；个别 `dev-next` 接口可能尚未进入该分支 |
+| [`main`](https://github.com/syswonder/robonix/tree/main) | 重大里程碑与发布定档 | 不作为本手册持续更新的开发基线 |
 
-围绕"感知–理解–规划–行动"全链路中的数据处理与环境交互等共性问题，Robonix 设计了"感知–互联–认知–控制"系统服务框架，降低模型与技能的开发及运行成本，推动软硬件独立演进的生态。
+> **注意**：不要混用不同分支的二进制、部署清单与接口文档。执行命令前先运行 `git branch --show-current`；页面顶部的 revision 表示该次文档构建实际校验的 Robonix commit。
 
-Robonix 是《具身智能操作系统技术白皮书》（CCF 泛在操作系统开放社区，2026）的参考实现。白皮书提出 EAIOS（Embodied AI Operating System）架构，采用"原语–服务–技能–任务"四级抽象体系。更多背景参阅[白皮书原文](https://gitlink.org.cn/zone/uos/source/292)及 [EAIOS 架构背景](background/eaios.md)。
+## Robonix 中的交付单元
 
-## 本手册导读
+- **Robot deployment** 描述一台具体机器人：完整 URDF、Soma 本体树、系统监听地址、要启动的 Package，以及本体专属的 Mapping / Navigation 参数。
+- **Primitive** 直接连接硬件或硬件数据源，例如底盘、相机、雷达、IMU 和音频设备。
+- **Service** 提供可替换的系统能力，例如建图、导航、语音与记忆。
+- **Skill** 封装模型可调用的语义行为，是最接近上层应用的可复用能力单元。
+- **Contract** 定义能力的稳定接口与载荷；**Atlas** 保存运行时提供者、传输方式和 endpoint；**Pilot** 规划任务，**Executor** 执行 RTDL 方案，**Liaison** 承接用户交互。
 
-- [快速上手](getting-started/quickstart.md)——从克隆代码到运行 Tiago 仿真 Demo 的完整流程
-- [系统组件](architecture/components.md)——12 个系统组件的职责与当前实现状态（已实现 / stub）
-- [命名空间与能力约定](architecture/namespace-and-contracts.md)——namespace 树、能力约定 ID（`contract_id`）、`capabilities/` 与 robonix-codegen、多传输、通道协商
-- [接口目录](interface-catalog/index.md)——primitive（原语）/ service（服务）/ system（系统）三类能力约定分目录说明
-- [接入指南](integration-guide/index.md)——硬件厂商与算法开发者将自身组件接入 Robonix 的完整流程
+第一次阅读不需要先掌握这些内部组件。先完成[快速上手](getting-started/quickstart.md)，再按实际角色进入[本体接入](integration-guide/index.md)、[开发者指南](developer-guide.md)或[接口目录](interface-catalog/index.md)。
+
+## 文档维护原则
+
+操作指南只保留读者需要执行的步骤；架构解释与字段参考分别放在对应章节。命令示例应给出前置条件、工作目录和预期结果，配置字段应能追溯到 `dev-next` 源码、标准 contract 或被引用 Package 的 `config.spec`。
+
+发现说明与实现不一致时，请使用页面右上角的编辑入口提交修正，或在 [`syswonder/robonix-book`](https://github.com/syswonder/robonix-book/issues) 报告问题并附上页面、Robonix commit、执行命令和完整错误信息。
