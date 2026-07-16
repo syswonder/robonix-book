@@ -101,7 +101,10 @@ jobs:
           path: build
 
   external-links:
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    if: >-
+      github.event_name == 'pull_request' ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     continue-on-error: ${{ github.event_name == 'schedule' }}
     steps:
