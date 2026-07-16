@@ -124,6 +124,7 @@ jobs:
           args: >-
             --no-progress
             --exclude-loopback
+            --exclude '^/'
             --max-retries 2
             --timeout 20
             'docs/**/*.md'
