@@ -134,8 +134,9 @@ jobs:
             --no-progress
             --exclude-loopback
             --root-dir '${{ github.workspace }}/build'
-            --max-retries 2
-            --timeout 20
+            --fallback-extensions html
+            --max-retries 3
+            --timeout 60
             'docs/**/*.md'
 
   deploy:
