@@ -14,7 +14,7 @@
 
 ## Verification
 
-- [ ] `./scripts/build-highlight.sh` completed successfully.
+- [ ] `make check` completed successfully.
 - [ ] I inspected every changed page in the generated book.
 - [ ] I checked links, headings, code blocks, and narrow-screen layout where relevant.
 - [ ] I executed changed commands or validated fields against the stated source commit.

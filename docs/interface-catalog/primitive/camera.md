@@ -1,0 +1,28 @@
+<span id="相机-robonixprimitivecamera"></span>
+# 相机
+
+相机原语覆盖 RGB 与深度图像，两种取图方式并存：**流式**（`rgb` / `depth`）给场景融合、建图等高频消费者使用；**快照**（`snapshot` / `depth_snapshot`，一元 RPC）供大模型智能体按需取一帧。`topic_out` 只描述单向输出流，不绑定具体传输方式；当前 Webots 提供方通过 ROS 2 发布，Scene 当前也只接入 ROS 2 数据面。完整 URDF 发布的 TF 是相机外参的权威来源；`extrinsics` 是 TF 无法取得时的兼容回退能力。
+
+能力约定 TOML 在 `capabilities/primitive/camera/`，IDL 在 `capabilities/lib/camera/` 与 `capabilities/lib/common_interfaces/`。
+
+## 接口
+
+| 能力约定 ID（`contract_id`） | 模式 | 载荷（IDL） | 能力约定 TOML |
+|--------------------------|------|-------------|-----------|
+| `robonix/primitive/camera/driver` | `rpc` | [`lifecycle/Driver`](../../reference/idl.md#lifecycle-srv-driver-srv) | `primitive/camera/driver.v1.toml` |
+| `robonix/primitive/camera/rgb` | `topic_out` | [`sensor_msgs/Image`](../../reference/idl.md#common-interfaces-sensor-msgs-msg-image-msg) | `primitive/camera/rgb.v1.toml` |
+| `robonix/primitive/camera/depth` | `topic_out` | [`sensor_msgs/Image`](../../reference/idl.md#common-interfaces-sensor-msgs-msg-image-msg) | `primitive/camera/depth.v1.toml` |
+| `robonix/primitive/camera/extrinsics` | `topic_out` | [`geometry_msgs/TransformStamped`](../../reference/idl.md#common-interfaces-geometry-msgs-msg-transformstamped-msg) | `primitive/camera/extrinsics.v1.toml` |
+| `robonix/primitive/camera/intrinsics` | `topic_out` | [`sensor_msgs/CameraInfo`](../../reference/idl.md#common-interfaces-sensor-msgs-msg-camerainfo-msg) | `primitive/camera/intrinsics.v1.toml` |
+| `robonix/primitive/camera/snapshot` | `rpc` | [`camera/GetCameraImage`](../../reference/idl.md#camera-srv-getcameraimage-srv) | `primitive/camera/snapshot.v1.toml` |
+| `robonix/primitive/camera/depth_snapshot` | `rpc` | [`camera/GetCameraImage`](../../reference/idl.md#camera-srv-getcameraimage-srv) | `primitive/camera/depth_snapshot.v1.toml` |
+
+`snapshot` / `depth_snapshot` 共用 `camera/GetCameraImage` 线协议结构，但使用两个不同的能力约定 ID 选择 RGB 或深度图；两者的请求均为空，应答为 `sensor_msgs/Image`。`rgb` / `depth` 是给 Scene、Mapping 等系统消费者的高频数据面。当前 Scene 选择 ROS 2 传输；其它消费者或提供方也可以为同一 `topic_out` 模式注册 gRPC 流。
+
+`intrinsics` 提供相机内参。提供方应使用 `TRANSIENT_LOCAL + RELIABLE` 发布，并在启动和重标定后发送；消息必须描述与 RGB/depth 数据相同的 optical frame。这样晚启动的 Scene 才能取得标定，并把深度像素放进世界坐标系。
+
+`extrinsics` 使用相同的持久可靠 QoS，但只用于兼容回退。新本体必须先通过完整 URDF 和机器人描述原语发布 `/tf`、`/tf_static`；场景服务应先查询所选相机 optical frame 的 TF，仅在查询失败时读取 `extrinsics`。当前场景服务尚未在所有路径上严格执行该优先级，修复与旧 Soma 外参接口的删除由 [Issue #156](https://github.com/syswonder/robonix/issues/156) 跟踪。
+
+参考实现：`examples/webots/primitives/tiago_camera`。其 package manifest 列出表中全部 7 条能力约定，驱动在初始化后注册 RGB/depth 和两项标定数据面。
+
+该实现的 `snapshot` 把 JPEG 字节放进 `sensor_msgs/Image.data`，`depth_snapshot` 还会把深度归一化为灰度 JPEG；这是 Tiago 示例的编码特例，不是能力约定保证，也不保留米制深度。需要原始像素布局或度量深度的消费者应使用 `rgb` / `depth` 数据面，并检查 `Image.encoding`。

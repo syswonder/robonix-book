@@ -3,7 +3,7 @@
 
 .. automodule:: robonix_api
 
-   
+
 .. rubric:: Modules
 
 .. autosummary::
@@ -17,5 +17,6 @@
    lifecycle
    result
    ros
+   scribe_logger
    spawn
    tool

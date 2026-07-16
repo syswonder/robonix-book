@@ -3,7 +3,7 @@ scene\_service.state
 
 .. automodule:: scene_service.state
 
-   
+
 .. rubric:: Modules
 
 .. autosummary::
@@ -12,4 +12,3 @@ scene\_service.state
 
    data_assoc
    object_registry
-   relations

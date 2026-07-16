@@ -64,5 +64,4 @@
 
 # 参与维护
 
-- [文档平台与迁移边界](maintaining-documentation.md)
 - [文档贡献与维护流程](contributing/documentation.md)

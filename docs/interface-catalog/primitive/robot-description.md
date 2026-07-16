@@ -1,0 +1,13 @@
+# 机器人描述
+
+当前标准能力树只为机器人描述提供方定义生命周期入口，没有定义独立的数据能力约定。本体数据的系统查询面见[本体服务](../system/soma.md)。
+
+如果仿真器或厂商程序已经发布 `/robot_description`、`/tf` 和 `/tf_static`，不要再启动第二个机器人描述提供方。当前 Webots Tiago Lite 已由模拟器负责这些数据，因此部署清单不应加入通用软件包。只有部署中没有现成的 URDF/TF 发布者时，才使用部署侧的 `robot-description-rbnx`；完整步骤见[供应商接入指南](../../integration-guide/vendor-onboarding.md)。
+
+能力约定 TOML 在 `capabilities/primitive/robot_description/`。
+
+## 接口
+
+| 能力约定 ID | 模式 | 载荷（IDL） | 能力约定 TOML |
+|---|---|---|---|
+| `robonix/primitive/robot_description/driver` | `rpc` | [`lifecycle/Driver`](../../reference/idl.md#lifecycle-srv-driver-srv) | `primitive/robot_description/driver.v1.toml` |

@@ -1,0 +1,157 @@
+name: Validate and deploy documentation
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: "23 3 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: "docs-${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout documentation
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install documentation dependencies
+        run: npm ci
+
+      - name: Build and validate Docusaurus site
+        run: make check
+
+      - name: Read audited Robonix source revision
+        id: source-revision
+        run: echo "ref=$(tr -d '[:space:]' < ROBONIX_SOURCE_REVISION)" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout Robonix source
+        uses: actions/checkout@v4
+        with:
+          repository: syswonder/robonix
+          ref: ${{ steps.source-revision.outputs.ref }}
+          path: robonix
+          submodules: recursive
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: robonix
+
+      - name: Verify generated capability and IDL reference
+        run: |
+          cargo build --manifest-path robonix/Cargo.toml --locked --release -p robonix-cli
+          robonix/target/release/rbnx setup "$PWD/robonix"
+          generated="$RUNNER_TEMP/generated-reference"
+          mkdir -p "$generated"
+          robonix/target/release/rbnx docs --out-dir "$generated"
+          python3 scripts/normalize-reference.py "$generated/contracts.md" "$generated/idl.md"
+          diff -u docs/reference/contracts.md "$generated/contracts.md"
+          diff -u docs/reference/idl.md "$generated/idl.md"
+
+      - name: Build Rust API documentation
+        run: |
+          cargo doc --manifest-path robonix/Cargo.toml --locked --no-deps --workspace
+          mkdir -p build/api/rust
+          cp -r robonix/target/doc/. build/api/rust/
+
+      - name: Build Python API documentation
+        env:
+          ROBONIX_SPHINX_MOCKS: "torch,rclpy,cv2,open3d,scipy,sklearn,semantic_map_mcp"
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install sphinx furo numpy grpcio protobuf pyyaml
+          python3 -m pip install ./robonix/pylib/robonix-api
+          mkdir -p build/api/python
+          ROBONIX_API_SRC="$PWD/robonix/pylib/robonix-api" \
+          ROBONIX_SCENE_SRC="$PWD/robonix/system/scene" \
+            python3 -m sphinx -b html apidoc/python build/api/python
+
+      - name: Verify published API entry points
+        run: |
+          test -s build/api/rust/robonix_atlas/index.html
+          test -s build/api/rust/robonix_executor/index.html
+          test -s build/api/rust/robonix_pilot/index.html
+          test -s build/api/rust/robonix_liaison/index.html
+          test -s build/api/rust/robonix_codegen/index.html
+          test -s build/api/rust/rbnx/index.html
+          test -s build/api/python/_autosummary/robonix_api.html
+          test -s build/api/python/_autosummary/scene_service.html
+
+      - name: Upload documentation preview
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: robonix-book-preview
+          path: build
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Configure GitHub Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/configure-pages@v5
+
+      - name: Upload GitHub Pages artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build
+
+  external-links:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Report source drift
+        run: |
+          pinned=$(tr -d '[:space:]' < ROBONIX_SOURCE_REVISION)
+          current=$(git ls-remote https://github.com/syswonder/robonix.git refs/heads/dev-next | cut -f1)
+          if [ "$pinned" != "$current" ]; then
+            echo "::warning::Robonix dev-next moved from $pinned to $current; re-audit runnable documentation before updating ROBONIX_SOURCE_REVISION."
+          fi
+      - name: Check external links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          fail: false
+          jobSummary: true
+          args: >-
+            --no-progress
+            --exclude-loopback
+            --max-retries 2
+            --timeout 20
+            'docs/**/*.md'
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

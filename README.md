@@ -1,16 +1,32 @@
 # Robonix Book
 
-**Language:** this book (`docs/`, mdBook sources under `docs/src/`) is maintained in **Chinese**. English prose belongs in code-tree READMEs (e.g. `rust/`), not here.
+Robonix Book is the Chinese documentation site for Robonix. The current handbook is built with Docusaurus and aligned with the `dev-next` branch of [`syswonder/robonix`](https://github.com/syswonder/robonix/tree/dev-next). The archived mdBook source and tooling remain under `archive/mdbook/` for history and URL migration checks; contributors should edit the Markdown files under `docs/`.
 
-Local build and serve:
+## Local preview
+
+Prerequisites:
+
+- Node.js 20 or newer;
+- npm, which is included with the official Node.js distribution;
+- GNU Make.
+
+Run the following commands from the repository root:
 
 ```bash
-cargo install mdbook
-cargo install mdbook-mermaid --version 0.17.0
-cargo install mdbook-toc                       # [toc] 页内目录预处理器
-# 架构图使用 D2 预渲染 SVG；如需重新渲染：curl -fsSL https://d2lang.com/install.sh | sh -s --
-./scripts/build-highlight.sh                   # 生成带 ROS IDL 高亮的 theme/highlight.js（首次必跑）
-mdbook serve --open
+make install
+make dev
 ```
 
-> 直接 `mdbook serve` 也能跑，但缺两样：没装 `mdbook-toc` 会报 preprocessor not found；没跑过 `build-highlight.sh` 则 `.msg`/`.srv` 代码块不会高亮。CI（`.github/workflows/mdbook.yml`）也是这套步骤。
+Open <http://127.0.0.1:3000/>. Docusaurus watches `docs/`, `src/`, `static/`, `sidebars.ts`, and `docusaurus.config.ts` and refreshes the development preview after a saved change.
+
+Before opening a pull request, run:
+
+```bash
+make check
+```
+
+This command runs the TypeScript check and creates the production site in `build/`. Use `make help` to list every supported target.
+
+## Contributing
+
+Read the [documentation contribution guide](docs/contributing/documentation.md) and [writing standard](STYLE.md) before changing technical instructions. Commands, configuration fields, paths, expected output, and implementation status must be verified against the exact Robonix source revision described by the page.

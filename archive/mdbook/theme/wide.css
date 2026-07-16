@@ -5,13 +5,23 @@
 
 /* Widen mdBook content + apply Robonix brand color (#283689). */
 :root {
-    --content-max-width: 1100px;
+    --content-max-width: 980px;
     /* mdBook applies the mono font via `var(--mono-font) !important`, so a
        plain `code { font-family }` rule can't win — override the variable.
        --code-font-size shrinks code (JetBrains Mono renders large). */
     --mono-font: "JetBrains Mono", "Noto Sans CJK SC", "Noto Sans SC",
         ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    --code-font-size: 0.82em;
+    --code-font-size: 0.88em;
+}
+
+body {
+    font-size: 1.7rem;
+}
+
+.content p,
+.content ol,
+.content ul {
+    line-height: 1.62;
 }
 
 /* ── Documentation release channel ─────────────────────────────────── */
@@ -25,18 +35,18 @@
 }
 
 .release-channel__inner {
-    min-height: 2.8rem;
+    min-height: 5.6rem;
     display: flex;
     align-items: center;
-    gap: 0.65rem;
-    padding: 0.45rem 1rem;
-    font-size: 0.82rem;
-    line-height: 1.35;
+    gap: 1.2rem;
+    padding: 0.8rem 1.6rem;
+    font-size: 1.6rem;
+    line-height: 1.45;
 }
 
 .release-channel__label {
     color: #bfc9f3;
-    font-size: 0.72rem;
+    font-size: 1.3rem;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -44,14 +54,10 @@
 
 .release-channel__branch {
     flex: none;
-    padding: 0.15rem 0.5rem;
+    padding: 0.35rem 0.85rem;
     color: #1c285f;
     background: #f4c95d;
     border-radius: 999px;
-}
-
-.release-channel__policy {
-    flex: 1 1 32rem;
 }
 
 .release-channel code {
@@ -63,7 +69,7 @@
     flex: none;
     color: #d8def8;
     font-family: var(--mono-font);
-    font-size: 0.72rem;
+    font-size: 1.4rem;
 }
 
 .release-channel__source {
@@ -76,7 +82,7 @@
 
 /* The mdBook menu remains visible below the persistent release channel. */
 #mdbook-menu-bar.sticky {
-    top: 2.8rem;
+    top: 5.6rem;
 }
 
 /* ── Task-oriented landing cards ───────────────────────────────────── */
@@ -115,16 +121,15 @@
     display: block;
     margin-bottom: 0.35rem;
     color: #5368c3;
-    font-size: 0.72rem;
+    font-size: 1.4rem;
     font-weight: 700;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
+    letter-spacing: 0.03em;
 }
 
 .task-card__title {
     display: block;
     margin-bottom: 0.35rem;
-    font-size: 1.15rem;
+    font-size: 1.9rem;
     font-weight: 700;
 }
 
@@ -132,6 +137,60 @@
     display: block;
     color: color-mix(in srgb, var(--fg) 78%, transparent);
     line-height: 1.55;
+    font-size: 1.6rem;
+}
+
+/* A page outline is local navigation. Keep the global chapter tree on the
+   left and give the page outline its own reading rail on wide screens. */
+@media (min-width: 1180px) {
+    .content main:has(> h1:first-child + ul) {
+        max-width: 1260px;
+    }
+
+    .content main > h1:first-child + ul {
+        position: sticky;
+        top: 12.2rem;
+        float: right;
+        box-sizing: border-box;
+        width: 25rem;
+        max-height: calc(100vh - 14.5rem);
+        margin: 0.4rem 0 2.5rem 4rem;
+        padding: 1.2rem 0 1.2rem 1.8rem;
+        overflow: auto;
+        color: color-mix(in srgb, var(--fg) 78%, transparent);
+        font-size: 1.4rem;
+        line-height: 1.48;
+        list-style: none;
+        border-left: 2px solid color-mix(in srgb, var(--fg) 16%, transparent);
+    }
+
+    .content main > h1:first-child + ul::before {
+        content: "本页目录";
+        display: block;
+        margin-bottom: 0.8rem;
+        color: var(--fg);
+        font-size: 1.3rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+    }
+
+    .content main > h1:first-child + ul ul {
+        padding-inline-start: 1.4rem;
+    }
+
+    .content main > h1:first-child + ul li {
+        margin: 0.45rem 0;
+    }
+}
+
+@media (max-width: 1179px) {
+    .content main > h1:first-child + ul {
+        margin: 1.5rem 0 2.5rem;
+        padding: 1.4rem 1.8rem 1.4rem 3.6rem;
+        background: color-mix(in srgb, var(--bg) 95%, #5e73cf 5%);
+        border: 1px solid color-mix(in srgb, var(--fg) 16%, transparent);
+        border-radius: 0.45rem;
+    }
 }
 
 /* Procedure metadata and verifiable outcomes. */
@@ -153,7 +212,7 @@
     display: block;
     margin-bottom: 0.2rem;
     color: #5368c3;
-    font-size: 0.75rem;
+    font-size: 1.25rem;
     text-transform: uppercase;
 }
 
@@ -170,7 +229,7 @@
     display: block;
     margin-bottom: 0.35rem;
     color: #2f855a;
-    font-size: 0.75rem;
+    font-size: 1.25rem;
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -182,33 +241,27 @@
         flex-wrap: wrap;
     }
 
-    .release-channel__policy {
-        order: 4;
-        flex-basis: 100%;
-    }
-
     .release-channel__revision {
         display: none;
     }
 
     #mdbook-menu-bar.sticky {
-        top: 4.7rem;
+        top: 8.8rem;
     }
 }
 
 @media (max-width: 650px) {
-    .release-channel__label,
-    .release-channel__policy {
+    .release-channel__label {
         display: none;
     }
 
     .release-channel__inner {
-        min-height: 2.8rem;
+        min-height: 5.2rem;
         flex-wrap: nowrap;
     }
 
     #mdbook-menu-bar.sticky {
-        top: 2.8rem;
+        top: 5.2rem;
     }
 
     .task-grid,

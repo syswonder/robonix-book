@@ -3,11 +3,11 @@ scene\_service.mcp\_tools
 
 .. automodule:: scene_service.mcp_tools
 
-   
+
    .. rubric:: Functions
 
    .. autosummary::
-   
+
       attach_scene_graph_store
       attach_state
       get_object_context
@@ -15,4 +15,3 @@ scene\_service.mcp\_tools
       goal_near
       list_objects
       list_relations
-   
