@@ -15,7 +15,7 @@ help:
 	  'make typecheck  Check the Docusaurus TypeScript configuration' \
 	  'make codeblocks Check fenced Bash, JavaScript, JSON, Python, TOML, and YAML syntax' \
 	  'make page-evidence Check page provenance, fenced-block classifications, and execution records' \
-	  'make validation-artifacts Check browser and source-deck audit reports' \
+	  'make validation-artifacts Check the browser QA report' \
 	  'make assets     Check documentation image paths and alternative text' \
 	  'make build      Type-check and create the production site in build/' \
 	  'make check      Run every local pre-commit check' \

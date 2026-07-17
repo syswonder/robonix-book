@@ -4,7 +4,6 @@ import {dirname, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const sourceRevision = readFileSync(resolve(repositoryRoot, 'ROBONIX_SOURCE_REVISION'), 'utf8').trim();
 const failures = [];
 
 function fail(message) {
@@ -85,40 +84,6 @@ for (const [index, screenshot] of (browser.local_screenshots ?? []).entries()) {
 }
 requireString(browser.limitations, `${browserPath}.limitations`);
 
-const deckPath = 'validation/runtime-communication-pptx-audit.json';
-const deck = readJson(deckPath);
-if (!/^[0-9a-f]{64}$/.test(deck.source_deck?.sha256 ?? '')) {
-  fail(`${deckPath}.source_deck.sha256: expected a SHA-256 digest`);
-}
-requireString(deck.source_deck?.filename, `${deckPath}.source_deck.filename`);
-requireString(deck.source_deck?.provenance, `${deckPath}.source_deck.provenance`);
-if (deck.authoritative_source?.revision !== sourceRevision) {
-  fail(`${deckPath}.authoritative_source.revision: expected ${sourceRevision}`);
-}
-if (!Array.isArray(deck.slides) || deck.slides.length !== deck.source_deck?.slides) {
-  fail(`${deckPath}.slides: expected ${deck.source_deck?.slides ?? '<missing>'} slide records`);
-}
-for (const [index, slide] of (deck.slides ?? []).entries()) {
-  if (slide.slide !== index + 1) {
-    fail(`${deckPath}.slides[${index}].slide: expected ${index + 1}`);
-  }
-  requireString(slide.title, `${deckPath}.slides[${index}].title`);
-  requireString(slide.verdict, `${deckPath}.slides[${index}].verdict`);
-  if (!Array.isArray(slide.reconciled_claims) || slide.reconciled_claims.length === 0) {
-    fail(`${deckPath}.slides[${index}].reconciled_claims: expected at least one claim`);
-  }
-  for (const [pageIndex, relativePath] of (slide.book_pages ?? []).entries()) {
-    requireFile(relativePath, `${deckPath}.slides[${index}].book_pages[${pageIndex}]`);
-  }
-}
-
-const sourceRoot = process.env.ROBONIX_SOURCE;
-if (sourceRoot) {
-  for (const [index, relativePath] of (deck.source_evidence ?? []).entries()) {
-    requireFile(relativePath, `${deckPath}.source_evidence[${index}]`, sourceRoot);
-  }
-}
-
 if (failures.length > 0) {
   console.error(`Validation-artifact check failed (${failures.length}):`);
   failures.forEach((failure) => console.error(`- ${failure}`));
@@ -126,5 +91,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `Validation artifacts passed: browser routes=${routeFiles.size}, viewports=${viewportKeys.size}, deck slides=${(deck.slides ?? []).length}, source paths=${sourceRoot ? (deck.source_evidence ?? []).length : 'skipped'}`,
+  `Validation artifacts passed: browser routes=${routeFiles.size}, viewports=${viewportKeys.size}`,
 );

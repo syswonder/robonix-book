@@ -118,12 +118,9 @@ Browser rendering is recorded separately in
 system, desktop and 390 px viewports, reviewed routes, layout checks, legacy
 route result, and local screenshot hashes. It is rendering evidence only; it
 does not promote a hardware-dependent command or an unreviewed page to passed.
-`validation/runtime-communication-pptx-audit.json` records the external deck's
-digest and slide-by-slide reconciliation without redistributing the source
-file. `make check` validates both report schemas, every referenced Book page,
-the pinned revision, and—when `ROBONIX_SOURCE` is set—the deck audit's source
-paths. Local screenshot files are optional review aids; when present, their
-digests are checked.
+`make check` validates the report schema and every referenced Book page. Local
+screenshot files are optional review aids; when present, their digests are
+checked.
 
 ## Commands
 
