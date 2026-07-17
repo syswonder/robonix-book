@@ -853,7 +853,7 @@ rbnx shutdown
 
 ## 14. Python 接口
 
-本节解释软件包开发最常用的入口和参数。完整签名、默认值、返回类型与源码链接由 [Python 公共 API](https://robonix.syswonder.org/api/python/public-api.html) 从当前源码生成；这里不重复内部方法。
+本节解释软件包开发最常用的入口和参数。完整签名、默认值、返回类型与源码链接由 <a href="/api/python/public-api.html">Python 公共 API</a> 从当前源码生成；这里不重复内部方法。
 
 ### 14.1 构造能力提供方
 
