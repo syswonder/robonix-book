@@ -13,13 +13,13 @@ title: 交互服务
 
 ## 接口
 
-| 能力约定 ID | 模式 | 载荷（IDL） | 能力约定 TOML |
-|---|---|---|---|
-| `robonix/system/liaison/submit` | `rpc_server_stream` | [`liaison/SubmitTask`](../../reference/idl.md#liaison-srv-submittask-srv)（`pilot/Task` → 流 `pilot/PilotEvent`） | `system/liaison/submit.v1.toml` |
-| `robonix/system/liaison/voice` | `rpc_server_stream` | [`liaison/StartVoiceSession`](../../reference/idl.md#liaison-srv-startvoicesession-srv)（`StartVoiceSessionRequest` → 流 `VoiceEvent`） | `system/liaison/voice.v1.toml` |
-| `robonix/system/liaison/handsfree/events` | `rpc_server_stream` | [`liaison/WatchHandsfreeEvents`](../../reference/idl.md#liaison-srv-watchhandsfreeevents-srv) | `system/liaison/handsfree/events.v1.toml` |
-| `robonix/system/liaison/handsfree/set_enabled` | `rpc` | [`liaison/SetHandsfree`](../../reference/idl.md#liaison-srv-sethandsfree-srv) | `system/liaison/handsfree/set_enabled.v1.toml` |
-| `robonix/system/liaison/handsfree/status` | `rpc` | [`liaison/GetHandsfreeStatus`](../../reference/idl.md#liaison-srv-gethandsfreestatus-srv) | `system/liaison/handsfree/status.v1.toml` |
+| 能力约定 ID | 模式 | 当前实现传输 | 载荷（IDL） | 能力约定 TOML |
+|---|---|---|---|---|
+| `robonix/system/liaison/submit` | `rpc_server_stream` | gRPC | [`liaison/SubmitTask`](../../reference/idl.md#liaison-srv-submittask-srv)（`pilot/Task` → 流 `pilot/PilotEvent`） | `system/liaison/submit.v1.toml` |
+| `robonix/system/liaison/voice` | `rpc_server_stream` | gRPC | [`liaison/StartVoiceSession`](../../reference/idl.md#liaison-srv-startvoicesession-srv)（`StartVoiceSessionRequest` → 流 `VoiceEvent`） | `system/liaison/voice.v1.toml` |
+| `robonix/system/liaison/handsfree/events` | `rpc_server_stream` | gRPC | [`liaison/WatchHandsfreeEvents`](../../reference/idl.md#liaison-srv-watchhandsfreeevents-srv) | `system/liaison/handsfree/events.v1.toml` |
+| `robonix/system/liaison/handsfree/set_enabled` | `rpc` | gRPC | [`liaison/SetHandsfree`](../../reference/idl.md#liaison-srv-sethandsfree-srv) | `system/liaison/handsfree/set_enabled.v1.toml` |
+| `robonix/system/liaison/handsfree/status` | `rpc` | gRPC | [`liaison/GetHandsfreeStatus`](../../reference/idl.md#liaison-srv-gethandsfreestatus-srv) | `system/liaison/handsfree/status.v1.toml` |
 
 内置交互服务将上表 5 条约定全部以 gRPC 注册。
 

@@ -8,6 +8,8 @@ title: 记忆
 
 能力约定 TOML 在 `capabilities/service/memory/`；直接使用的接口定义语言（Interface Definition Language，IDL）文件位于 `capabilities/lib/memory/`，字符串载荷复用 `std_msgs/String`。
 
+> 表中的命名空间 Driver 是已有软件包的兼容接口。新软件包省略 Driver 条目时由框架自动使用共享的 `robonix/lifecycle/driver`；显式共享仍受支持，两种 Driver 只能选择一条。详见[生命周期兼容流程](../../integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+
 ## 接口
 
 | 能力约定 ID | 模式 | 默认实现传输 | 载荷（IDL） | 能力约定 TOML |
@@ -17,7 +19,7 @@ title: 记忆
 | `robonix/service/memory/save` | `rpc` | MCP | [`memory/Save`](../../reference/idl.md#memory-srv-save-srv)（`std_msgs/String` → `std_msgs/String`） | `service/memory/save.v1.toml` |
 | `robonix/service/memory/compact` | `rpc` | MCP | [`memory/Compact`](../../reference/idl.md#memory-srv-compact-srv)（空请求 → `std_msgs/String`） | `service/memory/compact.v1.toml` |
 
-参考实现：Robonix 源码中的 [`services/memsearch`](https://github.com/syswonder/robonix/tree/edb7606c8dc57bc3957e122bcaff1669d0154df1/services/memsearch)（`memsearch[onnx]` + `milvus-lite`）。三个记忆操作都用 `@memory.mcp(...)` 暴露，不挂载业务 gRPC servicer；工具名默认取能力约定 leaf：`search`、`save`、`compact`。`driver` 由 Robonix API 以 gRPC 提供。
+参考实现：Robonix 源码中的 [`services/memsearch`](https://github.com/syswonder/robonix/tree/181d3eb974fd495a795ed120a0a4c6e6f342d179/services/memsearch)（`memsearch[onnx]` + `milvus-lite`）。三个记忆操作都用 `@memory.mcp(...)` 暴露，不挂载业务 gRPC servicer。MCP 服务内部的工具名默认取 leaf `search`、`save`、`compact`，但 Atlas 发现与 RTDL 路由仍使用完整 `robonix/service/memory/search`、`robonix/service/memory/save` 和 `robonix/service/memory/compact`。Driver 由 Robonix API 以 gRPC 提供。
 
 ## 生命周期与运行行为
 

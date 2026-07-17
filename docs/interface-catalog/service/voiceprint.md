@@ -8,6 +8,8 @@ title: 声纹
 
 能力约定 TOML 在 `capabilities/service/voiceprint/`，接口定义语言（Interface Definition Language，IDL）文件在 `capabilities/lib/voiceprint/`。
 
+> 表中的命名空间 Driver 是已有软件包的兼容接口。新软件包省略 Driver 条目时由框架自动使用共享的 `robonix/lifecycle/driver`；显式共享仍受支持，两种 Driver 只能选择一条。详见[生命周期兼容流程](../../integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+
 ## 接口
 
 | 能力约定 ID | 模式 | 默认实现传输 | 载荷（IDL） | 能力约定 TOML |
@@ -24,7 +26,7 @@ title: 声纹
 
 若声纹提供方不可用，交互服务可把客户端提示作为身份回退值，但它不能绕过已启用的访问控制。访问控制启用时，只有已注册、置信度达到阈值且位于允许列表中的声纹可以通过；其他语音请求都会被拒绝。
 
-参考实现：Robonix 源码中的 [`services/voiceprint`](https://github.com/syswonder/robonix/tree/edb7606c8dc57bc3957e122bcaff1669d0154df1/services/voiceprint)，使用 SpeechBrain ECAPA-TDNN embedding 与余弦相似度，模型来自 ModelScope 的 `speechbrain/spkrec-ecapa-voxceleb`。注册数据持久化到 `<data_dir>/enrolled.json`，写入通过临时文件和原子替换完成。
+参考实现：Robonix 源码中的 [`services/voiceprint`](https://github.com/syswonder/robonix/tree/181d3eb974fd495a795ed120a0a4c6e6f342d179/services/voiceprint)，使用 SpeechBrain ECAPA-TDNN embedding 与余弦相似度，模型来自 ModelScope 的 `speechbrain/spkrec-ecapa-voxceleb`。注册数据持久化到 `<data_dir>/enrolled.json`，写入通过临时文件和原子替换完成。
 
 ## 生命周期与配置
 

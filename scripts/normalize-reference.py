@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Normalize rbnx-generated Markdown for Docusaurus without changing content."""
+"""Normalize rbnx-generated Markdown and preserve declared legacy URL anchors."""
 
 from __future__ import annotations
 
@@ -20,6 +20,9 @@ IDL_INDEX_BLOCK = re.compile(
     r'\n+<details className="idl-package-index">.*?</details>\n+',
     re.DOTALL,
 )
+RETIRED_IDL_FRAGMENT_COMPATIBILITY = {
+    'soma-srv-getsensorextrinsics-srv': 'soma/srv/GetSensorExtrinsics.srv',
+}
 
 
 def idl_packages(text: str) -> list[str]:
@@ -32,6 +35,33 @@ def idl_packages(text: str) -> list[str]:
         if not in_fence and re.fullmatch(r'## [A-Za-z0-9_]+', line):
             packages.append(line.removeprefix('## '))
     return packages
+
+
+def append_retired_idl_fragment_anchors(text: str) -> str:
+    """Keep archived fragment URLs valid without advertising retired APIs."""
+    missing = [
+        (anchor, label)
+        for anchor, label in RETIRED_IDL_FRAGMENT_COMPATIBILITY.items()
+        if f'id="{anchor}"' not in text
+    ]
+    if not missing:
+        return text
+
+    lines = [
+        '',
+        '## 已移除接口的 URL 兼容锚点',
+        '',
+        '> 下列锚点只用于保持旧版文档 URL 可跳转，不表示接口仍存在或可在新部署中使用。',
+        '',
+    ]
+    for anchor, label in missing:
+        lines.extend(
+            [
+                f'<span id="{anchor}"></span>',
+                f'- `{label}` 已从当前固定修订的 IDL 目录移除。',
+            ]
+        )
+    return text.rstrip() + '\n' + '\n'.join(lines) + '\n'
 
 
 def normalize(text: str) -> str:
@@ -65,6 +95,7 @@ def normalize(text: str) -> str:
             f'{links}\n\n</details>\n'
         )
         text = text[:first_package] + index + text[first_package:]
+        text = append_retired_idl_fragment_anchors(text)
     return text
 
 

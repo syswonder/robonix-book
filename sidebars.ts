@@ -37,6 +37,7 @@ const sidebars: SidebarsConfig = {
       label: '理解 Robonix',
       items: [
         'architecture/components',
+        'architecture/runtime-communication',
         'architecture/namespace-and-contracts',
         'architecture/atlas',
         'background/eaios',

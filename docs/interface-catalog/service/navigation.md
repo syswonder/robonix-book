@@ -4,9 +4,11 @@ title: 导航
 <span id="导航-robonixservicenavigation"></span>
 # 导航
 
-导航服务承担**目标式**运动：消费方给出地图坐标系中的目标，服务内部完成路径规划与避障。当前参考实现由 Nav2 产生速度，并经最终速度保护器发布 ROS `/cmd_vel`；底盘如何接收该话题由机器人部署完成。它不解析 `primitive/chassis/twist_in` 能力约定。智能体和规划器应调用导航的模型上下文协议（Model Context Protocol，MCP）工具，不直接生成瞬时速度命令。
+导航服务承担**目标式**运动：消费方给出地图坐标系中的目标，服务内部完成路径规划与避障。当前参考实现由 Nav2 产生速度，并经最终速度保护器发布 ROS 2 话题 `/cmd_vel`；底盘如何接收该话题由机器人部署完成。该话题名不是 `robonix/primitive/chassis/twist_in` 能力约定 ID，当前参考实现也不通过 Atlas 解析这条契约。智能体和规划器应调用导航的 MCP 能力，不直接生成瞬时速度命令。
 
 能力约定 TOML 在 `capabilities/service/navigation/`；直接使用的接口定义语言（Interface Definition Language，IDL）文件位于 `capabilities/lib/{navigation,lifecycle,common_interfaces}/`。
+
+> 表中的命名空间 Driver 是已有软件包的兼容接口。新软件包省略 Driver 条目时由框架自动使用共享的 `robonix/lifecycle/driver`；显式共享仍受支持，两种 Driver 只能选择一条。详见[生命周期兼容流程](../../integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
 
 ## 接口
 

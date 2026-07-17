@@ -3,9 +3,13 @@
 
 Atlas 是 Robonix 的能力提供方（Provider）注册、能力发现和通道记账服务。它保存“谁提供什么能力、当前处于什么状态、应通过哪种传输连接”等控制面信息，但不代理 gRPC、ROS 2 或 MCP 的数据流量。
 
+本页侧重 Atlas 控制面。能力约定模式、三种传输的数据路径和跨组件调用顺序见[运行时通信](runtime-communication.md)。
+
 ## 提供方与能力
 
 Atlas 只定义三种提供方类型：
+
+下表是提供方分类的概念摘录，不是可调用 API 或部署清单。
 
 | 类型 | 典型职责 |
 |---|---|
@@ -49,6 +53,8 @@ INACTIVE   -> Driver(CMD_ACTIVATE) -> ACTIVE
 消费者应检查提供方是否为 `ACTIVE`。Atlas 会记录状态，但 `ConnectCapability` 本身不会因提供方非 `ACTIVE` 而拒绝连接。技能通常在初始化后保持 `INACTIVE`，由 Executor 在首次调用时激活。
 
 ## 三种传输
+
+下表是 Atlas 注册信息中的传输绑定摘录；完整接口形态与选择原则见[运行时通信](runtime-communication.md#接口模式与传输方式)。
 
 | 传输方式 | 绑定参数 | 访问地址示例 | 典型用途 |
 |---|---|---|---|
@@ -95,7 +101,7 @@ Python 提供方默认查找软件包根目录的 `CAPABILITY.md`。提供方在
 - `capability_md_path`：仅用于诊断；容器内路径不保证能被宿主机访问。
 - `capability_md`：完整 Markdown 内容；这是跨主机、跨容器的可移植数据。
 
-Pilot 只把提供方 ID、类型和文档元数据中的简短 `description` 放入提示词。当需要完整说明时，模型调用 Executor 的内置操作 `read_capability_doc`，并传入 `provider_id`。该操作从 Atlas 读取已注册的内容。
+Pilot 会把每条 MCP 能力的提供方 ID、由能力约定派生的展示名、能力实例 `description` 和 `input_schema_json` 放入当轮能力目录。对于注册了 `CAPABILITY.md` 的提供方，Pilot 还会列出提供方 ID、类型和文档前置元数据中的简短 `description`。当需要完整说明时，模型调用 Executor 的内置操作 `read_capability_doc`，并传入 `provider_id`。该操作从 Atlas 读取已注册的文档内容。
 
 因此，能力文档流程中不要让模型猜文件路径，也不要用 `read_file` 读取提供方的 `CAPABILITY.md`。
 
@@ -113,6 +119,8 @@ Python 提供方框架默认每 30 秒发送一次心跳；Executor、Pilot、So
 
 ## 主要 RPC
 
+下表仅列出最常用的 Atlas RPC **接口摘录**。请求/响应字段、枚举和完整服务定义以 [`system/atlas/proto/atlas.proto`](https://github.com/syswonder/robonix/blob/181d3eb974fd495a795ed120a0a4c6e6f342d179/system/atlas/proto/atlas.proto) 为准。
+
 | RPC | 作用 |
 |---|---|
 | `RegisterPrimitive` / `RegisterService` / `RegisterSkill` | 注册提供方身份 |
@@ -124,4 +132,6 @@ Python 提供方框架默认每 30 秒发送一次心跳；Executor、Pilot、So
 | `QueryContract` / `ListContracts` | 查询标准能力约定描述文件 |
 | `InspectAtlas` | 获取提供方、能力和通道的调试快照 |
 
-Atlas 的线协议定义位于 `system/atlas/proto/atlas.proto`。标准能力约定描述文件位于 Robonix 源码树的 `capabilities/`。
+未显式声明 Driver 时，运行时为提供方选择共享的 `robonix/lifecycle/driver`；清单也可以显式写出该约定。已有软件包可显式保留一条 `<provider-namespace>/driver`。每个提供方始终有且只有一条 Driver；Atlas 把两种约定都识别为 Driver，并会拒绝同一提供方同时声明两条生命周期入口。
+
+Atlas 的线协议定义位于 `system/atlas/proto/atlas.proto`。标准能力约定描述文件位于 Robonix 源码树的 `capabilities/`；它们如何映射到 ROS 2、gRPC 与 MCP 见[运行时通信](runtime-communication.md)。

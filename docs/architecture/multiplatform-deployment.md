@@ -16,14 +16,18 @@ Robonix 的机器人部署清单可以为每个软件包实例选择不同的软
 部署项可用 `manifest:` 选择同一软件包中的另一个文件：
 
 ```yaml
-system:
-  scene:
+service:
+  - name: mapping
+    url: https://github.com/syswonder/service-map-rbnx
+    branch: main
     manifest: package_manifest.jetson-native.yaml
+    config:
+      params_file: config/rtabmap_params.yaml
 ```
 
-`rbnx build -f robonix_manifest.yaml` 使用该文件的 `build:`；`rbnx boot` 内部执行 `rbnx start --manifest <file>`，使用同一文件的 `start:` 和 `stop:`。文件不存在时直接失败，不会静默回退。场景服务当前只从 `system.scene` 读取 `manifest`；运行参数应按[软件包与部署清单规范](../integration-guide/packaging-spec.md)使用 `RBNX_CONFIG_FILE` 包装脚本传入。
+`rbnx build -f robonix_manifest.yaml` 使用选中清单的 `build:`；`rbnx boot` 把同一选择传给内部 `rbnx start --manifest <file>` 执行 `start:`，并保存该清单的可选 `stop:` 供受管关闭流程使用。`rbnx start` 本身不执行 `stop:`。指定文件不存在时直接失败，不会静默回退。
 
-常见文件名是约定，不是 CLI 枚举：
+下面是常见文件名；`manifest:` 接受的是软件包中实际存在的文件名：
 
 | 文件名示例 | 通常表示 |
 |---|---|
@@ -35,31 +39,30 @@ system:
 
 ## 一个目标清单应包含什么
 
-不同目标清单应保持相同的软件包身份与公开能力，只改变构建和运行实现：
+不同目标清单应保持相同的软件包身份与公开能力，只改变构建和运行实现。下面只展示与目标变体有关的清单片段；脚本正文由软件包仓库提供：
 
-```yaml
+```yaml title="package_manifest.jetson-native.yaml（片段）"
 manifestVersion: 1
 
 package:
-  name: com.robonix.system.scene
-  version: 0.1.0
-  description: Scene — semantic + geometric live map (Jetson + native host-ROS2 target).
+  name: robonix.service.mapping
+  version: 0.4.0
+  description: SLAM mapping service.
+  tags: [service, mapping, slam]
+  maintainers:
+    - Your Name <you@example.com>
   license: MulanPSL-2.0
 
 build: RBNX_BUILD_TARGET=jetson-native bash scripts/build.sh
-start: ROBONIX_SCENE_FORCE=native bash scripts/start.sh
+start: ROBONIX_MAPPING_FORCE=native bash scripts/start.sh
+stop: ROBONIX_MAPPING_FORCE=native bash scripts/stop.sh
 
 capabilities:
-  - name: robonix/system/scene/list_objects
-  - name: robonix/system/scene/get_robot_context
-  - name: robonix/system/scene/goal_near
-  - name: robonix/system/scene/goal_room
-  - name: robonix/system/scene/get_scene_graph
-  - name: robonix/system/scene/get_object_context
-  - name: robonix/system/scene/list_relations
+  - name: robonix/service/map/occupancy_grid
+  - name: robonix/service/map/pose
 ```
 
-上例中的 `RBNX_BUILD_TARGET` 和 `ROBONIX_SCENE_FORCE` 是场景服务脚本的实现约定；`rbnx` 只执行清单中的 shell 命令，不解释这些变量。其他软件包可以使用自己的变量名，但必须在 README 和目标清单中说明。
+同一仓库的各目标清单必须保持相同的 `package.name`、版本、发布元数据和公开能力；只改变目标相关的 `build`、`start`、可选 `stop` 与平台前置条件。上例中的 `RBNX_BUILD_TARGET` 和 `ROBONIX_MAPPING_FORCE` 是软件包脚本的实现约定；`rbnx` 只执行清单中的 shell 命令，不解释这些变量。
 
 ## 本机与容器的边界
 
@@ -132,7 +135,7 @@ service:
         scan: front_lidar
 ```
 
-`rbnx` 把 `params_file` 等软件包配置当作不透明值，不会代替软件包解析任意文件路径。只有声明生命周期驱动能力约定的提供方会通过 `Driver(CMD_INIT, config_json)` 收到这份配置，并应在 `on_init` 中明确相对路径以部署目录、软件包目录还是其他目录为基准。没有生命周期驱动的软件包不会从这条路径收到 `config:`，必须在自己的启动实现中定义配置入口。上游软件包的配置组合兼容性和路径约定应以该软件包当前实现为准。
+`rbnx` 把 `params_file` 等软件包配置当作不透明值，不会代替软件包解析任意文件路径。每个受管提供方都会通过自己唯一的 `Driver(CMD_INIT, config_json)` 收到这份配置；清单未显式声明 Driver 时，框架自动选择共享 `robonix/lifecycle/driver`。提供方应在 `on_init` 中明确相对路径以部署目录、软件包目录还是其他目录为基准。只有不作为 Robonix 提供方注册的外部进程不走这条配置通道，必须在自己的启动实现中定义配置入口。上游软件包的配置组合兼容性和路径约定应以该软件包当前实现为准。
 
 ## ROS 2、RMW 与 Zenoh
 

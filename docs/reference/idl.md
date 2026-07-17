@@ -6,7 +6,7 @@ hide_table_of_contents: true
 
 > 由 `rbnx docs` 自动生成，请勿手改。
 
-本页收录从 IDL 包含根（`rbnx docs --include`，默认 `capabilities/lib/`）收集的全部 ROS IDL（`.msg` / `.srv`）原文，按 ROS 包分组（共 304 个文件）。[能力约定参考](contracts.md) 的载荷列链到这里对应的锚点。
+本页收录从 IDL 包含根（`rbnx docs --include`，默认 `capabilities/lib/`）收集的全部 ROS IDL（`.msg` / `.srv`）原文，按 ROS 包分组（共 302 个文件）。[能力约定参考](contracts.md) 的载荷列链到这里对应的锚点。
 
 <details className="idl-package-index">
 <summary>展开 ROS package 索引</summary>
@@ -4178,26 +4178,6 @@ float64 circumscribed_radius_m  # smallest disc enclosing the polygon
 SomaHealthSnapshot snapshot
 ```
 
-### GetSensorExtrinsics `srv` {/* #soma-srv-getsensorextrinsics-srv */}
-
-`soma/srv/GetSensorExtrinsics.srv`
-
-```rosidl
-# Get every sensor's static mount transform (read from URDF). Replaces
-# the per-primitive `primitive/<area>/extrinsics` contract pattern with
-# a single source of truth — the body description package owns the
-# kinematic chain, primitives just publish their data streams.
-#
-# Filter via `sensor_kind` to narrow the response (empty = all):
-#   ""        → every sensor in the URDF
-#   "camera"  → just RGBD / mono cameras
-#   "lidar"   → just 2D / 3D lidars
-#   "imu"     → just imus
-string sensor_kind  # filter; empty = all
----
-soma/SensorExtrinsic[] sensors
-```
-
 ### GetUrdf `srv` {/* #soma-srv-geturdf-srv */}
 
 `soma/srv/GetUrdf.srv`
@@ -4303,23 +4283,6 @@ uint8 INVALID=3
 float64 value
 string unit
 uint8 quality
-```
-
-### SensorExtrinsic `msg` {/* #soma-msg-sensorextrinsic-msg */}
-
-`soma/msg/SensorExtrinsic.msg`
-
-```rosidl
-# One static-mounted sensor's extrinsics: where it sits relative to a
-# parent frame (typically `base_link`). Read from the URDF at soma
-# startup; consumers (scene's camera-to-world projection, multi-cam
-# fusion) call `system/soma/sensor_extrinsics` instead of looking up
-# tf2 themselves so the dependency graph is auditable via atlas.
-
-string sensor_name        # e.g. "rgb_camera", "depth_camera", "lidar3d"
-string parent_frame       # e.g. "base_link"
-string child_frame        # e.g. "camera_color_optical_frame"
-geometry_msgs/Transform transform   # parent → child
 ```
 
 ### SomaHealthSnapshot `msg` {/* #soma-msg-somahealthsnapshot-msg */}
@@ -5999,3 +5962,10 @@ string  users_json       # JSON array: [{"user_id":"...","user_name":"..."}, ...
 uint32  count            # convenience: number of users in users_json
 string  error            # non-empty on failure
 ```
+
+## 已移除接口的 URL 兼容锚点
+
+> 下列锚点只用于保持旧版文档 URL 可跳转，不表示接口仍存在或可在新部署中使用。
+
+<span id="soma-srv-getsensorextrinsics-srv"></span>
+- `soma/srv/GetSensorExtrinsics.srv` 已从当前固定修订的 IDL 目录移除。

@@ -8,7 +8,9 @@ title: Robonix 开发手册
 
 Robonix 是面向具身智能机器人的操作系统运行时。它把本体驱动、感知与导航服务、可复用技能和模型规划连接成一套可发现、可组合、可观测的系统，使同一套模型与技能能够部署到不同机器人上。
 
-本手册面向第一次运行 Robonix、接入新机器人、开发 Robonix 软件包（Package）以及查询标准接口的读者。软件包可以实现原语（Primitive）、服务（Service）或技能（Skill）。
+本手册提供从首次运行到机器人接入、能力开发和接口查询的完整路径。第一次使用时，从 Webots 示例开始；已有机器人或功能代码时，直接进入对应的接入指南。
+
+## 从这里开始
 
 <div class="task-grid">
   <a class="task-card" href="/getting-started/quickstart">
@@ -33,14 +35,9 @@ Robonix 是面向具身智能机器人的操作系统运行时。它把本体驱
   </a>
 </div>
 
-## Robonix 中的交付单元
+## 深入了解
 
-- **机器人部署仓库**描述一台具体机器人：完整的机器人描述文件（URDF）、本体服务配置、系统监听地址、要启动的软件包，以及本体专属的建图与导航参数。
-- **原语**直接连接硬件或硬件数据源，例如底盘、相机、雷达、惯性测量单元（IMU）和音频设备。
-- **服务**提供可替换的系统能力，例如建图、导航、语音与记忆。
-- **技能**封装模型可调用的语义行为，是最接近上层应用的可复用能力单元。
-- **能力约定（Contract）**定义能力的稳定接口与载荷；**能力目录（Atlas）**保存运行时提供方、传输绑定、生命周期状态和通道记录。
-- **规划器（Pilot）**把用户意图转换为机器人任务描述语言（Robot Task Description Language，RTDL）方案；**执行器（Executor）**通过模型上下文协议（Model Context Protocol，MCP）调用方案中的能力；**交互服务（Liaison）**承接文本和语音交互。
-- **本体服务（Soma）**提供本体描述和运行事实；**场景服务（Scene）**维护当前环境估计；**健康服务（Vitals）**输出本体与系统模块的健康判断。
-
-第一次阅读不需要先掌握这些内部组件。先完成[快速上手](getting-started/quickstart.md)，再按实际角色进入[本体接入](integration-guide/index.md)、[开发者指南](developer-guide.md)或[接口目录](interface-catalog/index.md)。
+- [系统组件](architecture/components.md)：了解用户输入、模型规划、任务执行、本体状态和环境状态如何协作。
+- [运行时通信](architecture/runtime-communication.md)：了解能力如何注册、发现，以及 ROS 2、gRPC 和模型上下文协议（MCP）各自承担什么通信任务。
+- [软件包目录](integration-guide/package-catalog.md)：浏览或发布可复用的原语、服务、技能和机器人部署仓库。
+- [参与维护](contributing/documentation.md)：在本地预览、检查并提交文档修改。

@@ -13,12 +13,16 @@
 原语、服务和技能部署项的 `name` 是运行时提供方 ID；非内置系统软件包使用 `system:` 下的键名。一个软件包可以在同一部署中出现多次，但每个实例必须使用不同的 ID。对于 `url:` 软件包，代码缓存目录按 Git 仓库名创建，而不是按实例名创建；多个实例可以复用同一份代码检出。
 
 ```yaml
-system:
-  scene:
+service:
+  - name: mapping
+    url: https://github.com/syswonder/service-map-rbnx
+    branch: main
     manifest: package_manifest.jetson-native.yaml
+    config:
+      params_file: config/rtabmap_params.yaml
 ```
 
-这里的 `manifest:` 选择该软件包目录中的软件包清单文件。文件不存在时，构建和启动都会直接报错，不会回退到默认清单。Scene 当前不会读取 `system.scene` 中除 `manifest` 以外的运行参数；相机提供方、`web_port` 等配置必须通过下文的 `RBNX_CONFIG_FILE` 启动包装脚本传入。
+这里的 `manifest:` 选择该软件包目录中的完整软件包清单。构建使用其中的 `build:`，启动使用 `start:`，受管关闭流程保存并使用同一文件中的可选 `stop:`；指定文件不存在时直接失败，不会回退到默认清单。
 
 ## 构建阶段
 
@@ -55,6 +59,53 @@ rbnx build -f robonix_manifest.yaml
 
 每个内置系统块都会整体编码为 `--config-json`；当前二进制仍单独读取的字段（例如 `listen`、Atlas 地址和 Pilot 的 VLM 配置）还会转换为对应命令行参数。监听端口已被占用或 Pilot 必填参数为空时，`rbnx boot` 会在启动该组件前失败，避免连接到遗留进程。
 
+<span id="soma-sidecar-与进程配置"></span>
+
+#### Soma sidecar 与进程配置
+
+部署目录中的 `soma.yaml` 描述机器人本体；部署清单中的 `system.soma` 和可选的 `config` 文件配置 Soma **进程**。这两类 YAML 不能互换。只要部署包含 `primitive:` 或 `skill:`，即使没有写 `system.soma`，`rbnx boot` 也会自动补出该系统块。若 `robot_yaml` 缺失、为 `null` 或为空字符串，并且当前 `-f` 选中的部署清单同目录存在字面文件名 `soma.yaml`，启动器会自动使用该 sidecar。
+
+显式配置示例如下；通常只需要覆盖实际不同于默认值的字段：
+
+```yaml
+system:
+  soma:
+    listen: 127.0.0.1:50091
+    atlas_endpoint: 127.0.0.1:50051
+    provider_id: soma
+    robot_yaml: soma.yaml
+    config: config/soma-runtime.yaml
+    log: info
+    runtime_reader_command: [python3, -u, "{script}", "{config}"]
+```
+
+`robot_yaml` 和 `config` 的相对路径都以当前部署清单所在目录为基准；绝对路径保持不变。启动器还会把 `deployment_manifest` 固定为本次 `rbnx boot -f` 实际选择的清单，避免 Soma 从 sidecar 邻近位置误选另一个部署配置。`atlas_endpoint` 也接受兼容别名 `atlas`。Soma 自身的默认值为 Atlas `127.0.0.1:50051`、监听地址 `127.0.0.1:50091`、提供方 ID `soma`。
+
+整个 `system.soma` 块会通过 `--config-json` 到达 Soma；当前除上面的类型化启动字段外，Soma 还从中读取 `runtime_reader_command`，Scribe 读取 `log`。可选的 `config` 文件主要用于手工启动或运维固定参数；它和本体 `soma.yaml` 是两个文件。若手工启动 Soma 而没有提供本体文件，错误签名是：
+
+```text
+missing robot_yaml: set --robot-yaml, ROBONIX_SOMA_ROBOT_YAML, or provide it in --config <yaml>
+```
+
+启动诊断应同时检查前台阶段、Atlas 能力和 Soma 自己的日志：
+
+```bash
+rbnx boot -v -f robonix_manifest.yaml
+rbnx caps -v
+rbnx inspect
+rbnx logs --list-tags
+rbnx logs -t soma -l warn
+rbnx logs -t soma -f
+```
+
+从其他目录读取既有日志时显式指定部署日志目录：
+
+```bash
+rbnx logs -d /path/to/deploy/rbnx-boot/logs -t soma --json
+```
+
+成功启动后，`rbnx caps -v` 应显示提供方 `soma` 及其 5 条本体接口；还要核对由 Soma 第一阶段管理的原语是否已经进入 `ACTIVE`。只有进程存在、但能力缺失或日志持续出现 `soma/state` 警告，不算本体服务就绪。
+
 ### 2. 本体服务启动原语
 
 只要部署声明了 `primitive:` 或 `skill:`，`rbnx boot` 就会确保本体服务（Soma）已配置为读取当前选中的部署清单。本体服务在第一阶段按部署清单启动原语，并等待它们完成注册和生命周期初始化。`rbnx` 通过 Atlas 观察这些提供方的状态，全部就绪后才继续。
@@ -67,10 +118,10 @@ rbnx build -f robonix_manifest.yaml
 2. 执行 `rbnx start -p <package>`。
 3. 等待恰好一个新提供方注册。
 4. 校验注册的提供方 ID 与部署项 `name` 一致。
-5. 如果提供方声明了 `*/driver` gRPC 能力约定，调用 `Driver(CMD_INIT)`，并把部署项 `config:` 编码为 `config_json`。
+5. 解析清单选择的 Driver；未显式声明时使用共享 `robonix/lifecycle/driver`。确认提供方只注册了兼容的唯一 Driver，调用 `Driver(CMD_INIT)`，并把部署项 `config:` 编码为 `config_json`。已有软件包可显式保留唯一的命名空间 Driver。
 6. 对非技能提供方再调用 `Driver(CMD_ACTIVATE)`，等待其进入 `ACTIVE`。
 
-没有生命周期驱动能力约定的软件包必须自行完成就绪判断与状态上报。启动器看到提供方注册后会直接显示 `ACTIVE (no driver)`；这个标签只证明注册成功，不证明其服务接口已经可调用。此类软件包必须提供自己的健康检查，并在验收时单独调用。
+生命周期 Driver 是每个受管提供方的标准管理接口。清单省略 Driver 或显式选择共享 Driver 时，运行时必须只注册共享 `robonix/lifecycle/driver`，不会向旧命名空间 Driver 降级。旧清单若精确声明 `<namespace>/driver`，可以继续使用对应的完整旧 Driver；当这一对旧生成服务完全不存在、运行时只注册带受管兼容标记的共享 Driver 时，也允许单向迁移并输出警告。旧服务只出现一部分、缺失、命名空间不匹配或同时注册多个 Driver 都会失败。缺少生命周期回调时，框架记录警告并执行空操作，原语或服务仍可在初始化和激活后进入 `ACTIVE`。
 
 某个非内置软件包启动失败时，`rbnx boot` 会将它列入最终 `failures` 段，并保留其他已成功启动的组件。内置系统组件的启动前校验或进程创建失败会终止本次启动并清理已启动的子进程。除 Soma 的第一阶段就绪检查外，当前启动器不会统一等待每个内置组件的业务健康接口，因此“进程已创建”不等于“业务已就绪”。
 
@@ -80,7 +131,7 @@ rbnx build -f robonix_manifest.yaml
 
 ## 配置如何到达提供方
 
-部署项的 `config:` 不是一组自动导出的环境变量。对声明了 `*/driver` 的软件包提供方，`rbnx` 或本体服务将该配置序列化为 JSON，并通过 `Driver(CMD_INIT, config_json)` 发送；提供方应在 `on_init` 中解析。没有生命周期驱动能力约定的软件包不会从这条路径收到 `config:`，需要由其启动实现明确定义配置入口。内置系统组件则使用上述 `--config-json` 和类型化命令行参数，不经过 `Driver(CMD_INIT)`。
+部署项的 `config:` 不是一组自动导出的环境变量。`rbnx` 或本体服务将该配置序列化为 JSON，并通过最终解析出的唯一 `Driver(CMD_INIT, config_json)` 发送；提供方实现了 `on_init` 时在其中解析，未实现时框架记录警告并忽略空操作中的配置。新软件包由框架自动使用共享 Driver；通过上面的单向兼容规则运行的旧清单仍使用相同线协议。内置系统二进制继续使用 `--config-json` 和类型化命令行参数。
 
 `rbnx` 直接管理的非内置系统软件包和服务会在 `<deploy>/rbnx-boot/instances/<provider-id>.json` 保存一份实例配置，供诊断使用；该文件路径不会传给提供方。本体服务直接管理的原语和技能从部署清单内存值发送配置，当前不依赖该实例文件。
 
@@ -95,22 +146,18 @@ rbnx start -p /path/to/package \
 
 `--set` 覆盖 `--config` 中的同名字段；两者最终仍通过 `Driver(CMD_INIT)` 发送。
 
-Scene 当前没有 Driver 配置通道，是上述规则的例外。把运行参数保存在部署仓库的 `config/scene.yaml`：
+Scene 作为非内置系统软件包使用同一条 Driver 配置路径。配置直接写在机器人部署清单中，不需要单独的 Scene 配置文件：
 
 ```yaml
-camera_provider_id: front_camera
-web_port: 50107
+system:
+  scene:
+    manifest: package_manifest.jetson-native.yaml
+    config:
+      camera_provider_id: front_camera
+      web_port: 50107
 ```
 
-再由部署仓库的启动包装脚本导出绝对路径：
-
-```bash
-DEPLOY_DIR="$(cd "$(dirname "$0")" && pwd)"
-export RBNX_CONFIG_FILE="$DEPLOY_DIR/config/scene.yaml"
-exec rbnx boot -f "$DEPLOY_DIR/robonix_manifest.yaml" "$@"
-```
-
-不要把 `camera_provider_id`、`web_port` 等字段写进 `system.scene` 并假定它们会生效。
+`manifest` 选择 Scene 的目标软件包清单；`config` 在 `CMD_INIT` 中送到 Scene。旧的扁平 `system.scene` 字段和 `RBNX_CONFIG_FILE` 只用于既有部署迁移，并会输出弃用提示。
 
 ## 日志与状态
 
@@ -120,21 +167,32 @@ exec rbnx boot -f "$DEPLOY_DIR/robonix_manifest.yaml" "$@"
 <deploy>/rbnx-boot/logs/
 ```
 
-软件包日志文件名使用部署项的提供方 ID，例如 `mapping.log`。系统启动器日志写入 `bootstrap.log`。推荐的检查顺序是：
+软件包日志文件名使用部署项的提供方 ID，例如 `mapping.log`。系统启动器日志写入 `bootstrap.log`。`rbnx logs` 默认读取当前工作目录下的 `./rbnx-boot/logs`，或环境变量 `SCRIBE_LOG_DIR` 指定的目录；它不会根据部署清单自动寻找目录。从其他目录检查日志时必须传 `-d`。
+
+先读取已经写入的历史记录：
 
 ```bash
-rbnx caps -v
-rbnx tools
-rg -n "ERROR|FAIL|timeout|Deferred" rbnx-boot/logs
+cd /path/to/robot-deploy
+rbnx logs --list-tags
+rbnx logs -t mapping -l warn
+rbnx logs -d /path/to/robot-deploy/rbnx-boot/logs -t mapping --json
 ```
 
-普通模式使用可回写的启动动画。需要完整逐行日志时使用：
+不带 `-f` 时，`rbnx logs` 合并已有的 Scribe JSON-lines 记录并按时间排序。`-t` 可以重复使用，多个标签按“或”过滤；`-l` 接受 `debug`、`info`、`warn` 和 `error`。跟随模式只显示命令启动后追加到当时已经存在的日志文件中的新记录，不回放历史，也不会自动发现之后才创建的日志文件：
+
+```bash
+rbnx logs -t mapping -t nav2 -l info -f
+```
+
+每次 `rbnx boot` 会清空本次日志目录中已有的 `*.log`；需要保留故障现场时，应在下一次启动前复制该目录。
+
+普通模式使用可回写的启动动画。需要在启动终端实时查看逐行状态时使用：
 
 ```bash
 rbnx boot -v -f robonix_manifest.yaml
 ```
 
-`-v` 会关闭启动动画和光标回写，并将日志组件（Scribe）的输出追加到终端。
+`-v` 会关闭 spinner 和光标回写，并实时输出 INFO、WARN 和 ERROR；它不会启用 DEBUG。普通模式与 `-v` 模式仍写入同一组 Scribe 日志文件。
 
 ## Webots 示例的实际进程边界
 
@@ -176,4 +234,4 @@ rbnx shutdown
 bash examples/webots/sim/stop.sh
 ```
 
-该脚本只停止 Webots 示例自己的 Compose 项目和启动脚本记录的 RViz2 进程，不停止 Atlas、Pilot、能力提供方或其他 Robonix 进程，因此不能代替 `rbnx shutdown`。真实机器人部署应使用 `rbnx shutdown`，并由各软件包的 `stop:` 或关闭处理函数释放硬件资源。
+该脚本只停止 Webots 示例自己的 Compose 项目和启动脚本记录的 RViz2 进程，不停止 Atlas、Pilot、能力提供方或其他 Robonix 进程，因此不能代替 `rbnx shutdown`。真实机器人部署应使用 `rbnx shutdown`。受管关闭依次尝试 Driver `CMD_SHUTDOWN`、可选的 `stop:` hook，再以 SIGTERM/SIGKILL 终止受管进程组。没有额外外部资源的软件包可以省略 `stop:`；创建了脱离受管进程组的守护进程、容器或设备会话时，必须由 Driver 或 `stop:` 可靠清理。

@@ -1,12 +1,12 @@
 # 以抓积木为例接入现有 Python 功能
 
-本页只讨论一个具体案例：已有 Python 程序能够通过厂商 SDK 驱动灵巧手抓取积木，现在要把这项功能接入 Robonix。示例假设目标积木已经完成识别和定位，重点说明硬件控制与抓取流程如何接入；如果原程序还直接访问相机或力传感器，也要分别接入对应原语。
+本页只讨论一个具体案例：已有 Python 程序能够通过厂商 SDK 控制普通机械臂和末端夹爪抓取积木，现在要把这项功能接入 Robonix。示例假设目标积木已经完成识别和定位，重点说明机械臂、夹爪控制与抓取流程如何接入；如果原程序还直接访问相机或力传感器，也要分别接入对应原语。
 
 ## 1. 先确定边界
 
 职责边界固定如下：
 
-- 连接灵巧手、发送关节命令、读取关节状态属于**原语**（Primitive）。
+- 连接机械臂和夹爪控制器、发送关节命令、读取关节状态属于**原语**（Primitive）。
 - 根据已定位的目标生成动作序列并完成一次抓取积木属于**技能**（Skill）。
 - 机器人部署仓库只选择这两个软件包，并填写本体相关配置。
 - Robonix 主仓库提供运行时、Python 接口和标准能力约定，不保存厂商 SDK 或抓取算法。
@@ -19,7 +19,7 @@
 
 | 仓库 | 保存的内容 |
 |---|---|
-| `primitive-<vendor>-hand-rbnx` | 厂商 SDK 适配、关节命令、关节状态、设备关闭与安全限制 |
+| `primitive-<vendor>-arm-rbnx` | 机械臂与夹爪的厂商 SDK 适配、关节命令、关节状态、设备关闭与安全限制 |
 | `skill-grasp-block-rbnx` | 原抓取算法、任务输入输出，以及对机械臂原语的调用 |
 | `robot-<vendor>-<model>` | 整机 URDF、Soma、部署清单和本体配置 |
 
@@ -27,23 +27,23 @@
 
 最短的标准迁移路径是：
 
-1. 在原抓取仓库中，把算法使用的 SDK 调用收敛成 `HandPort`；
-2. 新建灵巧手原语仓库，用标准关节命令和关节状态能力包装厂商 SDK；
+1. 在原抓取仓库中，把算法使用的 SDK 调用收敛成 `ArmPort`；
+2. 新建机械臂原语仓库，用标准关节命令和关节状态能力包装机械臂与夹爪的厂商 SDK；
 3. 在原抓取仓库中加入技能清单、能力约定和 Robonix 入口；
-4. 让技能通过 Atlas 连接灵巧手原语，不再导入厂商 SDK；
+4. 让技能通过 Atlas 连接机械臂原语，不再导入厂商 SDK；
 5. 在机器人部署仓库中引用两个软件包并完成整机验收。
 
-如果原脚本还直接访问相机、力传感器或其他设备，也要按同一原则改为对应标准原语；不能只拆灵巧手。
+如果原脚本还直接访问相机、力传感器或其他设备，也要按同一原则改为对应标准原语；不能把这些硬件访问继续留在技能中。
 
 ## 3. 整理现有抓取代码
 
 假设原脚本类似：
 
 ```python
-from vendor_sdk import Hand
+from vendor_sdk import RobotArm
 
-hand = Hand("192.168.1.20")
-hand.move_joints(names, positions)
+arm = RobotArm("192.168.1.20")
+arm.move_joints(names, positions)
 ```
 
 先把抓取算法改为依赖一个很小的硬件接口，不再导入厂商 SDK：
@@ -59,7 +59,7 @@ from existing_project.grasp import (
 )
 
 
-class HandPort(Protocol):
+class ArmPort(Protocol):
     def move_joints(
         self,
         names: list[str],
@@ -71,27 +71,27 @@ class HandPort(Protocol):
     def joint_positions(self) -> dict[str, float]: ...
 
 
-def grasp_block(hand: HandPort, target: str) -> tuple[bool, str]:
+def grasp_block(arm: ArmPort, target: str) -> tuple[bool, str]:
     target_pose = load_target_pose(target)
     for step in plan_grasp_sequence(target_pose):
-        hand.move_joints(
+        arm.move_joints(
             step.names,
             step.positions,
             step.tolerances,
             timeout_sec=step.timeout_sec,
         )
-    success = verify_grasp_result(target, hand.joint_positions())
+    success = verify_grasp_result(target, arm.joint_positions())
     return success, f"target={target}, grasp_confirmed={success}"
 ```
 
-`load_target_pose`、`plan_grasp_sequence` 和 `verify_grasp_result` 代表原项目中已经验证过的目标读取、接近、闭合、抬起与结果确认逻辑；接入时保留这些实现，只把每一步中的 SDK 调用改成 `HandPort`。`step.tolerances` 来自本体标定，旋转关节使用弧度，移动关节使用米。原脚本仍可使用一个 SDK 版 `HandPort` 做回归；Robonix 技能使用下一节的运行时版本。
+`load_target_pose`、`plan_grasp_sequence` 和 `verify_grasp_result` 代表原项目中已经验证过的目标读取、接近、闭合夹爪、抬起与结果确认逻辑；接入时保留这些实现，只把每一步中的 SDK 调用改成 `ArmPort`。`step.tolerances` 来自本体标定，旋转关节使用弧度，移动关节使用米。机械臂关节和夹爪关节都用名称区分，出现在同一组命令与状态中。原脚本仍可使用一个 SDK 版 `ArmPort` 做回归；Robonix 技能使用下一节的运行时版本。
 
 ## 4. 将厂商 SDK 接入机械臂原语
 
 从一个独立仓库创建原语骨架：
 
 ```bash
-rbnx package-new vendor_hand --type primitive --path ./primitive-vendor-hand-rbnx
+rbnx package-new vendor_arm --type primitive --path ./primitive-vendor-arm-rbnx
 ```
 
 把生成清单中的 `package.name`、`version`、`description`、`license`、`tags` 和 `maintainers` 改成原语仓库的真实信息，不要保留 `TODO` 或示例维护者。
@@ -99,8 +99,8 @@ rbnx package-new vendor_hand --type primitive --path ./primitive-vendor-hand-rbn
 完成接入后的原语仓库至少包含：
 
 ```text
-primitive-vendor-hand-rbnx/
-├── vendor_hand/
+primitive-vendor-arm-rbnx/
+├── vendor_arm/
 │   ├── __init__.py
 │   └── main.py
 ├── capabilities/
@@ -115,29 +115,28 @@ primitive-vendor-hand-rbnx/
 
 ```yaml title="package_manifest.yaml 中的 capabilities"
 capabilities:
-  - name: robonix/primitive/arm/driver
   - name: robonix/primitive/arm/joint_command
   - name: robonix/primitive/arm/joint_states
 ```
 
-三个约定分别负责生命周期、关节命令输入和关节状态输出。关节名、位置、速度和作用力使用 `sensor_msgs/JointState`；其中 `effort` 对旋转关节表示力矩，对移动关节表示力。夹爪关节也放在同一消息中。
+两个业务约定分别负责关节命令输入和关节状态输出；生命周期 Driver 由框架自动提供。关节名、位置、速度和作用力使用 `sensor_msgs/JointState`；其中 `effort` 对旋转关节表示力矩，对移动关节表示力。夹爪关节也放在同一消息中。
 
 原语的关键适配代码如下：
 
-```python title="vendor_hand/main.py"
+```python title="vendor_arm/main.py"
 import os
 import threading
 
 from robonix_api import Err, Ok, Primitive
 from sensor_msgs.msg import JointState
-from vendor_sdk import Hand
+from vendor_sdk import RobotArm
 
 provider = Primitive(
-    id=os.environ.get("RBNX_INSTANCE_NAME", "vendor_hand"),
+    id=os.environ.get("RBNX_INSTANCE_NAME", "vendor_arm"),
     namespace="robonix/primitive/arm",
 )
 settings: dict = {}
-sdk: Hand | None = None
+sdk: RobotArm | None = None
 active = False
 ros_bound = False
 hardware_lock = threading.Lock()
@@ -193,18 +192,18 @@ def activate():
         return Ok()
     candidate = None
     try:
-        candidate = Hand(settings["device_ip"])
+        candidate = RobotArm(settings["device_ip"])
         if not ros_bound:
             provider.create_subscription(
                 "robonix/primitive/arm/joint_command",
-                topic=settings.get("command_topic", "/vendor_hand/joint_command"),
+                topic=settings.get("command_topic", "/vendor_arm/joint_command"),
                 msg_type=JointState,
                 callback=handle_joint_command,
                 qos="reliable",
             )
             provider.create_publisher(
                 "robonix/primitive/arm/joint_states",
-                topic=settings.get("state_topic", "/vendor_hand/joint_states"),
+                topic=settings.get("state_topic", "/vendor_arm/joint_states"),
                 msg_type=JointState,
                 qos="best_effort",
             )
@@ -226,7 +225,7 @@ def activate():
         with hardware_lock:
             active = False
             sdk = None
-        return Err(f"failed to activate vendor hand: {exc}")
+        return Err(f"failed to activate vendor arm: {exc}")
 
 
 @provider.on_deactivate
@@ -268,8 +267,8 @@ config:
   device_ip: ""
 
   # ROS 2 绝对话题名；下列值也是默认值。
-  command_topic: /vendor_hand/joint_command
-  state_topic: /vendor_hand/joint_states
+  command_topic: /vendor_arm/joint_command
+  state_topic: /vendor_arm/joint_states
 
   # 状态读取周期，单位为秒；必须大于 0。
   state_period_sec: 0.02
@@ -279,16 +278,19 @@ config:
 
 ## 5. 将抓积木流程接入技能
 
-原抓取仓库已经存在，不能对同一目录运行 `rbnx package-new`。保留原算法模块，在仓库根目录补齐下面的 Robonix 文件：
+这里直接改造已有抓取仓库，不再运行 `rbnx package-new`。该命令用于从零创建一个新的软件包目录；在已有仓库中运行只会再创建一层目录，并不会自动改造现有代码。
+
+保留原来的抓取算法和测试，在仓库根目录新增 Robonix 清单、能力约定、启动脚本和适配入口。下面的 `skill-grasp-block-rbnx` 只是已有仓库的示例名称，不要求重建仓库或丢弃原有 Git 历史：
 
 ```text
 skill-grasp-block-rbnx/
+├── existing_project/            # 原有目标读取、轨迹生成和结果确认代码
+├── tests/                       # 原有测试继续保留
 ├── grasp_block/
 │   ├── __init__.py
-│   ├── grasp_core.py
-│   └── main.py
+│   ├── grasp_core.py          # 调用原算法，只依赖 ArmPort
+│   └── main.py                # Robonix 技能入口
 ├── capabilities/
-│   ├── driver.v1.toml
 │   ├── grasp.v1.toml
 │   ├── grasp_status.v1.toml
 │   ├── grasp_cancel.v1.toml
@@ -304,13 +306,7 @@ skill-grasp-block-rbnx/
 └── CAPABILITY.md
 ```
 
-如果希望复制脚手架中的基础文件，应在空的临时目录生成，再把所需文件合入现有仓库；不要覆盖原算法：
-
-```bash
-rbnx package-new grasp_block --type skill --path /tmp/grasp-block-scaffold
-```
-
-把生成清单中的 `package.name`、`version`、`description`、`license`、`tags` 和 `maintainers` 改成该仓库的真实信息，不要保留 `TODO` 或示例维护者。
+按照本节后续内容创建这些新增文件。`package_manifest.yaml` 中的 `package.name`、`version`、`description`、`license`、`tags` 和 `maintainers` 必须填写该仓库的真实信息。
 
 一次抓取会持续一段时间，不能把整个动作写成同步 MCP 调用。技能要提供 `grasp`、`grasp/status` 和 `grasp/cancel` 三条能力：首次调用立即返回 `run_id`，Executor 根据 `run_id` 自动轮询状态，并在方案取消时调用取消能力。三个接口分别定义为：
 
@@ -373,12 +369,10 @@ description = "Cancel a grasp run."
 type = "rpc"
 ```
 
-技能清单还要引用同命名空间的 Driver 约定，使 Executor 能在第一次调用前激活技能。按照[开发技能](../developer-guide.md#10-开发技能)创建 `driver.v1.toml`，然后将以下片段写入清单：
+技能清单只需列出业务能力约定。框架会自动提供共享生命周期 Driver，使 Executor 能在第一次调用前激活技能；软件包不创建自己的 Driver TOML：
 
 ```yaml title="package_manifest.yaml 中的 capabilities"
 capabilities:
-  - name: robonix/skill/grasp_block/driver
-    path: capabilities/driver.v1.toml
   - name: robonix/skill/grasp_block/grasp
     path: capabilities/grasp.v1.toml
   - name: robonix/skill/grasp_block/grasp/status
@@ -485,7 +479,7 @@ def update_state(msg: JointState) -> None:
         state_condition.notify_all()
 
 
-class RobonixHand:
+class RobonixArm:
     def __init__(self, run: GraspRun) -> None:
         self.run = run
 
@@ -537,7 +531,7 @@ def set_run_state(run: GraspRun, state: str, detail: str) -> None:
 def run_grasp(run: GraspRun) -> None:
     set_run_state(run, "RUNNING", "grasping block")
     try:
-        success, detail = grasp_block(RobonixHand(run), run.target)
+        success, detail = grasp_block(RobonixArm(run), run.target)
         if run.cancel_event.is_set() or lifecycle_stop.is_set():
             set_run_state(run, "CANCELED", "grasp canceled")
         elif success:
@@ -695,20 +689,20 @@ if __name__ == "__main__":
 
 ```yaml title="robonix_manifest.yaml 中的实例"
 primitive:
-  - name: dexterous_hand
-    url: https://github.com/<organization>/primitive-<vendor>-hand-rbnx
+  - name: robot_arm
+    url: https://github.com/<organization>/primitive-<vendor>-arm-rbnx
     branch: main
     config:
       device_ip: 192.168.1.20
-      command_topic: /dexterous_hand/joint_command
-      state_topic: /dexterous_hand/joint_states
+      command_topic: /robot_arm/joint_command
+      state_topic: /robot_arm/joint_states
 
 skill:
   - name: grasp_block
     url: https://github.com/<organization>/skill-grasp-block-rbnx
     branch: main
     config:
-      arm_provider_id: dexterous_hand
+      arm_provider_id: robot_arm
 ```
 
 部署实例 `name` 是运行时提供方 ID。技能通过 `arm_provider_id` 选择要控制的机械臂；它不使用厂商 IP，也不导入厂商 SDK。
@@ -740,7 +734,7 @@ rbnx describe --provider grasp_block
 验收结果必须满足：
 
 1. 导入模块和启动技能不会触发机械臂运动；
-2. `dexterous_hand` 为 `ACTIVE`，并声明关节命令和关节状态能力；
+2. `robot_arm` 为 `ACTIVE`，并声明关节命令和关节状态能力；
 3. `grasp_block` 首次调用前为 `INACTIVE`，`rbnx tools` 能看到抓取工具；
 4. 第一次自然语言调用只激活一次技能、只执行一次抓取，并返回真实结果；
 5. 抓取技能不导入厂商 SDK，切换机械臂时只修改部署绑定；

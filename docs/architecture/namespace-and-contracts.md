@@ -1,7 +1,7 @@
 # 命名空间与能力约定
 
 
-Robonix 使用**能力约定（Contract）**定义稳定、可复用的调用或数据接口，包括接口 ID、数据结构、交互方式、版本和类别。**能力（Capability）**是某个运行实例对一条能力约定的具体实现，并在运行时绑定传输方式（Transport）和访问地址（Endpoint）。
+Robonix 使用 **能力约定（Contract）** 定义稳定、可复用的调用或数据接口，包括接口 ID、数据结构、交互方式、版本和类别。**能力（Capability）** 是某个运行实例对一条能力约定的具体实现，并在运行时绑定传输方式（Transport）和访问地址（Endpoint）。
 
 ## 能力约定 ID 是接口名，不是设备 ID
 
@@ -31,8 +31,9 @@ rear_camera    + robonix/primitive/camera/rgb + gRPC
 | `robonix/service/*` | 可复用算法与服务，例如建图、导航和语音 |
 | `robonix/skill/*` | 面向任务的可复用技能 |
 | `robonix/system/*` | Robonix 系统接口，例如执行器、规划器、场景服务和本体服务 |
+| `robonix/lifecycle/*` | 跨提供方类别复用的生命周期管理接口 |
 
-这四类是能力约定命名空间。Atlas 的提供方类别仍只有原语、服务和技能；`system` 不是第四种提供方类别。
+这些前缀是能力约定命名空间。Atlas 的提供方类别仍只有原语、服务和技能；`system` 和 `lifecycle` 都不是新的提供方类别。每个新提供方由框架自动使用共享的 `robonix/lifecycle/driver`，该约定允许跨主命名空间注册。已有软件包的 `<provider-namespace>/driver` 仍兼容；维护和迁移步骤见[软件包与部署清单规范](../integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
 
 普通能力约定应位于提供方主命名空间下。若不一致，Robonix API 和 Atlas 会记录警告，并将能力标记为 `namespace_mismatch`，但不会阻止注册、启动或调用。确实需要跨命名空间复用的能力约定可以在描述文件中设置：
 

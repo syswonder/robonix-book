@@ -8,6 +8,8 @@ IMU 原语反馈惯性测量（角速度、线加速度、姿态），`topic_out
 
 能力约定 TOML 在 `capabilities/primitive/imu/`，接口定义语言（Interface Definition Language，IDL）文件在 `capabilities/lib/common_interfaces/sensor_msgs/`。
 
+> 表中的命名空间 Driver 是已有软件包的兼容接口。新软件包省略 Driver 条目时由框架自动使用共享的 `robonix/lifecycle/driver`；显式共享仍受支持，两种 Driver 只能选择一条。详见[生命周期兼容流程](../../integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+
 ## 接口
 
 | 能力约定 ID | 模式 | 载荷（IDL） | 能力约定 TOML |

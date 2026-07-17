@@ -52,12 +52,27 @@ package:
 
 build: bash scripts/build.sh
 start: bash scripts/start.sh
+stop: bash scripts/stop.sh
 
 capabilities:
-  - name: robonix/primitive/camera/driver
   - name: robonix/primitive/camera/rgb
   - name: robonix/primitive/camera/depth
 ```
+
+这份完整清单对应的最小仓库结构如下；三个脚本都必须以可执行模式提交，`stop.sh` 必须可重复执行：
+
+```text
+.
+├── package_manifest.yaml
+├── camera_driver/
+│   └── main.py
+└── scripts/
+    ├── build.sh
+    ├── start.sh
+    └── stop.sh
+```
+
+如果软件包没有 Driver 关闭之外的额外清理工作，可以同时省略 `stop:` 和 `scripts/stop.sh`。
 
 软件包目录读取以下字段：
 
@@ -70,8 +85,11 @@ capabilities:
 | `package.tags` | 是 | 字符串列表，用于页面显示和过滤 |
 | `package.maintainers` | 是 | 字符串列表，每项必须是 `Name <email@domain>` |
 | `capabilities[].name` | 否 | 软件包声明的 Robonix 能力约定 ID |
+| `capabilities[].path` | 否 | 软件包内能力约定 TOML 的相对路径；已有命名空间 Driver 可以继续用它引用本地 Driver TOML |
 
 旧软件包清单中的 `package.vendor` 仍可读取，以保证已有软件包能继续构建和启动；运行时会忽略它，软件包目录也不使用该字段。新软件包使用 `package.name`、`package.tags` 和 `package.maintainers` 表达名称、分类和维护归属。
+
+新软件包通常省略 Driver 条目，由框架自动提供 `robonix/lifecycle/driver`；显式声明共享 Driver 仍有效。已有软件包可以继续发布唯一的 `<provider-namespace>/driver` 及其本地 TOML；目录校验不会要求立即迁移。一个清单不能同时声明命名空间 Driver 与共享 Driver。
 
 ## 机器人部署元数据
 

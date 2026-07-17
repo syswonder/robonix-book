@@ -11,7 +11,9 @@
 
 ## 1. 检查主机
 
-需要本地图形桌面、Git、Make、Python 3.10+、Rust stable、uv、Docker Engine 和 Compose v2。当前 Webots 清单即使使用模拟语音后端，也会启动本地 `audio_driver`；可用 `arecord -l` 和 `aplay -l` 预先检查 ALSA 设备。无声卡的 CI 或远程测试机可在构建和启动前设置 `AUDIO_MIC_DEVICE=null` 与 `AUDIO_SPEAKER_DEVICE=null`，使用 ALSA 的空设备完成非音频链路验证。本页不要求 NVIDIA GPU；没有 GPU 时 Webots 使用 CPU 渲染，速度会明显降低。
+默认图形界面路径需要可用的 X Server 和图形栈，以及 Git、Make、Python 3.10+、Rust stable、uv、Docker Engine 和 Compose v2。Webots 可以使用主机的 Intel、AMD 或 NVIDIA 图形设备；也可以显式选择 Xvfb 进行 CPU 软件渲染。浏览器流式画面是当前实现的例外：`compose.stream.yaml` 会申请 NVIDIA 设备，因此该路径还需要 NVIDIA 驱动和 `nvidia-container-toolkit`。
+
+Webots 清单即使使用模拟语音后端，也会在 `rbnx boot` 阶段初始化本地 `audio_driver`。真实设备可用 `arecord -l` 和 `aplay -l` 检查。无声卡主机可以把设备设为字符串 `null`，使用 ALSA 内置的空 PCM 完成非音频链路验证；无需创建 `.asoundrc`。`-l` 只列出硬件设备，不会显示 `null` 等 PCM 插件；插件列表使用 `-L` 查询。
 
 在 Ubuntu / Debian 上安装基础工具：
 
@@ -50,9 +52,11 @@ docker compose version
 python3 -c 'import grpc_tools.protoc; print("grpc_tools: ok")'
 arecord -l
 aplay -l
+arecord -L | grep -x null
+aplay -L | grep -x null
 ```
 
-**预期结果：** 版本命令均以状态码 0 退出；Python 版本不低于 3.10，`grpc_tools: ok` 可见，Docker 命令不需要 `sudo`，`docker compose version` 显示 Compose v2。若要使用机器人主机的本地音频，`arecord -l` 或 `aplay -l` 还应列出目标设备。
+**预期结果：** 版本命令均以状态码 0 退出；Python 版本不低于 3.10，`grpc_tools: ok` 可见，Docker 命令不需要 `sudo`，`docker compose version` 显示 Compose v2。若要使用主机的本地音频，`arecord -l` 或 `aplay -l` 还应列出目标硬件；无声卡主机只需确认两个 `-L` 命令均输出 `null`。
 
 ## 2. 安装 Robonix
 
@@ -61,7 +65,7 @@ aplay -l
 ```bash
 git clone --recurse-submodules https://github.com/syswonder/robonix.git
 cd robonix
-git checkout --detach edb7606c8dc57bc3957e122bcaff1669d0154df1
+git checkout --detach 181d3eb974fd495a795ed120a0a4c6e6f342d179
 git submodule update --init --recursive
 
 git rev-parse HEAD
@@ -77,7 +81,7 @@ rbnx --version
 rbnx path root
 ```
 
-**预期结果：** `git rev-parse HEAD` 输出 `edb7606c8dc57bc3957e122bcaff1669d0154df1`；`rbnx path root` 输出刚克隆的 Robonix 仓库绝对路径。
+**预期结果：** `git rev-parse HEAD` 输出 `181d3eb974fd495a795ed120a0a4c6e6f342d179`；`rbnx path root` 输出刚克隆的 Robonix 仓库绝对路径。
 
 ## 3. 配置视觉语言模型
 
@@ -134,6 +138,13 @@ bash examples/webots/sim/start.sh --world office.wbt
 **预期结果：** 终端出现 `[sim/start] ros up (... topics)` 和 RViz2 日志路径；Webots 与 RViz2 窗口可见。
 
 ### 终端 2：Robonix 系统
+
+无声卡主机在本终端设置 ALSA 空设备。变量由 `audio_driver` 在 `rbnx boot` 的初始化阶段读取，与 `rbnx build` 无关；有真实音频设备时不要设置这两个变量。
+
+```bash
+export AUDIO_MIC_DEVICE='null'
+export AUDIO_SPEAKER_DEVICE='null'
+```
 
 ```bash
 export PATH="$HOME/.cargo/bin:$PATH"
@@ -240,7 +251,7 @@ WEBOTS_HEADLESS_MODE=xvfb ROBONIX_FORCE_CPU=1 \
 ROBONIX_SIM_STREAM=1 bash examples/webots/sim/start.sh
 ```
 
-`xvfb` 不需要图形设备，但仿真速度通常低于可用 GPU 的主机。`ROBONIX_SIM_STREAM=1` 会按仿真启动日志给出的地址提供浏览器画面。
+`xvfb` 使用 CPU 软件渲染，不需要 NVIDIA 设备，但仿真速度通常低于使用硬件加速的主机。当前浏览器流式路径会由 Compose 申请 NVIDIA 设备；使用 `ROBONIX_SIM_STREAM=1` 前，主机必须已安装 NVIDIA 驱动和 `nvidia-container-toolkit`。仅有 Intel 或 AMD 图形设备时，使用默认图形界面路径或显式 Xvfb 路径。
 
 ### 软件包启动失败
 

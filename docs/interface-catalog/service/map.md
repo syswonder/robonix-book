@@ -8,6 +8,8 @@ title: 空间地图
 
 能力约定 TOML 在 `capabilities/service/map/`；直接使用的接口定义语言（Interface Definition Language，IDL）文件位于 `capabilities/lib/{map,lifecycle,common_interfaces}/`。
 
+> 表中的命名空间 Driver 是已有软件包的兼容接口。新软件包省略 Driver 条目时由框架自动使用共享的 `robonix/lifecycle/driver`；显式共享仍受支持，两种 Driver 只能选择一条。详见[生命周期兼容流程](../../integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+
 ## 接口
 
 | 能力约定 ID | 模式 | 参考实现传输 | 载荷（IDL） | 能力约定 TOML |
@@ -28,9 +30,9 @@ title: 空间地图
 | `robonix/service/map/pose_estimate` | `rpc` | gRPC + MCP | [`map/PoseEstimate`](../../reference/idl.md#map-srv-poseestimate-srv) | `service/map/pose_estimate.v1.toml` |
 | `robonix/service/map/list_maps` | `rpc` | gRPC + MCP | [`map/ListMaps`](../../reference/idl.md#map-srv-listmaps-srv) | `service/map/list_maps.v1.toml` |
 
-`pose` 是 **map 帧**的机器人位姿（融合定位结果）——和底盘原语的 `odom`（odom 帧、未消除漂移）分工不同：要 map 帧位姿找 `service/map/pose`，要瞬时里程找 `primitive/chassis/odom`（见 [底盘](../primitive/chassis.md)）。
+`robonix/service/map/pose` 是 **map 帧**的机器人位姿（融合定位结果），与底盘原语 `robonix/primitive/chassis/odom`（odom 帧、未消除漂移）分工不同。
 
-`service/map/odom` 是建图算法自带里程计的可选输出。部署通过 `sensor_providers.odom` 绑定外部底盘里程计时，参考实现会刻意跳过这条能力声明，避免同一机器人出现两个 odom 提供方；消费者应改用绑定的底盘原语，而不是等待 Mapping 重发同一数据。
+`robonix/service/map/odom` 是建图算法自带里程计的可选输出。部署通过 `sensor_providers.odom` 绑定外部底盘里程计时，参考实现会刻意跳过这条能力声明，避免同一机器人出现两个 odom 提供方；消费者应改用绑定的底盘原语，而不是等待 Mapping 重发同一数据。
 
 输入侧由 `sensor_providers` 选择并绑定 `lidar2d`、`lidar3d`、`rgb`、`depth`、`imu`、`odom` 角色；只解析实际绑定的 Atlas 提供方。默认 RTAB-Map 可使用二维或三维激光雷达、RGB-D 和可选外部里程计；DLIO 路径需要三维激光雷达和 IMU。`fastlio2` 在当前参考实现中标为漂移故障，仅保留用于复现。
 

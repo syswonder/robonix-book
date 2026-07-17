@@ -8,6 +8,8 @@ title: 音频
 
 能力约定 TOML 在 `capabilities/primitive/audio/`，接口定义语言（Interface Definition Language，IDL）文件在 `capabilities/lib/audio/`。
 
+> 表中的命名空间 Driver 是已有软件包的兼容接口。新软件包省略 Driver 条目时由框架自动使用共享的 `robonix/lifecycle/driver`；显式共享仍受支持，两种 Driver 只能选择一条。详见[生命周期兼容流程](../../integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+
 ## 接口
 
 | 能力约定 ID | 模式 | 载荷（IDL） | 能力约定 TOML |
@@ -22,6 +24,33 @@ title: 音频
 `audio/AudioChunk` 是麦克风、扬声器、语音识别和语音合成共用的流元素（`timestamp_ns + data + sequence + duration_s`）。它不携带编码、采样率、声道数或采样位数，不是自描述音频容器；提供方与消费方必须通过会话或部署配置约定格式。当前交互服务的语音路径默认使用 16 kHz、单声道、`pcm_s16le`，改变格式时必须同步修改两端。
 
 固定设备提供方可以不注册 `list_devices` / `select_device`，也可以对查询返回 `UNIMPLEMENTED`；调用方此时应继续使用当前原语的默认设备。`bridge_info` 仅适用于客户端桥，不能作为本地 ALSA 提供方的必备探针。
+
+## ALSA 设备选择
+
+ALSA 参考实现按部署配置、环境变量、自动探测的顺序选择设备。部署清单应优先使用 `config.mic_device` 和 `config.speaker_device`；省略字段或写成 YAML 空值 `null` 表示自动探测。字符串 `"null"` 则是 ALSA 内置的空 PCM：采集端生成静音样本，播放端丢弃样本，通常不需要额外创建 `.asoundrc`。
+
+```yaml
+primitive:
+  - name: audio_driver
+    url: https://github.com/syswonder/primitive-audio-driver-rbnx
+    branch: main
+    config:
+      mic_device: "null"
+      speaker_device: "null"
+```
+
+`AUDIO_MIC_DEVICE` 和 `AUDIO_SPEAKER_DEVICE` 是兼容旧部署的运行时覆盖项。需要使用时，应在执行 `rbnx boot` 的同一环境中导出；`rbnx build` 不读取这两个变量。
+
+`arecord` 和 `aplay` 由 `alsa-utils` 提供。`arecord -l` 与 `aplay -l` 只列出硬件设备；使用 `-L` 查询 PCM 插件，或直接探测空 PCM：
+
+```bash
+arecord -L | grep -x null
+aplay -L | grep -x null
+
+arecord -D null -q -d 1 -t raw -f S16_LE -r 16000 -c 1 /dev/null
+head -c 48000 /dev/zero \
+  | aplay -D null -q -t raw -f S16_LE -r 24000 -c 1
+```
 
 参考实现：
 

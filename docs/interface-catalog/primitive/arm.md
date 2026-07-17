@@ -4,15 +4,20 @@
 
 能力约定 TOML 在 `capabilities/primitive/arm/`，接口定义语言（Interface Definition Language，IDL）文件在 `capabilities/lib/common_interfaces/`。
 
+> 表中的命名空间 Driver 是已有软件包的兼容接口。新软件包省略 Driver 条目时由框架自动使用共享的 `robonix/lifecycle/driver`；显式共享仍受支持，两种 Driver 只能选择一条。详见[生命周期兼容流程](../../integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+
 ## 接口
 
 | 能力约定 ID | 模式 | 载荷（IDL） | 能力约定 TOML |
 |---|---|---|---|
 | `robonix/primitive/arm/driver` | `rpc` | [`lifecycle/Driver`](../../reference/idl.md#lifecycle-srv-driver-srv) | `primitive/arm/driver.v1.toml` |
 | `robonix/primitive/arm/end_pose` | `topic_out` | [`geometry_msgs/Pose`](../../reference/idl.md#common-interfaces-geometry-msgs-msg-pose-msg) | `primitive/arm/end_pose.v1.toml` |
+| `robonix/primitive/arm/pos_command` | `topic_in` | [`geometry_msgs/Pose`](../../reference/idl.md#common-interfaces-geometry-msgs-msg-pose-msg) | `primitive/arm/pos_command.v1.toml` |
 | `robonix/primitive/arm/joint_command` | `topic_in` | [`sensor_msgs/JointState`](../../reference/idl.md#common-interfaces-sensor-msgs-msg-jointstate-msg) | `primitive/arm/joint_command.v1.toml` |
 | `robonix/primitive/arm/joint_states` | `topic_out` | [`sensor_msgs/JointState`](../../reference/idl.md#common-interfaces-sensor-msgs-msg-jointstate-msg) | `primitive/arm/joint_states.v1.toml` |
 
-`end_pose` 不携带坐标系，具体提供方必须在能力文档中声明参考坐标系。`joint_command` 提供方可以只支持 `JointState` 的部分字段，因此同一文档还必须列出支持的 `position`、`velocity`、`effort` 字段；关节指令与反馈使用相同的关节命名和单位。
+`end_pose` 与 `pos_command` 都使用不带时间戳和 frame ID 的 `geometry_msgs/Pose`，具体提供方必须在能力文档中声明两者共同使用的机械臂基准坐标系。`pos_command` 表示末端执行器笛卡尔目标位姿，逆运动学或笛卡尔控制由提供方负责；它不携带夹爪开度。夹爪仍作为具名关节通过 `joint_command` 控制。
+
+`joint_command` 提供方可以只支持 `JointState` 的部分字段，因此同一文档还必须列出支持的 `position`、`velocity`、`effort` 字段；关节指令与反馈使用相同的关节命名和单位。
 
 当前 Webots Tiago Lite 部署没有机械臂或夹爪 primitive；本页描述的是标准能力约定，不表示示例部署已经注册这些接口。

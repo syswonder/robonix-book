@@ -171,7 +171,19 @@ string message
 | `topic_out` | 提供方持续发布 | ROS 2 话题 |
 | `topic_in` | 提供方持续接收 | ROS 2 话题 |
 
+方向始终以声明该能力的提供方为基准：`topic_out` 表示提供方输出，`topic_in` 表示提供方接收。它不描述调用方变量名，也不等同于某个固定 ROS 2 话题。
+
+| 模式 | gRPC | ROS 2 | MCP |
+|---|:---:|:---:|:---:|
+| `rpc` | 支持 | 通过 service 支持 | 支持 |
+| `rpc_server_stream` | 支持 | 不支持 | 不支持 |
+| `rpc_client_stream` | 支持 | 不支持 | 不支持 |
+| `rpc_bidirectional_stream` | 支持 | 不支持 | 不支持 |
+| `topic_out` / `topic_in` | 以 gRPC stream 映射 | 支持 | 不支持 |
+
 `rpc` 不等于 gRPC，也不要求使用 gRPC 装饰器。它只说明“一次请求、一次响应”：选择 gRPC 时使用 `@provider.grpc(...)`，选择 MCP 时使用 `@provider.mcp(...)`，选择 ROS 2 service 时由 `rclpy` 创建服务，再用 `provider.declare_ros2_service(...)` 向 Atlas 声明端点。提供方应根据现有实现、调用方和部署拓扑选择传输。
+
+模型需要发现并离散调用的工具通常使用 MCP；确定性的进程间控制、生命周期和流式请求通常使用 gRPC；机器人内部已有的高频传感与控制图通常保留 ROS 2。能力约定只定义语义，不会替开发者自动选择传输。提供方声明的传输、Atlas 返回的端点和消费者建立的客户端必须一致。
 
 当前 Python 运行时不会在装饰器注册阶段完整校验“模式—传输”矩阵，因此还要通过端到端测试确认生成类型、提供方和消费者选择了同一传输。
 
@@ -225,11 +237,22 @@ def shutdown():
 
 | 清单中的 Driver 约定 | 启动行为 |
 |---|---|
-| 0 条 | 提供方监听就绪后直接进入 `ACTIVE`；不会收到初始化配置或生命周期命令 |
-| 1 条 | 启动器等待同名运行时能力，再发送初始化和激活命令 |
+| 0 条 | 自动选择并注册共享 `robonix/lifecycle/driver`；提供方仍有 Driver |
+| 1 条 | 共享约定只接受共享运行时 Driver；精确的 `<provider-namespace>/driver` 既可继续使用同名旧 Driver，也可在旧生成服务完全不存在时正向升级到共享运行时 Driver |
 | 多于 1 条 | 软件包启动失败；一个提供方只能有一个生命周期入口 |
 
-需要受管配置或延迟激活的提供方必须实现 `<namespace>/driver`。标准命名空间复用主仓库中的 Driver 约定；自定义命名空间没有标准约定时，在软件包内添加 Driver TOML。清单与运行时声明必须使用同一个约定 ID。
+每个提供方都使用一条生命周期 Driver。当前软件包通常不在清单中声明 Driver；框架会自动选择并注册共享的 `robonix/lifecycle/driver`。该约定及 `lifecycle/Driver` IDL 由 Robonix 主仓库提供，不需要创建 Driver TOML。显式声明共享 Driver 仍受支持。已有软件包可以继续使用唯一且与主命名空间精确对应的 `<provider-namespace>/driver` 及其本地 TOML。旧清单由 `rbnx` 或 Soma 受管启动时，如果旧生成服务完整存在就继续注册旧 ID；如果旧 Servicer 与注册函数均不存在、而共享服务对完整存在，兼容标记只允许这一个“旧清单 → 共享运行时”方向。省略或显式共享的清单绝不反向降级到旧 Driver；部分生成服务、无 Driver、无关 ID 和两条 Driver 都使启动失败。完整兼容与可选迁移流程见[软件包与部署清单规范](integration-guide/packaging-spec.md#4-生命周期与启动责任)。
+
+生命周期处理函数按需实现。某个回调缺失时，框架会记录警告并执行空操作；原语或服务仍会在 `CMD_INIT`、`CMD_ACTIVATE` 后进入 `ACTIVE`。处理函数显式返回 `Err` 时，启动或状态转换仍会失败。
+
+| 处理函数 | 放入的工作 | 对称责任 |
+|---|---|---|
+| `on_init(cfg)` | 校验和保存配置、选择逻辑设备、检查静态依赖；不启动可延后到激活阶段的热循环 | 初始化失败返回 `Err`，依赖稍后可用返回 `Deferred` |
+| `on_activate()` | 打开设备、加载模型、启动线程或订阅、连接上游能力等运行资源 | `on_deactivate()` 必须关闭本阶段获得的资源，并允许以后再次激活 |
+| `on_deactivate()` | 停止运行循环、关闭连接和设备，但保留重新激活所需的配置 | 重复调用应安全，不留下后台线程、文件描述符或 Atlas channel |
+| `on_shutdown()` | 处理任何状态下的最终清理 | 释放尚未由停用阶段释放的资源；不要在这里重新启动工作 |
+
+确实需要在初始化完成前就存在的轻量端点可以在 `on_init` 创建；其最终释放仍要有明确归属。不要只在 `on_activate` 建立长期连接却省略 `on_deactivate`。
 
 原语和服务通常由启动流程初始化并激活。技能启动后保持 `INACTIVE`，Executor 第一次调用前发送激活命令；当前没有自动的空闲回收策略，技能会保持 `ACTIVE`，直到显式停用或系统关闭。
 
@@ -260,7 +283,7 @@ rbnx package-new my_skill --type skill
 rbnx package-new my_camera --type primitive --path ./packages/my_camera
 ```
 
-从部署仓库根目录执行命令时，生成结构为：
+`package-new` 会生成清单、`build.sh`、`start.sh`、Python 模块和空的 `capabilities/`。开始实现后补上配置说明；如果软件包还需要释放框架之外的进程或资源，再增加幂等的 `stop.sh`。发布前的目录应整理为：
 
 ```text
 primitives/my_camera/
@@ -270,17 +293,19 @@ primitives/my_camera/
 │   └── .gitkeep
 ├── scripts/
 │   ├── build.sh
-│   └── start.sh
+│   ├── start.sh
+│   └── stop.sh          # 使用清单 stop 时添加
+├── config.spec             # 说明部署 config；无公开配置时可省略
 └── my_camera/
     ├── __init__.py
     └── main.py
 ```
 
-脚手架会生成清单、脚本、Python 模块和空的 `capabilities/`。开始实现后，还应在软件包根目录添加 `config.spec`，说明公开配置的类型、单位、默认值和约束。
+`config.spec` 说明公开配置的类型、单位、默认值和约束。`stop.sh` 不是必须的；只有清单声明 `stop:` 时才需要它，且重复执行不应报错或重复破坏资源。
 
 `rbnx package-new` 只创建软件包目录，不会修改部署仓库的 `robonix_manifest.yaml`。要随整机启动新软件包，必须根据类型把它作为一条实例显式加入清单的 `primitive:`、`service:` 或 `skill:` 列表。
 
-生成的 `main.py` 包含 `@provider.on_init`，但初始清单没有 Driver 约定。此时提供方会直接进入 `ACTIVE`，不会调用 `on_init` 或接收部署 `config`。无配置软件包可删除该处理函数；需要初始化配置时，按第 5.2 节添加 Driver 约定并重新运行代码生成。
+生成的清单不需要包含 Driver 条目；框架会自动补上共享生命周期 Driver。`main.py` 包含 `@provider.on_init` 占位实现。`rbnx boot` 会把部署项的 `config` 传入初始化回调。如果某个生命周期回调未实现，运行时记录警告并执行安全空操作；回调明确返回错误时，启动仍然失败。
 
 ### 6.2 软件包清单
 
@@ -298,8 +323,7 @@ package:
 
 build: bash scripts/build.sh
 start: bash scripts/start.sh
-# 可选；需要在关闭时执行软件包自有清理命令时填写。
-# stop: bash scripts/stop.sh
+stop: bash scripts/stop.sh
 
 capabilities:
   - name: robonix/service/example/hello
@@ -312,7 +336,7 @@ depends:
 
 运行时要求 `package.name`、`version`、`description`、`license` 和 `start` 非空。`tags` 与 `maintainers` 对目录发布很重要，但当前运行时不把它们当成必填字段，也不解析版本是否严格符合语义化版本。
 
-对于由 `rbnx boot` 或 Soma 管理的软件包，`stop` 是可选的 shell 命令。受管关闭顺序为 Driver `CMD_SHUTDOWN`、`stop`、进程组 TERM/KILL；命令在软件包根目录执行。单独执行 `rbnx start` 当前不会自动运行 `stop`。
+对于由 `rbnx boot` 或 Soma 管理的软件包，`stop` 是可选的 shell 命令；上面的完整示例假定仓库已提供 `scripts/stop.sh`。受管关闭顺序为 Driver `CMD_SHUTDOWN`、`stop`、进程组 TERM/KILL；命令在软件包根目录执行。单独执行 `rbnx start` 当前不会自动运行 `stop`。软件包没有框架外资源需要清理时，删除清单中的 `stop:` 和对应脚本，不要保留无意义的空钩子。
 
 `capabilities` 列出软件包声明的全部能力约定。标准约定只写 `name`；尚未进入全局目录的约定放在本包 `capabilities/`，并用 `path` 引用相对软件包根目录的 TOML。旧字段名 `definition` 仍作为 `path` 的别名读取。清单不会替代码声明运行时能力；普通业务能力仍需通过 `@provider.mcp`、`@provider.grpc`、`create_publisher` 等 API 注册。
 
@@ -393,7 +417,6 @@ rbnx package-new my_navigate --type service
 
 ```yaml title="services/my_navigate/package_manifest.yaml"
 capabilities:
-  - name: robonix/service/navigation/driver
   - name: robonix/service/navigation/navigate
   - name: robonix/service/navigation/navigate/status
   - name: robonix/service/navigation/navigate/cancel
@@ -472,17 +495,20 @@ service:
     config: {}
 ```
 
-`name` 必须与 `Service(id="my_navigate", ...)` 一致。清单中的 `driver` 条目引用能力约定；`provider.run()` 根据生成代码声明对应的 driver 能力，启动流程连接该能力并发送 `CMD_INIT`，服务随后进入激活阶段。服务若需要底盘，应在 `on_activate` 中发现并连接目标运行实例：
+`name` 必须与 `Service(id="my_navigate", ...)` 一致。该新清单省略 Driver 条目，框架会选择共享 `robonix/lifecycle/driver`；`provider.run()` 根据生成代码声明同一条 Driver 能力，启动流程连接它并发送 `CMD_INIT`，服务随后进入激活阶段。服务若需要底盘，应在 `on_activate` 中发现并连接目标运行实例：
 
 ```python
-from robonix_api import ATLAS, Deferred
-from robonix_api.atlas_types import Transport
+from robonix_api import ATLAS, Deferred, Ok
+from robonix_api.atlas_types import Channel, Transport
 
-move_channel = None
+move_channel: Channel | None = None
 
 @navigate_service.on_activate
 def activate():
     global move_channel
+    if move_channel is not None:
+        move_channel.close()
+        move_channel = None
     matches = ATLAS.find_capability(
         contract_id="robonix/primitive/chassis/move",
         transport=Transport.GRPC,
@@ -496,9 +522,21 @@ def activate():
         Transport.GRPC,
     )
     return Ok()
+
+@navigate_service.on_deactivate
+def deactivate():
+    global move_channel
+    if move_channel is not None:
+        move_channel.close()
+        move_channel = None
+    return Ok()
+
+@navigate_service.on_shutdown
+def shutdown():
+    return deactivate()
 ```
 
-保存通道对象，直到停用或关闭；不要在 `with Channel` 块退出后继续使用其端点。
+长期连接由获得它的生命周期阶段持有，并在停用阶段显式关闭。`Channel.close()` 是幂等操作，因此关闭阶段可以安全兜底。只为一次调用建立连接时使用 `with navigate_service.connect_capability(...) as channel:`；`with` 退出后不得继续使用其端点。
 
 ### 8.1 验证
 
@@ -521,7 +559,6 @@ rbnx package-new base_chassis --type primitive
 
 ```yaml
 capabilities:
-  - name: robonix/primitive/chassis/driver
   - name: robonix/primitive/chassis/move
   - name: robonix/primitive/chassis/odom
 ```
@@ -630,20 +667,8 @@ rbnx package-new say_hello --type skill
 
 ```text
 skills/say_hello/capabilities/
-├── driver.v1.toml
 ├── say.v1.toml
 └── lib/say_hello/srv/SayHello.srv
-```
-
-```toml title="capabilities/driver.v1.toml"
-[contract]
-id = "robonix/skill/say_hello/driver"
-version = "1"
-kind = "skill"
-idl = "lifecycle/srv/Driver.srv"
-
-[mode]
-type = "rpc"
 ```
 
 ```toml title="capabilities/say.v1.toml"
@@ -663,12 +688,10 @@ string name
 string greeting
 ```
 
-在 `skills/say_hello/package_manifest.yaml` 中引用两条软件包内能力约定：
+在 `skills/say_hello/package_manifest.yaml` 中引用软件包内的业务能力约定；生命周期 Driver 由框架自动提供：
 
 ```yaml
 capabilities:
-  - name: robonix/skill/say_hello/driver
-    path: capabilities/driver.v1.toml
   - name: robonix/skill/say_hello/say
     path: capabilities/say.v1.toml
 ```
@@ -774,9 +797,16 @@ catalog:
 
 system:
   atlas: { listen: 127.0.0.1:50051, log: info }
-  executor: { listen: 127.0.0.1:50061, log: info }
   soma:
+    listen: 127.0.0.1:50091
     robot_yaml: soma.yaml
+    log: info
+  vitals: { listen: 127.0.0.1:50093, log: info }
+  scene:
+    manifest: package_manifest.yaml
+    config:
+      web_port: 50107
+  executor: { listen: 127.0.0.1:50061, log: info }
   pilot:
     listen: 127.0.0.1:50071
     log: info
@@ -803,7 +833,9 @@ skill:
     config: {}
 ```
 
-实例 `config` 在初始化时通过 Driver 发送；未声明 Driver 的提供方不会收到配置。软件包应在 `on_init(cfg)` 中校验字段并返回清楚的错误，公开字段同时写入 `config.spec`。
+这个完整系统块包含本体状态（Soma）、健康状态（Vitals）、环境状态（Scene）、任务执行（Executor）、模型规划（Pilot）和交互入口（Liaison）。`scene.manifest` 选择 Scene 软件包的运行目标，`scene.config` 通过 Scene 的 Driver 传入；未指定 `camera_provider_id` 时，Scene 按能力约定自动发现可用观测源。
+
+实例 `config` 在初始化时通过 Driver 发送。软件包应在 `on_init(cfg)` 中校验字段并返回清楚的错误，公开字段同时写入 `config.spec`。
 
 远程软件包使用 `url`，本地软件包使用 `path`。`manifest` 选择软件包提供的平台清单，例如 Jetson 原生清单。提供平台变体时仍要保留默认 `package_manifest.yaml`；完整字段见[软件包与部署清单规范](integration-guide/packaging-spec.md)。
 
@@ -821,7 +853,7 @@ rbnx boot
 1. 未使用 `--skip-system` 时，启动清单中声明的 Atlas、Executor；存在原语或技能时，未显式声明的 Soma 会被自动补入并启动；
 2. Soma 启动原语；没有原语时跳过；
 3. 启动清单中声明的其余内置组件（如 Vitals、Pilot、Liaison）、额外系统软件包和服务；
-4. Soma 启动技能，带 driver 的技能停在 `INACTIVE`；没有技能时跳过。
+4. Soma 启动技能并通过其唯一 Driver 发送 `CMD_INIT`，技能停在 `INACTIVE`；没有技能时跳过。
 
 使用 `--skip-system` 时，`rbnx` 跳过整个 `system` 块和由本次启动管理的 Soma 原语/技能阶段，只连接外部 Atlas 并启动服务。此模式下，操作方必须另行保证外部系统、原语和技能已经就绪。
 
@@ -830,7 +862,7 @@ rbnx boot
 1. 摘要没有 `failures`、`[FAIL]` 或失败的软件包；
 2. `rbnx caps -v` 包含清单中预期的每个提供方及能力；
 3. 原语和服务通常为 `ACTIVE`，尚未调用的技能通常为 `INACTIVE`；
-4. `rbnx logs --tag <provider_id>` 没有初始化、连接或配置错误。
+4. `rbnx logs -t <provider_id>` 没有初始化、连接或配置错误。
 
 常用诊断：
 
@@ -840,8 +872,19 @@ rbnx tools
 rbnx channels
 rbnx inspect
 rbnx logs --list-tags
-rbnx logs --tag my_navigate --follow
+rbnx logs -t my_navigate -l warn
+rbnx logs -t my_navigate -f
 ```
+
+以上命令应在机器人部署目录执行；从其他目录读取时使用 `rbnx logs -d /path/to/deploy/rbnx-boot/logs ...`。不带 `-f` 会读取并按时间排序已有记录；`-f` 从当前已经存在的日志文件末尾开始，只显示后续新增记录。每次 `rbnx boot` 会清空本次日志目录中已有的 `*.log`，复现故障前先保存需要保留的日志。
+
+启动阶段需要实时逐行观察 INFO、WARN 和 ERROR 时使用：
+
+```bash
+rbnx boot -v -f robonix_manifest.yaml
+```
+
+`-v` 会关闭 spinner 与光标回写，但不会启用 DEBUG；完整记录仍写入 `rbnx-boot/logs/`。
 
 停止当前部署：
 
@@ -951,21 +994,296 @@ provider.emit(contract_id, message)
 
 ### 14.5 MCP 与 gRPC
 
+MCP 处理函数接收代码生成的数据类，并返回对应的响应数据类：
+
 ```python
 @provider.mcp(contract_id, description="...")
 def tool(req: RequestType) -> ResponseType:
     ...
+```
+
+`contract_id` 是能力约定 ID。装饰器在模块导入时记录处理函数；`provider.bootstrap()` 或 `provider.run()` 才会创建服务端点、向 Atlas 声明能力并开始接收请求。`description` 可省略；显式值优先，否则读取处理函数的 docstring。装饰器会返回原函数，因此业务逻辑仍可直接单元测试。
+
+#### gRPC 生成代码
+
+`rbnx codegen` 根据能力约定 TOML 中的 `mode` 和 `idl` 生成：
+
+- 业务消息模块 `<idl-package>_pb2.py`，例如 `map_pb2.py`、`audio_pb2.py`；
+- 汇总服务模块 `robonix_contracts_pb2_grpc.py`，其中包含每条能力约定的 `Stub`、`Servicer` 和注册函数；
+- `robonix_contracts.proto`，可直接检查最终生成的一元或流式 RPC 形态。
+
+业务消息模块只保存消息类。`Stub` 和 `Servicer` 必须从 `robonix_contracts_pb2_grpc.py` 导入，不能从 `<idl-package>_pb2_grpc.py` 猜测或导入。
+
+| 输入定义 | Python 生成类型 |
+|---|---|
+| `capabilities/lib/<pkg>/msg/Foo.msg` | `<pkg>_pb2.Foo` |
+| `capabilities/lib/<pkg>/srv/Hello.srv` | `<pkg>_pb2.Hello_Request` 与 `<pkg>_pb2.Hello_Response` |
+| 能力约定 `robonix/service/example/hello` | `robonix_contracts_pb2_grpc.RobonixServiceExampleHelloStub` 与 `RobonixServiceExampleHelloServicer` |
+| 上述约定引用 `Hello.srv` | Stub 和 Servicer 中的方法名为 `Hello` |
+
+服务类名称由完整 `contract_id` 的每一段转为 PascalCase 后拼接；RPC 方法名来自 `.srv` 文件名。不要手写猜测复杂名称：构建后可在 `rbnx-build/codegen/proto_gen/robonix_contracts_pb2_grpc.py` 查到准确类名，在 `robonix_contracts.proto` 查到准确方法和 wire type。
+
+`@provider.grpc(...)` 自动实现并注册该能力约定生成的单方法 `Servicer`，开发者只写处理函数：
+
+```python
+import grpc
 
 @provider.grpc(contract_id, description="...")
-def method(req, context):
+def method(request: RequestType, context: grpc.ServicerContext) -> ResponseType:
     ...
 ```
 
-`contract_id` 是能力约定 ID。装饰器把处理函数和传输端点绑定到该约定，并在启动时声明运行时能力。`description` 可省略；运行时优先使用显式值，否则读取处理函数的 docstring。MCP 使用代码生成的数据类；gRPC 使用 `*_pb2.py` 消息和 `robonix_contracts_pb2_grpc.py` 中的服务定义。不要从业务消息模块导入生成的 Servicer 或 Stub。
+处理函数的两个位置参数不是 Robonix 自定义对象：
+
+| 参数 | 精确类型 | 用法 |
+|---|---|---|
+| `request` | 当前 RPC 生成的 protobuf 消息实例，继承 `google.protobuf.message.Message` | 一元请求和服务端流式响应模式中直接读取字段，例如 `request.text` |
+| `request_iterator` | gRPC 提供的同步迭代器；每次迭代得到一个由 IDL 决定的 protobuf 流元素 | 客户端流式和双向流式模式中使用 `for item in request_iterator` 消费；调用方结束输入后循环自然结束 |
+| `context` | gRPC 公共接口 [`grpc.ServicerContext`](https://grpc.github.io/grpc/python/grpc.html#grpc.ServicerContext) | `is_active()` 检查调用是否仍有效，`time_remaining()` 读取剩余期限，`peer()` 查看调用方，`set_code()` / `set_details()` 设置最终状态，`abort(code, details)` 立即以错误终止 RPC |
+
+处理函数也可以只写第一个参数；框架会根据函数签名决定是否传入 `context`。需要取消检测、超时、元数据或明确错误状态时，应保留第二个参数并标注为 `grpc.ServicerContext`。不要把实际运行时的 gRPC 私有类名写进类型注解。
+
+#### 流式模式与 IDL 约束
+
+一元 RPC 和三种流式 RPC 都使用 `.srv`。`---` 上方是请求方向，下方是响应方向。流式方向必须恰好包含一个字段，而且该字段必须引用一个具名 ROS 消息类型；这个字段所引用的消息就是线上逐条传输的流元素。代码生成器会拒绝字段数不为 1 或以 primitive 作为流元素的定义。
+
+| `mode` | 生成的 gRPC 形态 | `.srv` 约束 | 提供方处理函数 |
+|---|---|---|---|
+| `rpc` | `M(Request) returns (Response)` | 请求、响应字段数不限 | `(request, context) -> Response` |
+| `rpc_server_stream` | `M(Request) returns (stream Item)` | 响应段恰好一个具名消息字段 | `(request, context) -> Iterator[Item]`，用 `yield` 发送 |
+| `rpc_client_stream` | `M(stream Item) returns (Response)` | 请求段恰好一个具名消息字段 | `(request_iterator, context) -> Response` |
+| `rpc_bidirectional_stream` | `M(stream In) returns (stream Out)` | 请求、响应段各恰好一个具名消息字段 | `(request_iterator, context) -> Iterator[Out]`，边读取边 `yield` |
+
+`rpc_server_stream` 的非流式请求段如果为空或包含多个字段，参数类型是 `<SrvName>_Request`；如果请求段恰好只有一个具名消息字段，当前代码生成器会直接使用该字段的消息类型。`rpc_client_stream` 的非流式响应段有字段时返回 `<SrvName>_Response`，为空时返回 `google.protobuf.empty_pb2.Empty`。
+
+`topic_out` 和 `topic_in` 使用 `.msg` 而不是 `.srv`。当选择 gRPC 传输时，代码生成器分别把它们映射成 `Empty -> stream Message` 和 `stream Message -> Empty`；选择 ROS 2 传输时，由提供方创建 publisher/subscription，再向 Atlas 声明端点。
+
+下面四组示例使用主仓库中真实存在的能力约定。完整的 gRPC Python 调用语义也可参见 [gRPC Python 基础教程](https://grpc.io/docs/languages/python/basics/)。
+
+#### 一元 RPC
+
+`robonix/service/map/get_mode` 使用 `map/srv/GetMode.srv`，生成：
+
+```proto
+rpc GetMode(robonix.map.GetMode_Request)
+    returns (robonix.map.GetMode_Response);
+```
+
+提供方实现：
+
+```python
+import grpc
+import map_pb2
+
+@provider.grpc("robonix/service/map/get_mode")
+def get_mode(
+    request: map_pb2.GetMode_Request,
+    context: grpc.ServicerContext,
+) -> map_pb2.GetMode_Response:
+    del request, context
+    return map_pb2.GetMode_Response(
+        ok=True,
+        mode="mapping",
+        detail="",
+    )
+```
+
+调用方先通过 Atlas 选择提供方并登记连接，再用生成的 `Stub` 调用：
+
+```python
+import grpc
+import map_pb2
+import robonix_contracts_pb2_grpc as contracts_grpc
+
+from robonix_api import ATLAS
+from robonix_api.atlas_types import Transport
+
+target = ATLAS.find_unique_capability(
+    contract_id="robonix/service/map/get_mode",
+    transport=Transport.GRPC,
+)
+edge = consumer.connect_capability(
+    target,
+    "robonix/service/map/get_mode",
+    Transport.GRPC,
+)
+try:
+    with grpc.insecure_channel(edge.endpoint) as rpc_channel:
+        stub = contracts_grpc.RobonixServiceMapGetModeStub(rpc_channel)
+        response = stub.GetMode(map_pb2.GetMode_Request(), timeout=5.0)
+        print(response.mode)
+finally:
+    edge.close()
+```
+
+`edge` 是 Atlas 中的逻辑连接，`rpc_channel` 是真正承载消息的 gRPC channel；两者都要关闭。
+
+#### 服务端流式响应
+
+`robonix/service/speech/tts_stream` 的请求段包含多个参数，响应段只有 `tts/SynthesizeAudioChunk chunk`。因此生成：
+
+```proto
+rpc SynthesizeStream(robonix.tts.SynthesizeStream_Request)
+    returns (stream robonix.tts.SynthesizeAudioChunk);
+```
+
+提供方每次 `yield` 一个响应元素；函数结束即关闭响应流：
+
+```python
+from collections.abc import Iterator
+
+import grpc
+import tts_pb2
+
+@provider.grpc("robonix/service/speech/tts_stream")
+def synthesize_stream(
+    request: tts_pb2.SynthesizeStream_Request,
+    context: grpc.ServicerContext,
+) -> Iterator[tts_pb2.SynthesizeAudioChunk]:
+    for chunk in synthesizer.generate(request.text, voice=request.voice):
+        if not context.is_active():
+            return
+        yield tts_pb2.SynthesizeAudioChunk(
+            chunk=chunk,
+            encoding="pcm_s16le",
+            sample_rate_hz=16000,
+        )
+```
+
+调用方得到一个响应迭代器：
+
+```python
+import tts_pb2
+import robonix_contracts_pb2_grpc as contracts_grpc
+
+stub = contracts_grpc.RobonixServiceSpeechTtsStreamStub(rpc_channel)
+request = tts_pb2.SynthesizeStream_Request(text="你好")
+for chunk in stub.SynthesizeStream(request, timeout=30.0):
+    speaker.write(chunk.chunk.data)
+```
+
+#### 客户端流式请求
+
+`robonix/service/speech/wake_word` 的请求段只有 `audio/msg/AudioChunk chunk`，因此发送的是裸 `audio_pb2.AudioChunk`，不是 `DetectWakeWord_Request` 包装器：
+
+```proto
+rpc DetectWakeWord(stream robonix.audio.AudioChunk)
+    returns (robonix.speech.DetectWakeWord_Response);
+```
+
+提供方消费请求迭代器，输入关闭后返回一个响应：
+
+```python
+from collections.abc import Iterator
+
+import audio_pb2
+import grpc
+import speech_pb2
+
+@provider.grpc("robonix/service/speech/wake_word")
+def detect_wake_word(
+    request_iterator: Iterator[audio_pb2.AudioChunk],
+    context: grpc.ServicerContext,
+) -> speech_pb2.DetectWakeWord_Response:
+    keyword = detector.detect(
+        bytes(chunk.data)
+        for chunk in request_iterator
+        if context.is_active() and chunk.data
+    )
+    return speech_pb2.DetectWakeWord_Response(
+        detected=bool(keyword),
+        keyword=keyword or "",
+    )
+```
+
+调用方把任意可迭代对象传给 Stub；迭代结束表示客户端完成发送：
+
+```python
+import audio_pb2
+import robonix_contracts_pb2_grpc as contracts_grpc
+
+def audio_chunks():
+    for sequence, pcm in enumerate(microphone.frames()):
+        yield audio_pb2.AudioChunk(data=pcm, sequence=sequence)
+
+stub = contracts_grpc.RobonixServiceSpeechWakeWordStub(rpc_channel)
+response = stub.DetectWakeWord(audio_chunks(), timeout=30.0)
+print(response.keyword)
+```
+
+#### 双向流式 RPC
+
+`robonix/service/speech/asr_stream` 的请求段和响应段各有一个具名消息字段，因此生成：
+
+```proto
+rpc RecognizeStream(stream robonix.asr.AsrAudioChunk)
+    returns (stream robonix.asr.RecognizeStreamEvent);
+```
+
+提供方可以消费若干输入后产生一个结果；两侧消息不要求一一对应：
+
+```python
+from collections.abc import Iterator
+
+import asr_pb2
+import grpc
+
+@provider.grpc("robonix/service/speech/asr_stream")
+def recognize_stream(
+    request_iterator: Iterator[asr_pb2.AsrAudioChunk],
+    context: grpc.ServicerContext,
+) -> Iterator[asr_pb2.RecognizeStreamEvent]:
+    decoder = StreamingDecoder()
+    for request in request_iterator:
+        if not context.is_active():
+            return
+        decoder.feed(request.chunk.data)
+        partial = decoder.partial_text()
+        if partial:
+            yield asr_pb2.RecognizeStreamEvent(
+                event_type=asr_pb2.RecognizeStreamEvent.PARTIAL,
+                text=partial,
+                is_final=False,
+            )
+    yield asr_pb2.RecognizeStreamEvent(
+        event_type=asr_pb2.RecognizeStreamEvent.FINAL,
+        text=decoder.final_text(),
+        is_final=True,
+    )
+```
+
+调用方传入请求迭代器，同时遍历返回的响应迭代器：
+
+```python
+import asr_pb2
+import audio_pb2
+import robonix_contracts_pb2_grpc as contracts_grpc
+
+def asr_requests():
+    for sequence, pcm in enumerate(microphone.frames()):
+        yield asr_pb2.AsrAudioChunk(
+            chunk=audio_pb2.AudioChunk(data=pcm, sequence=sequence)
+        )
+
+stub = contracts_grpc.RobonixServiceSpeechAsrStreamStub(rpc_channel)
+for event in stub.RecognizeStream(asr_requests(), timeout=60.0):
+    print(event.text, event.is_final)
+```
+
+建立三类流式调用的 Atlas 连接和 `rpc_channel` 与一元 RPC 示例相同。示例中的 `synthesizer`、`detector`、`decoder`、`microphone` 和 `speaker` 是软件包自己的业务对象；Robonix 固定的是处理函数形态、生成消息类型、Stub 以及能力发现和连接流程。服务端需要返回错误时，优先使用 `context.abort(grpc.StatusCode.INVALID_ARGUMENT, "...")`；该调用会抛出终止 RPC 的异常，因此后面不应再 `return` 或 `yield`。
 
 ### 14.6 关闭行为
 
-`provider.run()` 管理注册、服务监听、心跳和信号处理。退出时会标记 `TERMINATED`，并关闭受管通道和服务。软件包自行创建的线程、设备句柄和后台进程应在 `on_shutdown` 中释放。
+装饰器只在导入阶段登记处理函数，不会自行监听端口。`provider.bootstrap()` 按以下顺序完成非阻塞启动：
+
+1. 向 Atlas 注册提供方；
+2. 创建共享或兼容生命周期 Driver，并把 `@provider.grpc` 处理函数绑定到生成的 Servicer；
+3. 监听 gRPC 端口并向 Atlas 声明这些能力；
+4. 启动 MCP HTTP 端点并声明 `@provider.mcp` 能力；
+5. 启动心跳；
+6. 等待启动器通过 Driver 发送初始化和激活命令。回调缺失时 Driver 记录 warning 并执行 no-op；提供方仍保留共享或兼容的命名空间 Driver。
+
+`provider.run()` 先执行同一套 bootstrap，再阻塞等待退出信号。Driver 的 `CMD_SHUTDOWN` 会先完成业务关闭回调和响应，再停止提供方；进程信号路径也会调用 `on_shutdown`。框架会关闭通过 `connect_capability` 建立的通道、受管子进程和 gRPC server，但软件包自行创建的线程、设备句柄和后台任务仍必须在生命周期回调中释放。
 
 ## 15. 常用命令行接口
 
@@ -979,7 +1297,7 @@ def method(req, context):
 | `rbnx codegen -p <package> [--mcp] [--ros2]` | 生成 gRPC、MCP 或 ROS 2 接口代码 |
 | `rbnx build [-p <package> \| -f <manifest>]` | 构建软件包或整个部署 |
 | `rbnx start [-p <package>]` | 单独启动软件包；生命周期行为见第 5.2 节 |
-| `rbnx boot [-f <manifest>]` | 启动整套部署 |
+| `rbnx boot [-v] [-f <manifest>]` | 启动整套部署；`-v` 关闭动态启动动画并实时输出 INFO/WARN/ERROR |
 | `rbnx shutdown [-f <manifest>]` | 停止对应部署 |
 | `rbnx update [-p <package> \| -f <manifest>]` | 更新远程软件包 |
 | `rbnx clean [-p <package> \| -f <manifest>] [--cache]` | 清理构建和运行产物 |
@@ -991,9 +1309,9 @@ def method(req, context):
 | `rbnx inspect` | 输出完整运行时状态 |
 | `rbnx ask "<prompt>"` | 非交互提交一次任务 |
 | `rbnx chat` | 启动交互界面 |
-| `rbnx logs` | 读取结构化日志 |
+| `rbnx logs [-d <dir>] [-t <tag>] [-l <level>] [-f] [--json]` | 读取、筛选或跟随 Scribe 结构化日志 |
 
-`rbnx clean -f robonix_manifest.yaml` 默认保留 `rbnx-boot/cache/`；只有加 `--cache` 才删除远程软件包缓存。单独执行 `rbnx start --config <file>` 时仍会先读取软件包清单，然后在提供方注册后通过 Driver `CMD_INIT` 发送合并后的配置；配置文件路径不会暴露给提供方进程。
+`rbnx clean -f robonix_manifest.yaml` 默认保留 `rbnx-boot/cache/`；只有加 `--cache` 才删除远程软件包缓存。单独执行 `rbnx start --config <file>` 时仍会先读取软件包清单；启动器确认提供方只注册可接受的唯一生命周期 Driver 后，通过 `CMD_INIT` 发送合并配置。新包由框架自动使用共享 Driver；已有包可继续使用精确命名空间 Driver，或在旧生成服务完全不存在时按受管兼容标记正向使用共享运行时 Driver。配置文件路径不会暴露给提供方进程。
 
 ## 16. 配置字段
 
@@ -1011,10 +1329,8 @@ def method(req, context):
 | `build` | 构建命令，可选；省略表示无构建步骤 |
 | `start` | 启动命令，必填 |
 | `stop` | 停止命令，可选；由 `rbnx boot` / Soma 受管关闭时，在 Driver `CMD_SHUTDOWN` 后、终止进程组前执行；单独 `rbnx start` 不自动执行 |
-| `capabilities` | 能力约定引用和预期导出清单；每项含约定 ID `name`，可选约定 TOML `path`，不替代码声明普通业务能力。恰好一条 `*/driver` 约定还会让 `rbnx start` 等待对应的运行时 driver 能力并发送生命周期配置；多条 driver 会使启动失败 |
-| `depends` | 依赖元数据；每项含 `name`，可选 `path`、`url`、`branch`，当前不自动获取或安装 |
-
-底层解析器仍可读取旧 `vendor`、`id`、`nodes`、旧式构建对象和旧文件名。`id` 回退、`nodes`、旧式构建对象或旧文件名会产生迁移提示，单独出现的 `vendor` 不会。兼容范围不是所有命令都一致：显式 `rbnx start -p <目录>` 可读取旧 `robonix_manifest.yaml`，但当前 `rbnx build -p`、从当前目录自动发现软件包以及 `rbnx build -f` 的部署构建仍要求 `package_manifest.yaml`。新软件包只使用当前字段。
+| `capabilities` | 能力约定引用和预期导出清单；每项含约定 ID `name`，可选业务约定 TOML `path`，不替代码声明普通业务能力。未列 Driver 时，框架自动选择共享 `robonix/lifecycle/driver`；显式共享仍受支持。已有包可保留唯一的精确命名空间 Driver 与本地 `path`，并可在旧生成服务完全缺失时正向使用共享运行时 Driver。共享选择不反向降级；多条 Driver 会使启动失败 |
+| `depends` | 依赖元数据；解析、安装和构建排序仍在设计中，当前只展示记录，不自动获取、安装或注入路径 |
 
 ### 16.2 部署清单
 

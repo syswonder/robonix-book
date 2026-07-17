@@ -10,13 +10,13 @@ title: 执行器
 
 ## 接口
 
-| 能力约定 ID | 模式 | 载荷（IDL） | 能力约定 TOML |
-|---|---|---|---|
-| `robonix/system/executor/execute` | `rpc_server_stream` | [`executor/Execute`](../../reference/idl.md#executor-srv-execute-srv)（`pilot/Plan` → 流 `executor/RtdlEvent`） | `system/executor/execute.v1.toml` |
-| `robonix/system/executor/control_plan` | `rpc` | [`executor/ControlPlan`](../../reference/idl.md#executor-srv-controlplan-srv) | `system/executor/control_plan.v1.toml` |
-| `robonix/system/executor/cancel_all_plans` | `rpc` | [`executor/CancelAll`](../../reference/idl.md#executor-srv-cancelall-srv) | `system/executor/cancel_all_plans.v1.toml` |
-| `robonix/system/executor/list_active_plans` | `rpc` | [`executor/ListActivePlans`](../../reference/idl.md#executor-srv-listactiveplans-srv) | `system/executor/list_active_plans.v1.toml` |
-| `robonix/system/executor/get_health` | `rpc` | [`module_health/GetModuleHealth`](../../reference/idl.md#module-health-srv-getmodulehealth-srv) | `system/executor/get_health.toml` |
+| 能力约定 ID | 模式 | 当前实现传输 | 载荷（IDL） | 能力约定 TOML |
+|---|---|---|---|---|
+| `robonix/system/executor/execute` | `rpc_server_stream` | gRPC | [`executor/Execute`](../../reference/idl.md#executor-srv-execute-srv)（`pilot/Plan` → 流 `executor/RtdlEvent`） | `system/executor/execute.v1.toml` |
+| `robonix/system/executor/control_plan` | `rpc` | gRPC | [`executor/ControlPlan`](../../reference/idl.md#executor-srv-controlplan-srv) | `system/executor/control_plan.v1.toml` |
+| `robonix/system/executor/cancel_all_plans` | `rpc` | gRPC | [`executor/CancelAll`](../../reference/idl.md#executor-srv-cancelall-srv) | `system/executor/cancel_all_plans.v1.toml` |
+| `robonix/system/executor/list_active_plans` | `rpc` | gRPC | [`executor/ListActivePlans`](../../reference/idl.md#executor-srv-listactiveplans-srv) | `system/executor/list_active_plans.v1.toml` |
+| `robonix/system/executor/get_health` | `rpc` | gRPC | [`module_health/GetModuleHealth`](../../reference/idl.md#module-health-srv-getmodulehealth-srv) | `system/executor/get_health.toml` |
 
 上表 5 条标准约定由内置执行器以 gRPC 注册。它们与下面的运行时 MCP 内置工具不是同一接口面。
 
@@ -24,7 +24,7 @@ title: 执行器
 
 ## 运行时内置工具
 
-执行器还会在 Atlas 中注册 `robonix/system/executor/builtin/*` MCP 能力：`read_file`、`write_file`、`patch_file`、`list_dir`、`run_command`、`cancel_plan`、`get_all_plans`、`get_plan_status`、`stop_plan_at` 和 `read_capability_doc`。这些能力没有标准 TOML；它们是当前内置实现的运行时表面，并会进入规划器的可调用目录。
+执行器还会在 Atlas 中注册 10 条 `robonix/system/executor/builtin/*` MCP 能力：`read_file`、`write_file`、`patch_file`、`list_dir`、`run_command`、`cancel_plan`、`get_all_plans`、`get_plan_status`、`stop_plan_at` 和 `read_capability_doc`。它们在 Atlas 中声明为 MCP 传输，但目标提供方正是 Executor 自身时，分发器会改走进程内实现，不连接其 `internal://...` 记账端点。这些能力没有标准 TOML；它们是当前内置实现的运行时表面，并会进入规划器的可调用目录。
 
 文件与命令工具以 `ROBONIX_WORKSPACE` 为边界；未设置时使用执行器的当前工作目录。部署方应把该目录和执行器进程权限视为模型可操作的安全边界。
 

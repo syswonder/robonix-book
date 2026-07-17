@@ -11,11 +11,11 @@ title: 健康服务
 
 ## 接口
 
-| 能力约定 ID | 模式 | 载荷（IDL） | 能力约定 TOML |
-|---|---|---|---|
-| `robonix/system/vitals/get` | `rpc` | [`vitals/GetVitals`](../../reference/idl.md#vitals-srv-getvitals-srv) | `system/vitals/get.v1.toml` |
-| `robonix/system/vitals/stream` | `rpc_server_stream` | [`vitals/StreamVitals`](../../reference/idl.md#vitals-srv-streamvitals-srv) | `system/vitals/stream.v1.toml` |
-| `robonix/system/vitals/modules/get` | `rpc` | [`module_health/GetModuleHealthSnapshot`](../../reference/idl.md#module-health-srv-getmodulehealthsnapshot-srv) | `system/vitals/modules/get.toml` |
+| 能力约定 ID | 模式 | 当前实现传输 | 载荷（IDL） | 能力约定 TOML |
+|---|---|---|---|---|
+| `robonix/system/vitals/get` | `rpc` | gRPC | [`vitals/GetVitals`](../../reference/idl.md#vitals-srv-getvitals-srv) | `system/vitals/get.v1.toml` |
+| `robonix/system/vitals/stream` | `rpc_server_stream` | gRPC | [`vitals/StreamVitals`](../../reference/idl.md#vitals-srv-streamvitals-srv) | `system/vitals/stream.v1.toml` |
+| `robonix/system/vitals/modules/get` | `rpc` | gRPC | [`module_health/GetModuleHealthSnapshot`](../../reference/idl.md#module-health-srv-getmodulehealthsnapshot-srv) | `system/vitals/modules/get.toml` |
 
 本体事实仍由[本体服务](soma.md)提供；健康服务负责在这些事实之上做健康阈值判断和系统或模块级汇总。
 

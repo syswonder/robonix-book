@@ -7,13 +7,14 @@
 
 ## 按命名空间组织
 
-标准能力约定按一级命名空间分三类（`robonix/skill/*` 没有随仓库分发的标准能力约定——技能由用户自定义）：
+标准业务能力约定按原语、服务和系统接口组织；`robonix/skill/*` 由技能软件包自行定义。生命周期管理使用一个跨类别共享命名空间：
 
 | 命名空间 | 含义 | 域 |
 |----------|------|----|
 | `robonix/primitive/*` | 原语：低层设备抽象 | [机械臂](primitive/arm.md) · [音频](primitive/audio.md) · [相机](primitive/camera.md) · [底盘](primitive/chassis.md) · [设备健康](primitive/health.md) · [惯性测量单元](primitive/imu.md) · [激光雷达](primitive/lidar.md) · [机器人描述](primitive/robot-description.md) |
 | `robonix/service/*` | 服务：可替换的通用能力 | [空间地图](service/map.md) · [导航](service/navigation.md) · [语音](service/speech.md) · [声纹](service/voiceprint.md) · [记忆](service/memory.md) |
 | `robonix/system/*` | 系统服务：Robonix 自身组件 | [规划器](system/pilot.md) · [执行器](system/executor.md) · [交互服务](system/liaison.md) · [场景服务](system/scene.md) · [本体服务](system/soma.md) · [健康服务](system/vitals.md) |
+| `robonix/lifecycle/*` | 跨原语、服务和技能复用的生命周期管理接口 | `robonix/lifecycle/driver` |
 
 完整的 12 个系统组件（含不对外暴露能力约定的）见 [系统组件](../architecture/components.md)。
 
@@ -26,4 +27,4 @@
 - **载荷（IDL）**：接口定义语言（Interface Definition Language，IDL）描述的消息或服务类型，解析到 `capabilities/lib/` 下的 `.msg` 或 `.srv`。Robonix 自带的 ROS 2 消息定义也从这里生成，使不同 ROS 2 发行版上的 Robonix 组件使用同一套数据结构。
 - **能力约定 TOML**：能力约定描述文件相对 `capabilities/` 的路径；绝对路径见 `rbnx path capabilities`。
 
-> 名为 `driver` 的能力约定是提供方的生命周期入口，不是业务数据接口。只有目录中实际列出该约定的软件包才通过它接收初始化、激活和关闭命令；不要据此假定所有原语或服务都必须声明独立的 `driver`。
+> `robonix/lifecycle/driver` 是新提供方共享的生命周期入口，不是业务数据接口。新软件包省略 Driver 条目时由框架自动使用该约定，不创建自己的 Driver TOML；显式声明共享 Driver 也受支持。各领域页面仍保留的 `<provider-namespace>/driver` 是已有软件包使用的兼容接口，不应删除，也不能与共享 Driver 同时声明。精确旧清单在旧生成服务完全不存在时可以受管地正向使用共享运行时 Driver；共享选择绝不反向降级。完整兼容与可选迁移流程见[软件包与部署清单规范](../integration-guide/packaging-spec.md#4-生命周期与启动责任)。

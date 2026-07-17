@@ -1,6 +1,6 @@
 # Robonix Book
 
-Robonix Book is the Chinese documentation site for Robonix. The current handbook is built with Docusaurus and aligned with the `dev-next` branch of [`syswonder/robonix`](https://github.com/syswonder/robonix/tree/dev-next). The archived mdBook source and tooling remain under `archive/mdbook/` for history and URL migration checks; contributors should edit the Markdown files under `docs/`.
+Robonix Book is the Chinese documentation site for Robonix. The current handbook is built with Docusaurus and aligned with pinned `dev-next` revision [`181d3eb974fd495a795ed120a0a4c6e6f342d179`](https://github.com/syswonder/robonix/tree/181d3eb974fd495a795ed120a0a4c6e6f342d179). The archived mdBook source and tooling remain under `archive/mdbook/` for history and URL migration checks; contributors should edit the Markdown files under `docs/`.
 
 ## Local preview
 

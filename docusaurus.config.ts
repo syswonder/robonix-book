@@ -59,7 +59,7 @@ const config: Config = {
     announcementBar: {
       id: `source-baseline-${sourceRevision.slice(0, 8)}`,
       content:
-        '<span class="source-baseline">文档基线：' +
+        '<span class="source-baseline">对应源码：' +
         '<a href="https://github.com/syswonder/robonix/tree/dev-next">Robonix <strong>dev-next</strong></a>' +
         ' · <a href="https://github.com/syswonder/robonix/commit/' +
         sourceRevision +

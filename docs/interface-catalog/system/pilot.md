@@ -10,10 +10,10 @@ title: 规划器
 
 ## 接口
 
-| 能力约定 ID | 模式 | 载荷（IDL） | 能力约定 TOML |
-|---|---|---|---|
-| `robonix/system/pilot` | `rpc_server_stream` | [`pilot/SubmitTask`](../../reference/idl.md#pilot-srv-submittask-srv)（`pilot/Task` → 流 `pilot/PilotEvent`） | `system/pilot.v1.toml` |
-| `robonix/system/pilot/get_health` | `rpc` | [`module_health/GetModuleHealth`](../../reference/idl.md#module-health-srv-getmodulehealth-srv) | `system/pilot/get_health.toml` |
+| 能力约定 ID | 模式 | 当前实现传输 | 载荷（IDL） | 能力约定 TOML |
+|---|---|---|---|---|
+| `robonix/system/pilot` | `rpc_server_stream` | gRPC | [`pilot/SubmitTask`](../../reference/idl.md#pilot-srv-submittask-srv)（`pilot/Task` → 流 `pilot/PilotEvent`） | `system/pilot.v1.toml` |
+| `robonix/system/pilot/get_health` | `rpc` | gRPC | [`module_health/GetModuleHealth`](../../reference/idl.md#module-health-srv-getmodulehealth-srv) | `system/pilot/get_health.toml` |
 
 `SubmitTask(task: pilot/Task)` 返回一条 `PilotEvent` 流。事件类型包括自然语言增量、方案、批次结果、状态、最终回复、节点状态和任务状态；该接口不暴露模型的内部思维链。用户身份放在 `Task.context_json.user_id` 中。
 
