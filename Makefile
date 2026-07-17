@@ -6,7 +6,7 @@ HOST ?= 127.0.0.1
 PORT ?= 3000
 SPHINX_MOCKS ?= torch,rclpy,cv2,open3d,scipy,sklearn
 
-.PHONY: help install dev typecheck codeblocks page-evidence assets build check serve source-check api-install api-rust api-python api-check api full-build full-check full-serve reference clean
+.PHONY: help install dev typecheck codeblocks page-evidence validation-artifacts assets build check serve source-check api-install api-rust api-python api-check api full-build full-check full-serve reference clean
 
 help:
 	@printf '%s\n' \
@@ -15,6 +15,7 @@ help:
 	  'make typecheck  Check the Docusaurus TypeScript configuration' \
 	  'make codeblocks Check fenced Bash, JavaScript, JSON, Python, TOML, and YAML syntax' \
 	  'make page-evidence Check page provenance, fenced-block classifications, and execution records' \
+	  'make validation-artifacts Check browser and source-deck audit reports' \
 	  'make assets     Check documentation image paths and alternative text' \
 	  'make build      Type-check and create the production site in build/' \
 	  'make check      Run every local pre-commit check' \
@@ -40,13 +41,16 @@ codeblocks:
 page-evidence:
 	$(NPM) run check:page-evidence
 
+validation-artifacts:
+	$(NPM) run check:validation-artifacts
+
 assets:
 	$(NPM) run check:assets
 
 build: typecheck
 	$(NPM) run build
 
-check: codeblocks page-evidence assets build
+check: codeblocks page-evidence validation-artifacts assets build
 	python3 scripts/check-built-links.py build
 	python3 scripts/check-legacy-urls.py build
 	test -s build/search-index.json

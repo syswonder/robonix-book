@@ -101,7 +101,7 @@ Liaison 每次通过 Atlas 解析 Pilot 的实际端点；Pilot 同样通过 Atl
 - Speech 可以用 gRPC 提供语音识别与合成缓冲区，同时用 MCP 提供模型可调用的 `speak`。
 - 所有受管提供方都通过 gRPC Driver 接收生命周期命令，不影响其业务能力使用其它传输。
 
-接口目录中的传输列描述当前参考实现，不代表能力约定永久绑定该传输。具体部署仍应以 Atlas 中实际注册的 `(provider_id, contract_id, transport)` 为准。
+接口目录中的传输列描述当前参考实现，不代表能力约定永久绑定该传输。具体部署仍应以 Atlas 中实际注册的 `(provider_id, contract_id, transport)` 为准。架构图里的 `/rgb`、`/odom`、`/map` 一类短标签只能视为某次部署的端点示例，不能代替完整 `contract_id`；消费方仍须通过 `ConnectCapability` 取得该实例的最终端点。图中把某个接口标成 gRPC、ROS 2 或 MCP，也只表示画出的那条路径，不表示独占绑定：同一能力约定可以同时声明多种传输，图里没有列出的接口也不能据此判定不存在。
 
 ## 开发与排查
 

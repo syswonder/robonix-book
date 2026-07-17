@@ -11,6 +11,7 @@
     "check:code-blocks": "node scripts/check-code-blocks.mjs",
     "check:page-evidence": "node scripts/check-page-evidence.mjs",
     "check:page-evidence:strict": "node scripts/check-page-evidence.mjs --strict-evidence",
+    "check:validation-artifacts": "node scripts/check-validation-artifacts.mjs",
     "page-evidence:inventory": "node scripts/check-page-evidence.mjs --inventory",
     "page-evidence:refresh": "node scripts/check-page-evidence.mjs --refresh",
     "check:assets": "node scripts/check-doc-assets.mjs",

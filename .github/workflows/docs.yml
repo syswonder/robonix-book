@@ -25,6 +25,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Read audited Robonix source revision
+        id: source-revision
+        run: echo "ref=$(tr -d '[:space:]' < ROBONIX_SOURCE_REVISION)" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout audited Robonix source
+        uses: actions/checkout@v4
+        with:
+          repository: syswonder/robonix
+          ref: ${{ steps.source-revision.outputs.ref }}
+          path: robonix
+          submodules: recursive
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -35,19 +47,7 @@ jobs:
         run: npm ci
 
       - name: Build and validate Docusaurus site
-        run: make check
-
-      - name: Read audited Robonix source revision
-        id: source-revision
-        run: echo "ref=$(tr -d '[:space:]' < ROBONIX_SOURCE_REVISION)" >> "$GITHUB_OUTPUT"
-
-      - name: Checkout Robonix source
-        uses: actions/checkout@v4
-        with:
-          repository: syswonder/robonix
-          ref: ${{ steps.source-revision.outputs.ref }}
-          path: robonix
-          submodules: recursive
+        run: ROBONIX_SOURCE="$PWD/robonix" make check
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable

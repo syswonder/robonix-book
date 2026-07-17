@@ -1,4 +1,4 @@
-schema_version: 2
+schema_version: 3
 source:
   repository: https://github.com/syswonder/robonix.git
   branch: dev-next
@@ -13,7 +13,7 @@ evidence_runs:
     scope: syntax
     status: passed
     binds_to_docs: true
-    docs_inventory_digest: 2123d6b5c6a85438c707d0f53106bd0859923272a7a0c774f0adaef05afa8282
+    docs_inventory_digest: c12496578bfa9425e3cb26987696393e9dea6fd53c693856b93ff0ccb153a25a
     source_revision: 181d3eb974fd495a795ed120a0a4c6e6f342d179
     environment:
       os: macOS 26.5.1
@@ -24,8 +24,8 @@ evidence_runs:
       - cwd: /Users/wheatfox/Code/robonix-book
         command: npm run check:code-blocks
         exit_code: 0
-        result: Parsed 136 Bash, 1 JavaScript, 1 JSON, 28 Python, 9 TOML, and 51 YAML fences.
-    result: 'Code-block syntax validation passed: bash=136, js=1, json=1, python=28, toml=9, yaml=51'
+        result: Parsed 136 Bash, 1 JavaScript, 1 JSON, 29 Python, 9 TOML, and 52 YAML fences.
+    result: 'Code-block syntax validation passed: bash=136, js=1, json=1, python=29, toml=9, yaml=52'
     limitations: This proves parsing only. It is not end-to-end execution, source compatibility, simulator acceptance, or hardware acceptance.
   pinned-cli-parser-2026-07-17:
     type: pinned-rbnx-clap-parser
@@ -308,6 +308,36 @@ evidence_runs:
         result: nc established the documented TCP reachability probe against an isolated listener, then the run-owned listener was stopped.
     result: The non-mutating Homebrew dry run and netcat reachability pattern executed successfully without external network or service changes.
     limitations: This does not prove Ubuntu apt packages, a real robot address, Docker, ALSA enumeration, ROS 2, or simulator availability.
+  local-validation-host-platform-probe-2026-07-17:
+    type: local-validation-host-capability-and-network-probe
+    scope: execution
+    status: blocked
+    blocker_kinds:
+      - platform
+      - network
+    source_revision: 181d3eb974fd495a795ed120a0a4c6e6f342d179
+    environment:
+      os: macOS 26.5.1
+      architecture: arm64
+      shell: zsh
+    commands:
+      - cwd: /Users/wheatfox/Code/robonix-book
+        command: |-
+          uname -s
+          uname -m
+          sw_vers -productVersion
+          for tool in apt docker arecord aplay colcon; do if command -v "$tool" >/dev/null 2>&1; then printf '%s=%s\n' "$tool" "$(command -v "$tool")"; else printf '%s=unavailable\n' "$tool"; fi; done
+          for path in /opt/ros/humble/setup.bash /opt/ros/humble/lib/rmw_zenoh_cpp/rmw_zenohd; do if test -e "$path"; then printf '%s=present\n' "$path"; else printf '%s=unavailable\n' "$path"; fi; done
+          printf 'DISPLAY=%s\n' "${DISPLAY:-unavailable}"
+        exit_code: 0
+        result: The host reported Darwin arm64 26.5.1; apt, Docker, arecord, aplay, colcon, ROS 2 Humble setup, and rmw_zenohd were unavailable. DISPLAY pointed to the local XQuartz launchd socket.
+      - cwd: /Users/wheatfox/Code/robonix-book
+        command: GIT_TERMINAL_PROMPT=0 git -c http.lowSpeedLimit=1 -c http.lowSpeedTime=5 ls-remote https://github.com/syswonder/primitive-audio-client-bridge-rbnx.git HEAD
+        exit_code: 128
+        result: The probe stopped before repository access because github.com DNS resolution failed.
+    result: The recorded validation host cannot execute the Linux, Docker, ROS 2, ALSA, or colcon procedures, and the current network cannot reach GitHub-hosted dependencies.
+    gap: Re-run each affected block on a host satisfying its recorded prerequisites; retry GitHub-dependent blocks only after DNS and repository access are available.
+    limitations: Presence probes establish only this host's current capability boundary; they do not prove behavior on Ubuntu, Debian, ROS 2, Docker, Webots, ALSA, or a reachable external network.
   pinned-webots-full-ci-2026-07-17:
     type: published-webots-full-integration
     scope: integration
@@ -334,7 +364,7 @@ evidence_runs:
     scope: integration
     status: passed
     binds_to_docs: true
-    docs_inventory_digest: 2123d6b5c6a85438c707d0f53106bd0859923272a7a0c774f0adaef05afa8282
+    docs_inventory_digest: c12496578bfa9425e3cb26987696393e9dea6fd53c693856b93ff0ccb153a25a
     source_revision: 181d3eb974fd495a795ed120a0a4c6e6f342d179
     environment:
       os: macOS 26.5.1
@@ -354,13 +384,13 @@ evidence_runs:
       - cwd: /Users/wheatfox/Code/robonix-book
         command: npm run check:assets && python3 scripts/check-built-links.py build && python3 scripts/check-legacy-urls.py build && test -s build/search-index.json
         exit_code: 0
-        result: Validated eight images, 2697 internal targets, 42 legacy pages, 191 archived fragments, and a non-empty search index.
+        result: Validated eight images, 2675 internal targets, 42 legacy pages, 191 archived fragments, and a non-empty search index.
       - cwd: /Users/wheatfox/Code/robonix-book
         command: make check
         exit_code: 0
-        result: The documented aggregate local check target completed all syntax, page-evidence, asset, type, production-build, link, legacy-route, and search-index postconditions.
-    result: The current pinned references and handbook compiled into a production site and passed syntax, type, asset, internal-link, legacy-URL, and search-index postconditions.
-    limitations: This is the local handbook build, not full Rust/Python API regeneration, package installation, or the long-running development server.
+        result: The aggregate local check completed syntax, structural page-evidence, asset, type, production-build, link, legacy-route, and search-index checks; the page-evidence report explicitly retained 120 execution gaps and 44 pending page reviews.
+    result: The current pinned references and handbook compiled into a production site and passed structural syntax, type, asset, internal-link, legacy-URL, and search-index postconditions.
+    limitations: This is the local handbook build, not evidence that every documented procedure executed, not accountable page review, not full Rust/Python API regeneration, not package installation, and not the long-running development server.
   pinned-shutdown-macos-2026-07-17:
     type: isolated-shutdown-postcondition
     scope: integration
@@ -476,6 +506,139 @@ exclusions:
       - tools/rbnx/src/cmd/docs.rs
       - tools/codegen/src/codegen/docs_gen.rs
       - capabilities/lib
+page_reviews:
+  docs/README.md:
+    status: pending
+    reviewer: unassigned
+  docs/architecture/atlas.md:
+    status: pending
+    reviewer: unassigned
+  docs/architecture/components.md:
+    status: pending
+    reviewer: unassigned
+  docs/architecture/deployment-and-startup.md:
+    status: pending
+    reviewer: unassigned
+  docs/architecture/multiplatform-deployment.md:
+    status: pending
+    reviewer: unassigned
+  docs/architecture/namespace-and-contracts.md:
+    status: pending
+    reviewer: unassigned
+  docs/architecture/runtime-communication.md:
+    status: pending
+    reviewer: unassigned
+  docs/background/eaios.md:
+    status: pending
+    reviewer: unassigned
+  docs/contributing/documentation.md:
+    status: pending
+    reviewer: unassigned
+  docs/developer-guide.md:
+    status: pending
+    reviewer: unassigned
+  docs/getting-started/client.md:
+    status: pending
+    reviewer: unassigned
+  docs/getting-started/quickstart.md:
+    status: pending
+    reviewer: unassigned
+  docs/integration-guide/build-and-codegen.md:
+    status: pending
+    reviewer: unassigned
+  docs/integration-guide/index.md:
+    status: pending
+    reviewer: unassigned
+  docs/integration-guide/package-catalog.md:
+    status: pending
+    reviewer: unassigned
+  docs/integration-guide/packaging-spec.md:
+    status: pending
+    reviewer: unassigned
+  docs/integration-guide/vendor-onboarding.md:
+    status: pending
+    reviewer: unassigned
+  docs/interface-catalog/index.md:
+    status: pending
+    reviewer: unassigned
+  docs/interface-catalog/primitive/arm.md:
+    status: pending
+    reviewer: unassigned
+  docs/interface-catalog/primitive/audio.md:
+    status: pending
+    reviewer: unassigned
+  docs/interface-catalog/primitive/camera.md:
+    status: pending
+    reviewer: unassigned
+  docs/interface-catalog/primitive/chassis.md:
+    status: pending
+    reviewer: unassigned
+  docs/interface-catalog/primitive/health.md:
+    status: pending
+    reviewer: unassigned
+  docs/interface-catalog/primitive/imu.md:
+    status: pending
+    reviewer: unassigned
+  docs/interface-catalog/primitive/index.md:
+    status: pending
+    reviewer: unassigned
+  docs/interface-catalog/primitive/lidar.md:
+    status: pending
+    reviewer: unassigned
+  docs/interface-catalog/primitive/robot-description.md:
+    status: pending
+    reviewer: unassigned
+  docs/interface-catalog/service/index.md:
+    status: pending
+    reviewer: unassigned
+  docs/interface-catalog/service/map.md:
+    status: pending
+    reviewer: unassigned
+  docs/interface-catalog/service/memory.md:
+    status: pending
+    reviewer: unassigned
+  docs/interface-catalog/service/navigation.md:
+    status: pending
+    reviewer: unassigned
+  docs/interface-catalog/service/speech.md:
+    status: pending
+    reviewer: unassigned
+  docs/interface-catalog/service/voiceprint.md:
+    status: pending
+    reviewer: unassigned
+  docs/interface-catalog/skill/index.md:
+    status: pending
+    reviewer: unassigned
+  docs/interface-catalog/system/executor.md:
+    status: pending
+    reviewer: unassigned
+  docs/interface-catalog/system/index.md:
+    status: pending
+    reviewer: unassigned
+  docs/interface-catalog/system/liaison.md:
+    status: pending
+    reviewer: unassigned
+  docs/interface-catalog/system/pilot.md:
+    status: pending
+    reviewer: unassigned
+  docs/interface-catalog/system/scene.md:
+    status: pending
+    reviewer: unassigned
+  docs/interface-catalog/system/soma.md:
+    status: pending
+    reviewer: unassigned
+  docs/interface-catalog/system/vitals.md:
+    status: pending
+    reviewer: unassigned
+  docs/reference/api.md:
+    status: pending
+    reviewer: unassigned
+  docs/reference/index.md:
+    status: pending
+    reviewer: unassigned
+  docs/tutorials/existing-python-feature.md:
+    status: pending
+    reviewer: unassigned
 pages:
   docs/README.md:
     source_revision: 181d3eb974fd495a795ed120a0a4c6e6f342d179
@@ -664,12 +827,18 @@ pages:
         lines:
           - 201
         validation:
-          status: blocked
+          status: platform-unavailable
           requirement: end-to-end
           runs:
             - docs-syntax-2026-07-17
             - pinned-webots-no-motion-2026-07-17
-          gap: The required platform, network, simulator, ROS 2, audio, or package-manager prerequisites were unavailable on the validation host.
+            - local-validation-host-platform-probe-2026-07-17
+          gap: The macOS validation host has no Docker, ROS 2 Humble, rmw_zenohd, or reachable GitHub dependencies, so the three-terminal Webots build, boot, and diagnostic workflow did not start locally.
+          prerequisites:
+            - Ubuntu or Debian x86_64 with Docker Engine and Docker Compose available to the current user.
+            - The pinned Robonix checkout and every recursive Webots provider dependency must be present locally or reachable over DNS and HTTPS.
+            - Webots 2025a, ROS 2 Humble with rmw_zenoh_cpp, and either an authorized X11 display or the documented headless mode.
+            - Valid VLM_BASE_URL, VLM_API_KEY, and VLM_MODEL values for the tools and chat phase.
       - profile: runnable
         lines:
           - 227
@@ -685,12 +854,12 @@ pages:
         lines:
           - 233
         validation:
-          status: blocked
+          status: pending
           requirement: end-to-end
           runs:
             - docs-syntax-2026-07-17
             - pinned-webots-no-motion-2026-07-17
-          gap: The required platform, network, simulator, ROS 2, audio, or package-manager prerequisites were unavailable on the validation host.
+          gap: examples/webots/sim/stop.sh has not been run after a successful matching start.sh session; first establish the named Webots deployment and record that the script stops only its owned simulator, router, RViz, and container processes.
       - profile: reference
         lines:
           - 166
@@ -799,47 +968,67 @@ pages:
         lines:
           - 146
         validation:
-          status: blocked
+          status: platform-unavailable
           requirement: end-to-end
           runs:
             - docs-syntax-2026-07-17
-          gap: The required platform, network, simulator, ROS 2, audio, or package-manager prerequisites were unavailable on the validation host.
+            - local-validation-host-platform-probe-2026-07-17
+          gap: The validation host has no ROS 2 installation or rmw_zenoh_cpp implementation, so the documented RMW-selected boot was not executed.
+          prerequisites:
+            - A Linux target with the page's actual ROS_DISTRO sourced and a matching ros-$ROS_DISTRO-rmw-zenoh-cpp package installed.
+            - A built deployment manifest whose ROS 2 processes all use RMW_IMPLEMENTATION=rmw_zenoh_cpp.
+            - A reachable rmw_zenohd router and a recorded rbnx boot plus clean shutdown.
       - profile: runnable
         lines:
           - 157
         validation:
-          status: blocked
+          status: platform-unavailable
           requirement: end-to-end
           runs:
             - docs-syntax-2026-07-17
-          gap: The required platform, network, simulator, ROS 2, audio, or package-manager prerequisites were unavailable on the validation host.
+            - local-validation-host-platform-probe-2026-07-17
+          gap: The macOS validation host has neither apt nor /opt/ros, so the ROS repository installation and rmw_zenohd executable check were not run.
+          prerequisites:
+            - Ubuntu or Debian with sudo access, apt, and the official ROS 2 repository configured for the target distribution.
+            - A concrete installed ROS_DISTRO value rather than the teaching placeholder.
+            - DNS and HTTPS access to apt repositories, followed by an executable /opt/ros/$ROS_DISTRO/lib/rmw_zenoh_cpp/rmw_zenohd.
       - profile: runnable
         lines:
           - 167
         validation:
-          status: blocked
+          status: platform-unavailable
           requirement: end-to-end
           runs:
             - docs-syntax-2026-07-17
-          gap: The required platform, network, simulator, ROS 2, audio, or package-manager prerequisites were unavailable on the validation host.
+            - local-validation-host-platform-probe-2026-07-17
+          gap: The validation host lacks Linux /proc and the ROS 2 rmw_zenohd binary, so the PID ownership, port-7447 readiness, trap, and cleanup path was not executed.
+          prerequisites:
+            - Linux with /proc, Bash, readlink, Python 3, and an installed executable rmw_zenohd at the expanded ROS_DISTRO path.
+            - Permission to create rbnx-boot/logs and the PID file, with TCP port 7447 free before the run.
+            - An isolated run that records router readiness, validates /proc/$pid/exe ownership, and exercises both normal and trapped cleanup.
       - profile: runnable
         lines:
           - 220
         validation:
-          status: blocked
+          status: platform-unavailable
           requirement: end-to-end
           runs:
             - docs-syntax-2026-07-17
-          gap: The required platform, network, simulator, ROS 2, audio, or package-manager prerequisites were unavailable on the validation host.
+            - local-validation-host-platform-probe-2026-07-17
+          gap: The macOS host cannot perform the Linux /proc executable-identity check and has no matching rmw_zenohd process started by the preceding block.
+          prerequisites:
+            - Linux with /proc and the exact rmw_zenohd executable installed for the selected ROS_DISTRO.
+            - A live router started by the documented startup block, with its owned PID recorded in rbnx-boot/rmw_zenohd.pid.
+            - Postconditions proving the owned process stopped, a stale or reused PID was refused, and only the run-owned PID file was removed.
       - profile: runnable-partial
         lines:
           - 257
         validation:
-          status: blocked
+          status: pending
           requirement: end-to-end
           runs:
             - docs-syntax-2026-07-17
-          gap: The required platform, network, simulator, ROS 2, audio, or package-manager prerequisites were unavailable on the validation host.
+          gap: The target-specific ROS 2 container environment has not been exercised with a real fixed router address; validate the exact ROBONIX_ZENOH_ROUTER endpoint, container reachability, provider registration, and clean shutdown on the deployment network.
       - profile: runnable
         lines:
           - 270
@@ -1109,87 +1298,88 @@ pages:
       - kind: test
         path: pylib/robonix-api/tests/test_shared_lifecycle.py
         claim: Shared-only selection, marked legacy-to-shared upgrade, callback no-op semantics, and fail-closed lifecycle regression coverage.
-    fence_digest: c57af386c97e0477e57d64a64f83071d78968fe04607a99d86e5f2dedb0f9975
+    fence_digest: d6bba6d83d0a6f05df358e92208481ff526a6eb9b6ddc710a384ff94a8407138
     block_fingerprints:
-      '13': 350a5f1fee3185e087f6c9b172d86a5212e1bc9eef7d46691541bcf7992e3e6e
-      '37': 9792f8019715b65185ae21d095dd1636df1e53774c6d6370119ddc0b1cc6cc9f
-      '44': 71df1e044a47035a2cd4b9aca2c6ce1d93c96e1bd905854ae4838d55fd70c6a2
-      '107': ce3c039ef8fc49064fd34ef016bd7f4f61e09bd358cfd950bf55b014779bf9eb
-      '114': 398e613fdecbf3a54d10f087710af0d3bc26d89e3997d72957cd7c05942d704f
-      '126': 6732da3e29401c15ddebfe2bae9b3d592dc05c2696d284b1034c81ef28bb2aca
-      '142': ff0814bf41c77679c8f109c405acc77b9d9dde2d1df333620db9b1fcc396b4cc
-      '153': ee0a8574ea2e1aff8a04f1de4d698e0377a3ddc3735c9ceaef3524b136fbe42b
-      '216': 862c84cdc635698027b44517298eb39bb7dfc227077a82532c6217fe6a3a3d78
-      '265': f4f2ce6272dc732642170b60e2ce8b9ca009147121c903eec8363443732eb108
-      '274': d7e2cc7f33d51f457a7ee343479de90f7dbd740fe1ae27a4e1f6fdc1bd330c6a
-      '282': dab7d8f9582e5b940dc24067e4dd6ffaf74be01fffacdd1f37c242eacff60301
-      '288': efa7713a4ea8736e5994386b95cb559fba225a392996a196c8b94a531b47f12b
-      '312': 0a3533fb4aff7e92253f8f450e9b3f6c17e885b9e33bc4b1a7598f62b1cd90dc
-      '351': c66e20d1c2439e75f4a1d31efb59a4aea89f3b4e2f20ab3a208dc71b7353acb9
-      '360': b0df269fd2260660d6cc802e5b5e5a587d5e7eadbb866b21b6a678a14bd6a20d
-      '369': e90616716f14b5f2bffd768e750b00e285d4497899e78738e17c77adf3176339
-      '382': 0a3019a9f716ef106a560e9de124c163bb1a5b3c36a1b5e8f4cd8b56d368eb2c
-      '412': fa23add5eb51fbde31bb98befb684df518d40e5b8989bb7f5b7ce47aa440c2f3
-      '418': 062c9223046d1c9d1c44fe7285b65a1e2e4aee6fd13b1eab0bbf1b3e026bcf18
-      '427': 59c4066ace40fb6c155d77cffb15e0545983b07f25305c0c7b4a849b98795c57
-      '491': 82cbe1ef32bb1186077f8a5b38719f3008dcf2bd30ff22b8a124969128d232f1
-      '500': da90f0795aa70e332b0ae620055cb41e679aa18344e5c2db3497a87977adb43b
-      '543': 4f1dd5453aaf62a3a89cd84d1dba9e19097db8ae2814c77f39346172ff12f5b9
-      '554': 132ce4f06a0252116c62d1fdea5a39b00dff2abc69a6ce226565c5851d56daa7
-      '560': deda4457c1cbfe3d2bc306f16bc4af55b139706c848f4af5b5dfa27a4509ea9f
-      '568': 03214386eba480c400d086794d3624ee84968df2a6f347d3c8b64fdd246dd103
-      '582': 8ab16217efa46b57c2113e7ca4e1de0efcc3655176d93f0efe4fb9b8fb1ea2af
-      '597': 8836604f959c62ed77ef7b652b0eb95d8d2c4b71e6eca4469766dd7fc1416b54
-      '636': bc9fb9b0eefff786844467ae7c8a13bf766dd4d2cc814d0c619a5ce3ae0cdeae
-      '644': 646e74e43a998f8d0a813c64a87763218bd58c46e9060b4c1b6d8edf5972dbcc
-      '653': 945e171ddc1678247137e32ebf3d1b4c98949d3ff38d8e93cbf12b77f131e36f
-      '664': 4e5f3b238e8c26b18f1b93b7c46db60f8af5cc1a000b6d69d28176b38ddf6ac3
-      '668': 0b328b84c23ce9e0c72da819d437375c9944fd57b86a9656b8672619cb6e37b9
-      '674': 71ad73c5f640a458c043622f63439c8cd747c378f048d45d9b95dfb1c3caa95d
-      '685': f679c97cd3c08a6843bbd0cb4723ee6445bbe4f27e564a6168a137c2f90cfef0
-      '693': c7534ef918c1c4e7de9d640bcf19c31273737b70e3c9d214d469dc347d84d102
-      '701': d131ba6bb0e07cf9caa94fe2a0b62efb5ddbfc5baa6d6703a37c500cb27b0084
-      '737': ea4148803c1f7b262fa677ff2017e76436da521d399a642d675abd6f46300449
-      '746': f0d32c0c2b5b318d895bc61bde234181c95701da31f2f6fbc64b19164af09bef
-      '759': cb3019dcd776a08b7ba47f734a47e02d5684d1a8b4a91773bbd001f6e750e8da
-      '775': 3c644cc8834e5d8e44b84705a5e04229b55326377d54cfeb909d00e7f38e333f
-      '785': 7c4db21e2610d4377e3687e4cd07309425f19cad4bfceac895cad2d931900cce
-      '846': 806abf2af03ee6131aac8802f0d113ba852ec968f3fe4070f706f643fff36629
-      '869': 31e1957b3c53d5e1da9e6d8e7ba7e3eecb2f82821399ab2892d3195b47fceab1
-      '883': 52ac17a2a79160db5675a71e65e484621881a7998ff9907fd2bbd11352e25638
-      '891': 71df1e044a47035a2cd4b9aca2c6ce1d93c96e1bd905854ae4838d55fd70c6a2
-      '903': c9caedc5c61d461dc5de4347b70fde75630cd7e71858ed157cacd02ba93e247b
-      '920': 7b0eac9b8a0f42c93c0bdb8f0327702d59c906bc72070574d08cd996e29dcbcf
-      '944': ca65ef97c64c6b66e81dce49f12307c8518cdd622bb3979588b9232ba6b58a69
-      '964': 7a75b262032452c4058b52d56e920bf0e5bf6a0084ddf54335de12936cd90c22
-      '974': 13b29aa991d8dad57cef77a22cca431b03eccb6497f80eb901b549172db454d2
-      '999': 3404f5ca4df096b5414dd4ab6efc5ba2a86cd81aa170f4937ff6bff4be7163a8
-      '1028': b62eab5185cc842485e68ae13f46a739740023c4ad220866342d620e233cc510
-      '1067': e97b906ab0632e6f39f9055515b03d54d16cabe70e5cf5acefbf377e6034cbdf
-      '1074': 165256c3740d1382ddad26384771492ce9c1ecfd392993b1f6736eeb43be6ccf
-      '1093': 7fe2378de60ab96011d9515869168315c6ef29c7760320a07bb1a1e0b81d92df
-      '1125': d04ee7a3ad649e844a2e25ef36d21583011ee2202efd7e451df9b7e566b95373
-      '1132': 6f9f85677eed5ec7dd126d1239b39c8a85f33657bfc124e7bc04a41e92ebd004
-      '1155': 0a377cebfb7923b5c8697900983fd55430aefec94421f751a06f6b5918944ad1
-      '1169': 13cf4158e9892e19b367b69ce1ede08dfe5e41f6ee3bc956315f3b623d199c68
-      '1176': b7d8e1fb94992832f0169c3146e131f8f3f1ac9792b96191ab96144046621553
-      '1201': 221d59efac4d69ce5e599209abe0c9ba67de765451818b1425c40a28dd3a2d1d
-      '1218': 088781cb2aeca80d928e92b253e41077f3d940cc13711df6183ea9b819fbc688
-      '1225': a2225ff4770192e1a2cf2231e8a969b09d88256e6ae9775d18a6b779fe3c87b6
-      '1257': b9868fd644406386326d1825a7b9c8bfc1261a5d1865f7e2eac4c1f2fd615680
+      '17': 350a5f1fee3185e087f6c9b172d86a5212e1bc9eef7d46691541bcf7992e3e6e
+      '41': 9792f8019715b65185ae21d095dd1636df1e53774c6d6370119ddc0b1cc6cc9f
+      '48': 71df1e044a47035a2cd4b9aca2c6ce1d93c96e1bd905854ae4838d55fd70c6a2
+      '111': ce3c039ef8fc49064fd34ef016bd7f4f61e09bd358cfd950bf55b014779bf9eb
+      '118': 398e613fdecbf3a54d10f087710af0d3bc26d89e3997d72957cd7c05942d704f
+      '130': 6732da3e29401c15ddebfe2bae9b3d592dc05c2696d284b1034c81ef28bb2aca
+      '146': ff0814bf41c77679c8f109c405acc77b9d9dde2d1df333620db9b1fcc396b4cc
+      '157': ee0a8574ea2e1aff8a04f1de4d698e0377a3ddc3735c9ceaef3524b136fbe42b
+      '220': 862c84cdc635698027b44517298eb39bb7dfc227077a82532c6217fe6a3a3d78
+      '269': f4f2ce6272dc732642170b60e2ce8b9ca009147121c903eec8363443732eb108
+      '278': d7e2cc7f33d51f457a7ee343479de90f7dbd740fe1ae27a4e1f6fdc1bd330c6a
+      '286': dab7d8f9582e5b940dc24067e4dd6ffaf74be01fffacdd1f37c242eacff60301
+      '292': efa7713a4ea8736e5994386b95cb559fba225a392996a196c8b94a531b47f12b
+      '316': 0a3533fb4aff7e92253f8f450e9b3f6c17e885b9e33bc4b1a7598f62b1cd90dc
+      '355': c66e20d1c2439e75f4a1d31efb59a4aea89f3b4e2f20ab3a208dc71b7353acb9
+      '364': b0df269fd2260660d6cc802e5b5e5a587d5e7eadbb866b21b6a678a14bd6a20d
+      '373': e90616716f14b5f2bffd768e750b00e285d4497899e78738e17c77adf3176339
+      '386': 0a3019a9f716ef106a560e9de124c163bb1a5b3c36a1b5e8f4cd8b56d368eb2c
+      '416': fa23add5eb51fbde31bb98befb684df518d40e5b8989bb7f5b7ce47aa440c2f3
+      '422': 062c9223046d1c9d1c44fe7285b65a1e2e4aee6fd13b1eab0bbf1b3e026bcf18
+      '431': 59c4066ace40fb6c155d77cffb15e0545983b07f25305c0c7b4a849b98795c57
+      '495': 82cbe1ef32bb1186077f8a5b38719f3008dcf2bd30ff22b8a124969128d232f1
+      '504': da90f0795aa70e332b0ae620055cb41e679aa18344e5c2db3497a87977adb43b
+      '547': 4f1dd5453aaf62a3a89cd84d1dba9e19097db8ae2814c77f39346172ff12f5b9
+      '558': 132ce4f06a0252116c62d1fdea5a39b00dff2abc69a6ce226565c5851d56daa7
+      '564': deda4457c1cbfe3d2bc306f16bc4af55b139706c848f4af5b5dfa27a4509ea9f
+      '572': 03214386eba480c400d086794d3624ee84968df2a6f347d3c8b64fdd246dd103
+      '586': 8ab16217efa46b57c2113e7ca4e1de0efcc3655176d93f0efe4fb9b8fb1ea2af
+      '601': 8836604f959c62ed77ef7b652b0eb95d8d2c4b71e6eca4469766dd7fc1416b54
+      '640': bc9fb9b0eefff786844467ae7c8a13bf766dd4d2cc814d0c619a5ce3ae0cdeae
+      '648': 646e74e43a998f8d0a813c64a87763218bd58c46e9060b4c1b6d8edf5972dbcc
+      '657': 945e171ddc1678247137e32ebf3d1b4c98949d3ff38d8e93cbf12b77f131e36f
+      '668': 4e5f3b238e8c26b18f1b93b7c46db60f8af5cc1a000b6d69d28176b38ddf6ac3
+      '672': 0b328b84c23ce9e0c72da819d437375c9944fd57b86a9656b8672619cb6e37b9
+      '678': 71ad73c5f640a458c043622f63439c8cd747c378f048d45d9b95dfb1c3caa95d
+      '689': f679c97cd3c08a6843bbd0cb4723ee6445bbe4f27e564a6168a137c2f90cfef0
+      '697': c7534ef918c1c4e7de9d640bcf19c31273737b70e3c9d214d469dc347d84d102
+      '705': d131ba6bb0e07cf9caa94fe2a0b62efb5ddbfc5baa6d6703a37c500cb27b0084
+      '741': ea4148803c1f7b262fa677ff2017e76436da521d399a642d675abd6f46300449
+      '750': f0d32c0c2b5b318d895bc61bde234181c95701da31f2f6fbc64b19164af09bef
+      '763': cb3019dcd776a08b7ba47f734a47e02d5684d1a8b4a91773bbd001f6e750e8da
+      '779': 3c644cc8834e5d8e44b84705a5e04229b55326377d54cfeb909d00e7f38e333f
+      '789': 7c4db21e2610d4377e3687e4cd07309425f19cad4bfceac895cad2d931900cce
+      '850': 806abf2af03ee6131aac8802f0d113ba852ec968f3fe4070f706f643fff36629
+      '873': 31e1957b3c53d5e1da9e6d8e7ba7e3eecb2f82821399ab2892d3195b47fceab1
+      '887': 52ac17a2a79160db5675a71e65e484621881a7998ff9907fd2bbd11352e25638
+      '895': 71df1e044a47035a2cd4b9aca2c6ce1d93c96e1bd905854ae4838d55fd70c6a2
+      '907': c9caedc5c61d461dc5de4347b70fde75630cd7e71858ed157cacd02ba93e247b
+      '924': 7b0eac9b8a0f42c93c0bdb8f0327702d59c906bc72070574d08cd996e29dcbcf
+      '948': ca65ef97c64c6b66e81dce49f12307c8518cdd622bb3979588b9232ba6b58a69
+      '968': 7a75b262032452c4058b52d56e920bf0e5bf6a0084ddf54335de12936cd90c22
+      '978': 13b29aa991d8dad57cef77a22cca431b03eccb6497f80eb901b549172db454d2
+      '999': be4f7dfd5deacb62f54dac57fa0b8aa9cc0f1880917110c951217c16a57813ce
+      '1033': 3404f5ca4df096b5414dd4ab6efc5ba2a86cd81aa170f4937ff6bff4be7163a8
+      '1062': b62eab5185cc842485e68ae13f46a739740023c4ad220866342d620e233cc510
+      '1101': e97b906ab0632e6f39f9055515b03d54d16cabe70e5cf5acefbf377e6034cbdf
+      '1108': 165256c3740d1382ddad26384771492ce9c1ecfd392993b1f6736eeb43be6ccf
+      '1127': 7fe2378de60ab96011d9515869168315c6ef29c7760320a07bb1a1e0b81d92df
+      '1159': d04ee7a3ad649e844a2e25ef36d21583011ee2202efd7e451df9b7e566b95373
+      '1166': 6f9f85677eed5ec7dd126d1239b39c8a85f33657bfc124e7bc04a41e92ebd004
+      '1189': 0a377cebfb7923b5c8697900983fd55430aefec94421f751a06f6b5918944ad1
+      '1203': 13cf4158e9892e19b367b69ce1ede08dfe5e41f6ee3bc956315f3b623d199c68
+      '1210': b7d8e1fb94992832f0169c3146e131f8f3f1ac9792b96191ab96144046621553
+      '1235': 221d59efac4d69ce5e599209abe0c9ba67de765451818b1425c40a28dd3a2d1d
+      '1252': 088781cb2aeca80d928e92b253e41077f3d940cc13711df6183ea9b819fbc688
+      '1259': a2225ff4770192e1a2cf2231e8a969b09d88256e6ae9775d18a6b779fe3c87b6
+      '1291': b9868fd644406386326d1825a7b9c8bfc1261a5d1865f7e2eac4c1f2fd615680
     blocks:
       - profile: runnable
         lines:
-          - 13
+          - 17
         validation:
-          status: blocked
+          status: pending
           requirement: end-to-end
           runs:
             - docs-syntax-2026-07-17
-          gap: The required platform, network, simulator, ROS 2, audio, or package-manager prerequisites were unavailable on the validation host.
+          gap: The exact template-rbnx clone at commit 60dc8583, virtual-environment dependency install, populated VLM environment, rbnx build, boot, and shutdown have not been executed as one isolated workflow at the current pin.
       - profile: runnable
         lines:
-          - 37
+          - 41
         validation:
           status: passed
           requirement: runtime-smoke
@@ -1197,20 +1387,9 @@ pages:
             - docs-syntax-2026-07-17
             - pinned-cli-parser-2026-07-17
             - pinned-observability-2026-07-17
-      - profile: runnable
-        lines:
-          - 44
-        validation:
-          status: passed
-          requirement: end-to-end
-          runs:
-            - docs-syntax-2026-07-17
-            - pinned-cli-parser-2026-07-17
-            - pinned-shutdown-macos-2026-07-17
-            - pinned-shared-driver-e2e-2026-07-17
       - profile: runnable-partial
         lines:
-          - 107
+          - 111
         validation:
           status: passed
           requirement: runtime-smoke
@@ -1219,7 +1398,7 @@ pages:
             - pinned-python-api-smoke-2026-07-17
       - profile: runnable-partial
         lines:
-          - 114
+          - 118
         validation:
           status: passed
           requirement: runtime-smoke
@@ -1228,17 +1407,17 @@ pages:
             - pinned-safe-scaffold-2026-07-17
       - profile: reference
         lines:
-          - 126
-          - 153
-          - 288
-          - 668
-          - 685
-          - 759
-          - 903
-          - 964
+          - 130
+          - 157
+          - 292
+          - 672
+          - 689
+          - 763
+          - 907
+          - 968
       - profile: runnable-partial
         lines:
-          - 142
+          - 146
         validation:
           status: passed
           requirement: runtime-smoke
@@ -1248,7 +1427,7 @@ pages:
             - pinned-grpc-four-shape-runtime-2026-07-17
       - profile: runnable-partial
         lines:
-          - 216
+          - 220
         validation:
           status: passed
           requirement: runtime-smoke
@@ -1257,7 +1436,7 @@ pages:
             - pinned-python-api-smoke-2026-07-17
       - profile: runnable
         lines:
-          - 265
+          - 269
         validation:
           status: passed
           requirement: runtime-smoke
@@ -1267,7 +1446,7 @@ pages:
             - pinned-safe-scaffold-2026-07-17
       - profile: runnable
         lines:
-          - 274
+          - 278
         validation:
           status: passed
           requirement: runtime-smoke
@@ -1277,7 +1456,7 @@ pages:
             - pinned-safe-scaffold-2026-07-17
       - profile: runnable
         lines:
-          - 282
+          - 286
         validation:
           status: passed
           requirement: runtime-smoke
@@ -1287,7 +1466,7 @@ pages:
             - pinned-safe-scaffold-2026-07-17
       - profile: runnable-partial
         lines:
-          - 312
+          - 316
         validation:
           status: pending
           requirement: runtime-smoke
@@ -1296,7 +1475,7 @@ pages:
           gap: The exact complete example manifest and its local business contract have not yet been validated and built together at the current source pin.
       - profile: runnable
         lines:
-          - 351
+          - 355
         validation:
           status: passed
           requirement: runtime-smoke
@@ -1305,7 +1484,7 @@ pages:
             - shell-utility-smoke-2026-07-17
       - profile: runnable-partial
         lines:
-          - 360
+          - 364
         validation:
           status: passed
           requirement: runtime-smoke
@@ -1315,7 +1494,7 @@ pages:
             - pinned-safe-scaffold-2026-07-17
       - profile: runnable-partial
         lines:
-          - 369
+          - 373
         validation:
           status: passed
           requirement: runtime-smoke
@@ -1325,7 +1504,7 @@ pages:
             - pinned-source-paths-2026-07-17
       - profile: runnable-partial
         lines:
-          - 382
+          - 386
         validation:
           status: pending
           requirement: runtime-smoke
@@ -1336,7 +1515,7 @@ pages:
           gap: The exact generated module, live Atlas channel, middleware, or vendor integration used by this Python block has not executed in the recorded smoke.
       - profile: runnable
         lines:
-          - 412
+          - 416
         validation:
           status: passed
           requirement: runtime-smoke
@@ -1346,7 +1525,7 @@ pages:
             - pinned-safe-scaffold-2026-07-17
       - profile: runnable-partial
         lines:
-          - 418
+          - 422
         validation:
           status: pending
           requirement: runtime-smoke
@@ -1355,7 +1534,7 @@ pages:
           gap: The exact navigation capability fragment and full tutorial package have not yet been validated and built together at the current source pin.
       - profile: runnable-partial
         lines:
-          - 427
+          - 431
         validation:
           status: pending
           requirement: runtime-smoke
@@ -1366,7 +1545,7 @@ pages:
           gap: The exact generated module, live Atlas channel, middleware, or vendor integration used by this Python block has not executed in the recorded smoke.
       - profile: runnable-partial
         lines:
-          - 491
+          - 495
         validation:
           status: passed
           requirement: runtime-smoke
@@ -1375,7 +1554,7 @@ pages:
             - pinned-safe-scaffold-2026-07-17
       - profile: runnable-partial
         lines:
-          - 500
+          - 504
         validation:
           status: passed
           requirement: runtime-smoke
@@ -1384,7 +1563,7 @@ pages:
             - pinned-provider-discovery-lifecycle-smoke-2026-07-17
       - profile: runnable
         lines:
-          - 543
+          - 547
         validation:
           status: passed
           requirement: runtime-smoke
@@ -1394,7 +1573,7 @@ pages:
             - pinned-safe-scaffold-2026-07-17
       - profile: safety-gated-partial
         lines:
-          - 554
+          - 558
         validation:
           status: pending
           runs:
@@ -1408,7 +1587,7 @@ pages:
             status: pending
       - profile: safety-gated-partial
         lines:
-          - 560
+          - 564
         validation:
           status: pending
           runs:
@@ -1422,7 +1601,7 @@ pages:
             status: pending
       - profile: safety-gated-partial
         lines:
-          - 568
+          - 572
         validation:
           status: pending
           runs:
@@ -1436,7 +1615,7 @@ pages:
             status: pending
       - profile: safety-gated-partial
         lines:
-          - 582
+          - 586
         validation:
           status: pending
           runs:
@@ -1450,7 +1629,7 @@ pages:
             status: pending
       - profile: safety-gated-partial
         lines:
-          - 597
+          - 601
         validation:
           status: pending
           runs:
@@ -1464,7 +1643,7 @@ pages:
             status: pending
       - profile: safety-gated-partial
         lines:
-          - 636
+          - 640
         validation:
           status: pending
           runs:
@@ -1478,7 +1657,7 @@ pages:
             status: pending
       - profile: safety-gated-partial
         lines:
-          - 644
+          - 648
         validation:
           status: pending
           runs:
@@ -1492,7 +1671,7 @@ pages:
             status: pending
       - profile: safety-gated-partial
         lines:
-          - 653
+          - 657
         validation:
           status: pending
           runs:
@@ -1506,7 +1685,7 @@ pages:
             status: pending
       - profile: runnable
         lines:
-          - 664
+          - 668
         validation:
           status: passed
           requirement: runtime-smoke
@@ -1516,7 +1695,7 @@ pages:
             - pinned-safe-scaffold-2026-07-17
       - profile: runnable-partial
         lines:
-          - 674
+          - 678
         validation:
           status: passed
           requirement: runtime-smoke
@@ -1526,7 +1705,7 @@ pages:
             - pinned-grpc-four-shape-runtime-2026-07-17
       - profile: runnable-partial
         lines:
-          - 693
+          - 697
         validation:
           status: pending
           requirement: runtime-smoke
@@ -1535,7 +1714,7 @@ pages:
           gap: The exact local skill contract, manifest fragment, generated MCP package, and provider have not executed together at the current source pin.
       - profile: runnable-partial
         lines:
-          - 701
+          - 705
         validation:
           status: pending
           requirement: runtime-smoke
@@ -1546,7 +1725,7 @@ pages:
           gap: The exact generated module, live Atlas channel, middleware, or vendor integration used by this Python block has not executed in the recorded smoke.
       - profile: runnable-partial
         lines:
-          - 737
+          - 741
         validation:
           status: passed
           requirement: runtime-smoke
@@ -1555,7 +1734,7 @@ pages:
             - pinned-safe-scaffold-2026-07-17
       - profile: runnable
         lines:
-          - 746
+          - 750
         validation:
           status: passed
           requirement: runtime-smoke
@@ -1565,7 +1744,7 @@ pages:
             - pinned-safe-scaffold-2026-07-17
       - profile: runnable
         lines:
-          - 775
+          - 779
         validation:
           status: passed
           requirement: runtime-smoke
@@ -1575,7 +1754,7 @@ pages:
             - pinned-safe-scaffold-2026-07-17
       - profile: safety-gated
         lines:
-          - 785
+          - 789
         validation:
           status: pending
           runs:
@@ -1589,7 +1768,7 @@ pages:
             status: pending
       - profile: safety-gated
         lines:
-          - 846
+          - 850
         validation:
           status: pending
           runs:
@@ -1603,7 +1782,7 @@ pages:
             status: pending
       - profile: runnable
         lines:
-          - 869
+          - 873
         validation:
           status: passed
           requirement: command-contract
@@ -1612,7 +1791,7 @@ pages:
             - pinned-cli-parser-2026-07-17
       - profile: safety-gated
         lines:
-          - 883
+          - 887
         validation:
           status: pending
           runs:
@@ -1624,23 +1803,9 @@ pages:
               - docs-syntax-2026-07-17
           real_hardware_acceptance:
             status: pending
-      - profile: safety-gated
-        lines:
-          - 891
-        validation:
-          status: pending
-          runs:
-            - docs-syntax-2026-07-17
-          gap: No qualifying current-pin non-motion integration run covers this exact hardware-capable block; supervised named-hardware acceptance also remains pending.
-          last_non_motion_validation:
-            status: pending
-            runs:
-              - docs-syntax-2026-07-17
-          real_hardware_acceptance:
-            status: pending
       - profile: runnable-partial
         lines:
-          - 920
+          - 924
         validation:
           status: pending
           requirement: runtime-smoke
@@ -1651,7 +1816,7 @@ pages:
           gap: The exact generated module, live Atlas channel, middleware, or vendor integration used by this Python block has not executed in the recorded smoke.
       - profile: runnable-partial
         lines:
-          - 944
+          - 948
         validation:
           status: pending
           requirement: runtime-smoke
@@ -1662,7 +1827,7 @@ pages:
           gap: The exact generated module, live Atlas channel, middleware, or vendor integration used by this Python block has not executed in the recorded smoke.
       - profile: runnable-partial
         lines:
-          - 974
+          - 978
         validation:
           status: pending
           requirement: runtime-smoke
@@ -1673,16 +1838,16 @@ pages:
           gap: The exact generated module, live Atlas channel, middleware, or vendor integration used by this Python block has not executed in the recorded smoke.
       - profile: illustrative
         lines:
-          - 999
+          - 1033
       - profile: illustrative
         lines:
-          - 1028
+          - 1062
       - profile: reference
         lines:
-          - 1067
+          - 1101
       - profile: runnable-partial
         lines:
-          - 1074
+          - 1108
         validation:
           status: passed
           requirement: runtime-smoke
@@ -1691,7 +1856,7 @@ pages:
             - pinned-grpc-four-shape-runtime-2026-07-17
       - profile: runnable-partial
         lines:
-          - 1093
+          - 1127
         validation:
           status: passed
           requirement: runtime-smoke
@@ -1701,10 +1866,10 @@ pages:
             - pinned-grpc-four-shape-runtime-2026-07-17
       - profile: reference
         lines:
-          - 1125
+          - 1159
       - profile: runnable-partial
         lines:
-          - 1132
+          - 1166
         validation:
           status: passed
           requirement: runtime-smoke
@@ -1713,28 +1878,7 @@ pages:
             - pinned-grpc-four-shape-runtime-2026-07-17
       - profile: runnable-partial
         lines:
-          - 1155
-        validation:
-          status: passed
-          requirement: runtime-smoke
-          runs:
-            - docs-syntax-2026-07-17
-            - pinned-grpc-four-shape-runtime-2026-07-17
-      - profile: reference
-        lines:
-          - 1169
-      - profile: runnable-partial
-        lines:
-          - 1176
-        validation:
-          status: passed
-          requirement: runtime-smoke
-          runs:
-            - docs-syntax-2026-07-17
-            - pinned-grpc-four-shape-runtime-2026-07-17
-      - profile: runnable-partial
-        lines:
-          - 1201
+          - 1189
         validation:
           status: passed
           requirement: runtime-smoke
@@ -1743,10 +1887,10 @@ pages:
             - pinned-grpc-four-shape-runtime-2026-07-17
       - profile: reference
         lines:
-          - 1218
+          - 1203
       - profile: runnable-partial
         lines:
-          - 1225
+          - 1210
         validation:
           status: passed
           requirement: runtime-smoke
@@ -1755,13 +1899,68 @@ pages:
             - pinned-grpc-four-shape-runtime-2026-07-17
       - profile: runnable-partial
         lines:
-          - 1257
+          - 1235
         validation:
           status: passed
           requirement: runtime-smoke
           runs:
             - docs-syntax-2026-07-17
             - pinned-grpc-four-shape-runtime-2026-07-17
+      - profile: reference
+        lines:
+          - 1252
+      - profile: runnable-partial
+        lines:
+          - 1259
+        validation:
+          status: passed
+          requirement: runtime-smoke
+          runs:
+            - docs-syntax-2026-07-17
+            - pinned-grpc-four-shape-runtime-2026-07-17
+      - profile: runnable-partial
+        lines:
+          - 1291
+        validation:
+          status: passed
+          requirement: runtime-smoke
+          runs:
+            - docs-syntax-2026-07-17
+            - pinned-grpc-four-shape-runtime-2026-07-17
+      - profile: runnable
+        lines:
+          - 48
+        validation:
+          status: passed
+          requirement: end-to-end
+          runs:
+            - docs-syntax-2026-07-17
+            - pinned-cli-parser-2026-07-17
+            - pinned-shutdown-macos-2026-07-17
+            - pinned-shared-driver-e2e-2026-07-17
+      - profile: safety-gated
+        lines:
+          - 895
+        validation:
+          status: pending
+          runs:
+            - docs-syntax-2026-07-17
+          gap: No qualifying current-pin non-motion integration run covers this exact hardware-capable block; supervised named-hardware acceptance also remains pending.
+          last_non_motion_validation:
+            status: pending
+            runs:
+              - docs-syntax-2026-07-17
+          real_hardware_acceptance:
+            status: pending
+      - profile: runnable-partial
+        lines:
+          - 999
+        validation:
+          status: pending
+          requirement: runtime-smoke
+          runs:
+            - docs-syntax-2026-07-17
+          gap: The exact Atlas discovery, capability connection, channel-resolved ROS 2 subscription, callback delivery, and lifecycle cleanup shown by this block have not executed together at the current source pin.
   docs/getting-started/client.md:
     source_revision: 181d3eb974fd495a795ed120a0a4c6e6f342d179
     source_evidence:
@@ -1804,16 +2003,22 @@ pages:
           requirement: runtime-smoke
           runs:
             - docs-syntax-2026-07-17
-          gap: The named client audio bridge package is absent from the pinned source and could not be fetched during the recorded run.
+            - local-validation-host-platform-probe-2026-07-17
+          gap: The package is absent from the pinned Robonix tree, and the recorded git ls-remote attempt for its exact GitHub URL stopped at github.com DNS resolution; no checkout or manifest validation occurred.
       - profile: runnable
         lines:
           - 48
         validation:
-          status: blocked
+          status: platform-unavailable
           requirement: end-to-end
           runs:
             - docs-syntax-2026-07-17
-          gap: The required platform, network, simulator, ROS 2, audio, or package-manager prerequisites were unavailable on the validation host.
+            - local-validation-host-platform-probe-2026-07-17
+          gap: The macOS validation host has no apt or Linux PortAudio development packages, so the documented system installation was not executed.
+          prerequisites:
+            - Ubuntu or Debian with sudo access and apt repositories reachable over DNS and HTTPS.
+            - libportaudio2, portaudio19-dev, and python3-venv packages available for the target distribution.
+            - A post-install check that Python can create a virtual environment and the selected microphone and speaker devices are visible to PortAudio.
       - profile: runnable
         lines:
           - 58
@@ -1831,7 +2036,8 @@ pages:
           requirement: end-to-end
           runs:
             - docs-syntax-2026-07-17
-          gap: The required platform, network, simulator, ROS 2, audio, or package-manager prerequisites were unavailable on the validation host.
+            - local-validation-host-platform-probe-2026-07-17
+          gap: github.com DNS resolution is unavailable on the recorded host, so the robonix-client clone and editable audio extra installation did not start; retry with the exact repository reachable and then record import and device-open checks.
       - profile: runnable
         lines:
           - 80
@@ -1898,39 +2104,49 @@ pages:
         lines:
           - 20
         validation:
-          status: blocked
+          status: platform-unavailable
           requirement: end-to-end
           runs:
             - docs-syntax-2026-07-17
-          gap: The required platform, network, simulator, ROS 2, audio, or package-manager prerequisites were unavailable on the validation host.
+            - local-validation-host-platform-probe-2026-07-17
+          gap: The macOS host has no apt or ALSA utilities, so the Ubuntu or Debian base-package installation was not executed.
+          prerequisites:
+            - Ubuntu or Debian with sudo access and apt repositories reachable over DNS and HTTPS.
+            - Packages build-essential, git, curl, ca-certificates, python3, python3-pip, python3-grpc-tools, and alsa-utils available for the target release.
+            - Post-install version and Python grpc_tools import checks on the same host.
       - profile: runnable
         lines:
           - 29
         validation:
-          status: blocked
+          status: pending
           requirement: end-to-end
           runs:
             - docs-syntax-2026-07-17
-          gap: The required platform, network, simulator, ROS 2, audio, or package-manager prerequisites were unavailable on the validation host.
+          gap: The networked rustup installer was not executed because it mutates the user's toolchain; run it on an isolated user account with sh.rustup.rs reachable, then record rustc and cargo versions and an uninstall or retained-toolchain decision.
       - profile: runnable
         lines:
           - 36
         validation:
-          status: blocked
+          status: pending
           requirement: end-to-end
           runs:
             - docs-syntax-2026-07-17
-          gap: The required platform, network, simulator, ROS 2, audio, or package-manager prerequisites were unavailable on the validation host.
+          gap: The networked uv installer was not executed because it writes into the user's home directory; run it in an isolated HOME with astral.sh reachable and record the installed path and uv version.
       - profile: runnable
         lines:
           - 43
         validation:
-          status: blocked
+          status: platform-unavailable
           requirement: end-to-end
           runs:
             - docs-syntax-2026-07-17
             - pinned-webots-no-motion-2026-07-17
-          gap: The required platform, network, simulator, ROS 2, audio, or package-manager prerequisites were unavailable on the validation host.
+            - local-validation-host-platform-probe-2026-07-17
+          gap: The macOS validation host has no Docker, ALSA tools, or Linux package baseline, so the complete host-readiness checklist cannot pass there.
+          prerequisites:
+            - Ubuntu or Debian with Git, GNU Make, Python 3 plus grpcio-tools, Rust stable, uv, and alsa-utils installed.
+            - Docker Engine and Docker Compose running with the current user authorized to query the server without sudo.
+            - A microphone and speaker or explicit ALSA null PCM entries visible through arecord and aplay.
       - profile: runnable
         lines:
           - 78
@@ -1973,22 +2189,32 @@ pages:
         lines:
           - 115
         validation:
-          status: blocked
+          status: platform-unavailable
           requirement: end-to-end
           runs:
             - docs-syntax-2026-07-17
             - pinned-webots-no-motion-2026-07-17
-          gap: The required platform, network, simulator, ROS 2, audio, or package-manager prerequisites were unavailable on the validation host.
+            - local-validation-host-platform-probe-2026-07-17
+          gap: The local host lacks Docker and ROS 2, and GitHub dependencies are unreachable, so the exact Webots deployment build did not run locally.
+          prerequisites:
+            - A clean pinned Robonix checkout with recursive submodules and every manifest dependency present or reachable.
+            - Ubuntu or Debian x86_64 with Docker, ROS 2 Humble, rmw_zenoh_cpp, Rust, Python, uv, and the built rbnx CLI.
+            - An isolated examples/webots build with SPEECH_BACKEND=mock and retained build logs.
       - profile: runnable
         lines:
           - 131
         validation:
-          status: blocked
+          status: platform-unavailable
           requirement: end-to-end
           runs:
             - docs-syntax-2026-07-17
             - pinned-webots-no-motion-2026-07-17
-          gap: The required platform, network, simulator, ROS 2, audio, or package-manager prerequisites were unavailable on the validation host.
+            - local-validation-host-platform-probe-2026-07-17
+          gap: Docker and the Linux ROS 2 or Webots stack are unavailable on the validation host, so office.wbt, RViz2, and router startup were not observed locally.
+          prerequisites:
+            - Ubuntu or Debian x86_64 with Docker Engine and Compose available to the current user.
+            - Webots 2025a and ROS 2 Humble assets or images present, with rmw_zenoh_cpp and TCP port 7447 available.
+            - An authorized X11 display for Webots and RViz2, or the documented xvfb headless mode, plus a recorded scoped stop.sh cleanup.
       - profile: runnable
         lines:
           - 144
@@ -2002,22 +2228,27 @@ pages:
         lines:
           - 149
         validation:
-          status: blocked
+          status: platform-unavailable
           requirement: end-to-end
           runs:
             - docs-syntax-2026-07-17
             - pinned-webots-no-motion-2026-07-17
-          gap: The required platform, network, simulator, ROS 2, audio, or package-manager prerequisites were unavailable on the validation host.
+            - local-validation-host-platform-probe-2026-07-17
+          gap: A live matching Webots, ROS 2, and Zenoh session could not be established on the validation host, so the exact Robonix boot with mock speech and VLM configuration did not run.
+          prerequisites:
+            - The line-131 simulator session running from the same pinned checkout with rmw_zenoh_cpp reachable.
+            - A built examples/webots deployment and the current rbnx CLI on PATH.
+            - Valid VLM_API_KEY, VLM_BASE_URL, and VLM_MODEL values supplied through an isolated environment, followed by a clean shutdown.
       - profile: runnable
         lines:
           - 176
         validation:
-          status: blocked
+          status: pending
           requirement: end-to-end
           runs:
             - docs-syntax-2026-07-17
             - pinned-webots-no-motion-2026-07-17
-          gap: The required platform, network, simulator, ROS 2, audio, or package-manager prerequisites were unavailable on the validation host.
+          gap: rbnx caps, tools, and chat have not been executed together against the exact running Webots deployment; first complete the simulator and Robonix boot, then record provider readiness, tool discovery, one submitted task, and shutdown.
       - profile: illustrative
         lines:
           - 187
@@ -2025,22 +2256,32 @@ pages:
         lines:
           - 201
         validation:
-          status: blocked
+          status: platform-unavailable
           requirement: end-to-end
           runs:
             - docs-syntax-2026-07-17
             - pinned-webots-no-motion-2026-07-17
-          gap: The required platform, network, simulator, ROS 2, audio, or package-manager prerequisites were unavailable on the validation host.
+            - local-validation-host-platform-probe-2026-07-17
+          gap: The validation host cannot launch the Docker-based Webots stack, so none of the four named world selections was started and stopped locally.
+          prerequisites:
+            - The same Ubuntu or Debian, Docker, ROS 2, Webots, display or headless, and pinned-checkout prerequisites as the accepted office.wbt startup.
+            - Each world asset set present in the persistent Webots cache before an offline run, or DNS and HTTPS available for the initial fetch.
+            - Run one named world at a time and record readiness plus scoped stop.sh cleanup before selecting the next world.
       - profile: runnable
         lines:
           - 218
         validation:
-          status: blocked
+          status: platform-unavailable
           requirement: end-to-end
           runs:
             - docs-syntax-2026-07-17
             - pinned-webots-no-motion-2026-07-17
-          gap: The required platform, network, simulator, ROS 2, audio, or package-manager prerequisites were unavailable on the validation host.
+            - local-validation-host-platform-probe-2026-07-17
+          gap: Docker is absent and external DNS is unavailable on the validation host, so the one-time Cyberbotics asset download and persistent-cache reuse were not observed.
+          prerequisites:
+            - Ubuntu or Debian with the documented Docker-based Webots stack working for office.wbt.
+            - DNS and HTTPS access to every Cyberbotics asset endpoint used by apartment.wbt, with enough persistent cache storage.
+            - A first run proving the complete asset fetch and a second network-disabled run proving the cached assets are reused.
       - profile: runnable
         lines:
           - 227
@@ -2056,22 +2297,31 @@ pages:
         lines:
           - 240
         validation:
-          status: blocked
+          status: platform-unavailable
           requirement: end-to-end
           runs:
             - docs-syntax-2026-07-17
             - pinned-webots-no-motion-2026-07-17
-          gap: The required platform, network, simulator, ROS 2, audio, or package-manager prerequisites were unavailable on the validation host.
+            - local-validation-host-platform-probe-2026-07-17
+          gap: The local host has no Docker daemon or robonix_tiago_sim container, so the display and container diagnostic pair was not exercised against a failed or healthy simulator launch.
+          prerequisites:
+            - A host with Docker available to the current user and an attempted examples/webots/sim/start.sh session.
+            - The exact DISPLAY value passed to the container and either an expected robonix_tiago_sim row or retained startup logs explaining its absence.
       - profile: runnable
         lines:
           - 247
         validation:
-          status: blocked
+          status: platform-unavailable
           requirement: end-to-end
           runs:
             - docs-syntax-2026-07-17
             - pinned-webots-no-motion-2026-07-17
-          gap: The required platform, network, simulator, ROS 2, audio, or package-manager prerequisites were unavailable on the validation host.
+            - local-validation-host-platform-probe-2026-07-17
+          gap: Docker and the Webots images are unavailable locally, so neither xvfb CPU rendering nor browser streaming startup reached a recorded ready state.
+          prerequisites:
+            - Ubuntu or Debian with Docker, the pinned Webots images and assets, ROS 2, and sufficient CPU and memory for software rendering.
+            - For xvfb mode, a health check proving Webots and ROS 2 readiness without a host X server.
+            - For streaming mode, an explicitly exposed stream port, a reachable browser client, and scoped cleanup after the viewing check.
       - profile: runnable
         lines:
           - 260
@@ -2224,20 +2474,30 @@ pages:
         lines:
           - 117
         validation:
-          status: blocked
+          status: platform-unavailable
           requirement: end-to-end
           runs:
             - docs-syntax-2026-07-17
-          gap: The required platform, network, simulator, ROS 2, audio, or package-manager prerequisites were unavailable on the validation host.
+            - local-validation-host-platform-probe-2026-07-17
+          gap: The validation host has no ROS 2 Humble or colcon, so the generated ros2_idl overlay workspace was not built.
+          prerequisites:
+            - Linux with /opt/ros/humble/setup.bash from a complete ROS 2 Humble installation.
+            - colcon and the compiler or build dependencies required by every generated interface package.
+            - Fresh pinned rbnx --ros2 codegen output at the exact /path/to/package location, followed by a successful colcon build log.
       - profile: runnable
         lines:
           - 125
         validation:
-          status: blocked
+          status: platform-unavailable
           requirement: end-to-end
           runs:
             - docs-syntax-2026-07-17
-          gap: The required platform, network, simulator, ROS 2, audio, or package-manager prerequisites were unavailable on the validation host.
+            - local-validation-host-platform-probe-2026-07-17
+          gap: Neither the system ROS 2 environment nor a built generated overlay exists on the validation host, so the two-stage runtime sourcing was not exercised.
+          prerequisites:
+            - Linux with the exact target ROS 2 distribution installed and its setup.bash readable.
+            - A successful build of the same package's rbnx-build/codegen/ros2_idl workspace, with install/setup.bash present.
+            - A fresh shell check proving the generated messages and services resolve only after sourcing system ROS 2 and then the named overlay.
       - profile: runnable
         lines:
           - 136
@@ -2891,51 +3151,53 @@ pages:
       - kind: protocol
         path: capabilities/primitive/arm/pos_command.v1.toml
         claim: PR 158 Cartesian pose-command contract, including provider-owned IK and frame convention.
-    fence_digest: 5aab4539c4e8311a78486008171abba3c89a90e7d97305e8705d8886261315bb
+    fence_digest: 7c5b8ee72f22d4229eb0989c430433f1f4930489ff5230707382ab4e9285d091
     block_fingerprints:
       '16': c9a4c19f53ed15710099764917b5d3b4ab54cef5e6e3a4063e6cdf1e4766fc6d
       '38': cd25812dc94692f80bba7ac6c97209a355e7fea5cf136a774276f42512911983
       '49': a28a7b0ebce743b779e90f6cee466b9eb703e9d0e4fa50ec747fa0804bf9f785
       '64': 088177b3ab6c67aa67cacdc2034fdb55a5dd2e19c8462f78c22be77062dbccdf
       '74': ce6f5ed1a18ba42eaa7c209211c6f5079c3c75f737bae9beef049fd36cc07bdc
-      '127': 640d1ec8e9acd96ce131cc9e7104d1ddd14327313219d2794088194f15c149e6
-      '233': 0a60ede867f6f147f3835a08d54870eacaef1bb22ad206e42429054b2f025fd9
-      '244': bea61025958f1f78eb91c877d0aef99d04a8981300ff190f23328cb7247156e3
-      '261': bfc5d4bb5b661e9b92d0493eb7268378c182f15fbc6e64db063bf12813adeac7
-      '279': fded5602c423e86e5fd37b4ed1cabd431ff78bb878ff0ad894d5fb47fcf5c073
-      '319': 25813f13b29b153d58f40aa10c1a6a6184eff382ce70d626fa5afead485f1f99
-      '325': ad9a64058f043ce03f3129cc617c14a2abc4d1392e41e6b4bfd9221fdf402745
-      '341': 2141ca0c98d7a3650230ddaaa7c4959645d304f7fe8b25693df4f9788d3b857e
-      '352': 519d2a6e2b61570ac42d38d172a4272e722564a3dbbb3555950c099b75319a8c
-      '370': 10327ac3f4c7bf8b30c6c6c30627628adb0bd7c876f0d75a183b9ca35b938de7
-      '397': 4e362ae6aca2c2a25177ff793c6545b072320a11cd7ef9f223302e75a773dd87
-      '424': bb1860e91a8dd8f007a52353a3cc87b3a4a8747bc3b01b8b0e634f544f21c947
-      '436': 25a5e5eaed39c9526c7a9c4ca98b1239f345328dc591aeac7d32189cdbb13eb6
-      '445': 12758631dffe3a6610747022f2eca976850b43ac292d1316f767686bc8e2689f
-      '454': 0277c8f9fa235cc7501740bb6d831a7063284b18e0cb6ed8fe1d8ec6415b72a1
-      '464': 9e0795c9f5b1ea79fc6224232b5ec8a6b5f82f33c21e8f6169cb67c453b5966d
-      '542': 874662ecaddd4876ae560125704466ba7dd41fa65a65d65843da8219ec7834b0
-      '566': 52a7ac13e503dc0c7b0a78b5c5831b3554f3347ade7446e9a0e217927a4c21e9
-      '591': 50171b5d8eb8c85a7c3a418b0b7154f1c220c6f99ffeba0d99cc29a3af27045b
-      '606': c9b761ed4bc7a3c9d71457a0e86bcac18d5441f5cf24f52d4c778a264139a9bd
-      '622': f5a3cf13b1957ba8794d7e5916e3b6475c491ef6511a0b99a727078161554230
-      '643': 6cfbd8c9335386cdf2a66ce59e149e840827d7805cd68fb86ee7a63af87cd32c
-      '652': 0b1214803ee5b61a7a71100dd94bf4c772360733da5571f05b5c15e66012fca0
-      '660': 574f35efff4c03aba4aa1f594e39ccc744aefc331c0c04d2153ff58c05c3cc8c
-      '668': 0277c8f9fa235cc7501740bb6d831a7063284b18e0cb6ed8fe1d8ec6415b72a1
-      '674': 56ea5c7b9de80659ff4a89596a538e03d0ae3e21aef5ff02025f11dec677c68a
-      '685': 8ff2a34838563d580088f049a593f0e34432eb6df1f60f677354aead8fff89e8
-      '693': 2260b7cf6c844ef7abfa2d3d15c3aef4feeb2664df8d5b1305f43026b720eb56
-      '707': 94ead231273e24f060b9df79bf75be1ce91e125c5ac3bc219072e8f769bc16a9
-      '713': 700b7e2b1c7e48e0ac84f5e06d203a04e806f9d9efefa70b379a449632f7696c
-      '749': 49161e33b1c55c33a26a04bcb7d28a4819f43b071815cf24ec9e9a55b649b187
+      '125': 1038f22ab137b7899e1804a711736203387e7bce63fe0a1edc219c7521488d18
+      '167': 5b611fc19f34baa71aec1a853be0231a263689e7b6b51e9e9ad85d93fa8a548e
+      '207': 640d1ec8e9acd96ce131cc9e7104d1ddd14327313219d2794088194f15c149e6
+      '304': 0a60ede867f6f147f3835a08d54870eacaef1bb22ad206e42429054b2f025fd9
+      '315': bea61025958f1f78eb91c877d0aef99d04a8981300ff190f23328cb7247156e3
+      '332': bfc5d4bb5b661e9b92d0493eb7268378c182f15fbc6e64db063bf12813adeac7
+      '350': fded5602c423e86e5fd37b4ed1cabd431ff78bb878ff0ad894d5fb47fcf5c073
+      '390': 25813f13b29b153d58f40aa10c1a6a6184eff382ce70d626fa5afead485f1f99
+      '396': ad9a64058f043ce03f3129cc617c14a2abc4d1392e41e6b4bfd9221fdf402745
+      '412': 2141ca0c98d7a3650230ddaaa7c4959645d304f7fe8b25693df4f9788d3b857e
+      '423': 519d2a6e2b61570ac42d38d172a4272e722564a3dbbb3555950c099b75319a8c
+      '441': 10327ac3f4c7bf8b30c6c6c30627628adb0bd7c876f0d75a183b9ca35b938de7
+      '468': 4e362ae6aca2c2a25177ff793c6545b072320a11cd7ef9f223302e75a773dd87
+      '495': bb1860e91a8dd8f007a52353a3cc87b3a4a8747bc3b01b8b0e634f544f21c947
+      '507': 25a5e5eaed39c9526c7a9c4ca98b1239f345328dc591aeac7d32189cdbb13eb6
+      '516': 12758631dffe3a6610747022f2eca976850b43ac292d1316f767686bc8e2689f
+      '525': 0277c8f9fa235cc7501740bb6d831a7063284b18e0cb6ed8fe1d8ec6415b72a1
+      '535': 9e0795c9f5b1ea79fc6224232b5ec8a6b5f82f33c21e8f6169cb67c453b5966d
+      '613': 874662ecaddd4876ae560125704466ba7dd41fa65a65d65843da8219ec7834b0
+      '637': 52a7ac13e503dc0c7b0a78b5c5831b3554f3347ade7446e9a0e217927a4c21e9
+      '662': 50171b5d8eb8c85a7c3a418b0b7154f1c220c6f99ffeba0d99cc29a3af27045b
+      '683': c9b761ed4bc7a3c9d71457a0e86bcac18d5441f5cf24f52d4c778a264139a9bd
+      '699': f5a3cf13b1957ba8794d7e5916e3b6475c491ef6511a0b99a727078161554230
+      '720': 6cfbd8c9335386cdf2a66ce59e149e840827d7805cd68fb86ee7a63af87cd32c
+      '729': 0b1214803ee5b61a7a71100dd94bf4c772360733da5571f05b5c15e66012fca0
+      '737': 574f35efff4c03aba4aa1f594e39ccc744aefc331c0c04d2153ff58c05c3cc8c
+      '745': 0277c8f9fa235cc7501740bb6d831a7063284b18e0cb6ed8fe1d8ec6415b72a1
+      '751': 56ea5c7b9de80659ff4a89596a538e03d0ae3e21aef5ff02025f11dec677c68a
+      '762': 8ff2a34838563d580088f049a593f0e34432eb6df1f60f677354aead8fff89e8
+      '770': 2260b7cf6c844ef7abfa2d3d15c3aef4feeb2664df8d5b1305f43026b720eb56
+      '784': 94ead231273e24f060b9df79bf75be1ce91e125c5ac3bc219072e8f769bc16a9
+      '790': 700b7e2b1c7e48e0ac84f5e06d203a04e806f9d9efefa70b379a449632f7696c
+      '826': 49161e33b1c55c33a26a04bcb7d28a4819f43b071815cf24ec9e9a55b649b187
     blocks:
       - profile: reference
         lines:
           - 16
-          - 325
-          - 341
-          - 606
+          - 396
+          - 412
+          - 683
       - profile: safety-gated
         lines:
           - 38
@@ -2971,7 +3233,7 @@ pages:
             - shell-utility-smoke-2026-07-17
       - profile: runnable-partial
         lines:
-          - 233
+          - 304
         validation:
           status: passed
           requirement: runtime-smoke
@@ -2980,7 +3242,7 @@ pages:
             - pinned-safe-scaffold-2026-07-17
       - profile: runnable
         lines:
-          - 319
+          - 390
         validation:
           status: passed
           requirement: runtime-smoke
@@ -2990,7 +3252,7 @@ pages:
             - pinned-safe-scaffold-2026-07-17
       - profile: runnable-partial
         lines:
-          - 352
+          - 423
         validation:
           status: pending
           requirement: runtime-smoke
@@ -3001,7 +3263,7 @@ pages:
           gap: The exact generated module, live Atlas channel, middleware, or vendor integration used by this Python block has not executed in the recorded smoke.
       - profile: safety-gated
         lines:
-          - 370
+          - 441
         validation:
           status: pending
           runs:
@@ -3015,7 +3277,7 @@ pages:
             status: pending
       - profile: safety-gated-partial
         lines:
-          - 397
+          - 468
         validation:
           status: pending
           runs:
@@ -3029,16 +3291,16 @@ pages:
             status: pending
       - profile: runnable-partial
         lines:
-          - 424
+          - 495
         validation:
-          status: blocked
+          status: pending
           requirement: end-to-end
           runs:
             - docs-syntax-2026-07-17
-          gap: The required platform, network, simulator, ROS 2, audio, or package-manager prerequisites were unavailable on the validation host.
+          gap: The illustrative ROS_DOMAIN_ID and rmw_zenoh_cpp environment has not been integrated with the named vendor SDK, target ROS 2 distribution, router address, namespace plan, and no-motion provider startup.
       - profile: safety-gated
         lines:
-          - 436
+          - 507
         validation:
           status: pending
           runs:
@@ -3052,7 +3314,7 @@ pages:
             status: pending
       - profile: safety-gated
         lines:
-          - 445
+          - 516
         validation:
           status: pending
           runs:
@@ -3066,7 +3328,7 @@ pages:
             status: pending
       - profile: safety-gated-partial
         lines:
-          - 464
+          - 535
         validation:
           status: pending
           runs:
@@ -3080,7 +3342,7 @@ pages:
             status: pending
       - profile: safety-gated-partial
         lines:
-          - 542
+          - 613
         validation:
           status: pending
           runs:
@@ -3094,7 +3356,7 @@ pages:
             status: pending
       - profile: safety-gated-partial
         lines:
-          - 566
+          - 637
         validation:
           status: pending
           runs:
@@ -3108,7 +3370,7 @@ pages:
             status: pending
       - profile: runnable-partial
         lines:
-          - 591
+          - 662
         validation:
           status: passed
           requirement: runtime-smoke
@@ -3117,7 +3379,7 @@ pages:
             - pinned-safe-scaffold-2026-07-17
       - profile: runnable
         lines:
-          - 622
+          - 699
         validation:
           status: passed
           requirement: runtime-smoke
@@ -3127,7 +3389,7 @@ pages:
             - pinned-safe-scaffold-2026-07-17
       - profile: safety-gated
         lines:
-          - 643
+          - 720
         validation:
           status: pending
           runs:
@@ -3141,7 +3403,7 @@ pages:
             status: pending
       - profile: safety-gated
         lines:
-          - 652
+          - 729
         validation:
           status: pending
           runs:
@@ -3155,7 +3417,7 @@ pages:
             status: pending
       - profile: safety-gated
         lines:
-          - 660
+          - 737
         validation:
           status: pending
           runs:
@@ -3169,7 +3431,7 @@ pages:
             status: pending
       - profile: safety-gated
         lines:
-          - 674
+          - 751
         validation:
           status: pending
           runs:
@@ -3183,7 +3445,7 @@ pages:
             status: pending
       - profile: safety-gated
         lines:
-          - 685
+          - 762
         validation:
           status: pending
           runs:
@@ -3197,7 +3459,7 @@ pages:
             status: pending
       - profile: safety-gated
         lines:
-          - 693
+          - 770
         validation:
           status: pending
           runs:
@@ -3211,7 +3473,7 @@ pages:
             status: pending
       - profile: runnable
         lines:
-          - 707
+          - 784
         validation:
           status: pending
           requirement: runtime-smoke
@@ -3221,7 +3483,7 @@ pages:
           gap: The exact external executable or project-specific shell wrapper has not run in the recorded isolated shell smoke.
       - profile: runnable
         lines:
-          - 713
+          - 790
         validation:
           status: pending
           requirement: runtime-smoke
@@ -3231,7 +3493,7 @@ pages:
           gap: The exact external executable or project-specific shell wrapper has not run in the recorded isolated shell smoke.
       - profile: runnable
         lines:
-          - 749
+          - 826
         validation:
           status: passed
           requirement: command-contract
@@ -3250,7 +3512,7 @@ pages:
           gap: No qualifying run executes the exact network clone, detached checkout, recursive submodule update, make-install, setup, version, and revision checks as one workflow.
       - profile: runnable-partial
         lines:
-          - 127
+          - 207
         validation:
           status: pending
           requirement: runtime-smoke
@@ -3260,7 +3522,7 @@ pages:
           gap: The full teaching YAML parses and the pinned Webots Soma stack passes, but the ACME-specific URDF, links, joints, measurements, and provider mappings have not run as an integrated fixture.
       - profile: runnable
         lines:
-          - 244
+          - 315
         validation:
           status: pending
           requirement: runtime-smoke
@@ -3271,7 +3533,7 @@ pages:
           gap: The exact ACME URDF is vendor-supplied and was unavailable, so check_urdf and the complete deployment build have not run for this example.
       - profile: safety-gated
         lines:
-          - 261
+          - 332
         validation:
           status: staged-passed
           runs:
@@ -3284,9 +3546,14 @@ pages:
               - pinned-webots-full-ci-2026-07-17
           real_hardware_acceptance:
             status: pending
+            remaining_supervised_step: On the named ACME robot, reintroduce exactly one motion provider after the no-motion manifest passes, then perform a supervised low-limit activation while recording commanded versus observed motion, emergency-stop and watchdog response, limit behavior, and clean shutdown.
+            prerequisites:
+              - Replace the teaching ACME placeholders with the reviewed robot manifest, package revisions, soma.yaml, and URDF, then pass check_urdf and rbnx build at the pinned Robonix revision.
+              - Repeat the recorded no-motion startup with hardware outputs inhibited and confirm the expected provider IDs, lifecycle states, Soma health, and clean shutdown.
+              - Record the robot model, hardware and firmware revisions, operator, date, tested emergency stop, conservative speed, acceleration, force, and workspace limits, and the cleared test area or elevated rig.
       - profile: runnable
         lines:
-          - 279
+          - 350
         validation:
           status: passed
           requirement: runtime-smoke
@@ -3296,17 +3563,29 @@ pages:
             - pinned-observability-2026-07-17
       - profile: runnable-partial
         lines:
-          - 454
+          - 125
+        validation:
+          status: pending
+          requirement: runtime-smoke
+          runs:
+            - docs-syntax-2026-07-17
+          gap: The minimal soma.yaml parses as YAML and matches the pinned parser fields, but it has not been loaded with a real readable ACME URDF by a running Soma instance.
+      - profile: reference
+        lines:
+          - 167
+      - profile: runnable-partial
+        lines:
+          - 525
         validation:
           status: pending
           requirement: runtime-smoke
           runs:
             - docs-syntax-2026-07-17
             - pinned-observability-2026-07-17
-          gap: Live caps inspection passes for the final-pin no-motion provider, but the exact standalone acme_chassis registration and teardown have not been exercised.
+          gap: Live capability inspection passes for the final-pin no-motion provider, but the exact standalone acme_chassis registration and teardown have not been exercised.
       - profile: runnable
         lines:
-          - 668
+          - 745
         validation:
           status: passed
           requirement: runtime-smoke
@@ -3380,11 +3659,16 @@ pages:
         lines:
           - 46
         validation:
-          status: blocked
+          status: platform-unavailable
           requirement: end-to-end
           runs:
             - docs-syntax-2026-07-17
-          gap: The required platform, network, simulator, ROS 2, audio, or package-manager prerequisites were unavailable on the validation host.
+            - local-validation-host-platform-probe-2026-07-17
+          gap: The validation host has no ALSA arecord or aplay utilities, so the null PCM discovery, one-second capture, and playback pipeline were not executed.
+          prerequisites:
+            - Linux with alsa-utils installed and arecord plus aplay on PATH.
+            - ALSA configuration exposing the null PCM in both arecord -L and aplay -L.
+            - Permission to open the selected PCM devices and a run recording the exact capture duration, sample formats, pipeline exit codes, and absence of unexpected hardware output.
   docs/interface-catalog/primitive/camera.md:
     source_revision: 181d3eb974fd495a795ed120a0a4c6e6f342d179
     source_evidence:

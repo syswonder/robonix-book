@@ -1,3 +1,7 @@
+---
+toc_max_heading_level: 2
+---
+
 # Robonix 开发者指南
 
 本指南介绍如何开发 Robonix 软件包（Package）。一个软件包可以实现原语（Primitive）、服务（Service）或技能（Skill），依据标准能力约定实现接口，在运行时向 Atlas 注册能力，再由机器人部署清单选择和配置。
@@ -988,7 +992,37 @@ provider.create_subscription(
 provider.emit(contract_id, message)
 ```
 
-`topic` 是实际 ROS 2 名称；`msg_type` 接受消息类或运行时可解析的类型字符串；`qos` 接受预设字符串或整数深度。`declare=True` 时，方法还会向 Atlas 声明能力；只消费别人的话题时传 `declare=False`。发布者的 `description` 是给调用方和模型看的实例说明。`emit` 按 `contract_id` 查找此前创建的发布者，未创建时抛出 `RuntimeError`。
+`topic` 是实际 ROS 2 名称；`msg_type` 接受消息类或运行时可解析的类型字符串；`qos` 接受预设字符串或整数深度。`declare=True` 时，方法还会向 Atlas 声明能力。发布者的 `description` 是给调用方和模型看的实例说明。`emit` 按 `contract_id` 查找此前创建的发布者，未创建时抛出 `RuntimeError`。
+
+消费另一提供方发布的话题时，常规路径不是手写话题名，而是让 Atlas 返回实际端点和 QoS，再从 `Channel` 创建订阅。下面的代码放在已经创建的 `service` 实例中；`on_image` 是接收 `sensor_msgs/msg/Image` 的业务回调：
+
+```python
+from robonix_api import ATLAS, Ok
+from robonix_api.atlas_types import Transport
+
+@service.on_init
+def connect_camera(_config):
+    camera_rgb = ATLAS.find_unique_capability(
+        contract_id="robonix/primitive/camera/rgb",
+        provider_id="front_camera",
+        transport=Transport.ROS2,
+    )
+    channel = service.connect_capability(
+        camera_rgb,
+        camera_rgb.contract_id,
+        Transport.ROS2,
+    )
+    service.create_subscription_from_channel(
+        channel,
+        msg_type="sensor_msgs/msg/Image",
+        callback=on_image,
+    )
+    return Ok()
+
+service.run()
+```
+
+`find_unique_capability` 负责发现并消除多实例歧义，`connect_capability` 在 Atlas 中建立消费者到提供方的连接，`create_subscription_from_channel` 使用返回的真实端点与传输参数。只有在话题名由 Robonix 之外的系统固定、且调用方有意绕过 Atlas 发现时，才直接调用 `create_subscription(..., declare=False)`；这种写法不会为消费端声明新能力，也不能替代能力发现。
 
 `create_publisher` 和 `create_subscription` 会立即创建 ROS 对象，应在 provider 注册后调用，通常放在 `on_init`。`declare_ros2_topic` 和 `declare_ros2_service` 只向 Atlas 声明端点；它们不会替开发者创建 `rclpy` 发布者、订阅者或服务。
 

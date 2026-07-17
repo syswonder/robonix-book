@@ -152,6 +152,20 @@ function requireNonEmptyString(value, location) {
   return true;
 }
 
+function requireNonEmptyStringList(value, location) {
+  if (!Array.isArray(value) || value.length === 0) {
+    fail(`${location}: expected a non-empty list`);
+    return false;
+  }
+  let valid = true;
+  for (const [index, entry] of value.entries()) {
+    if (!requireNonEmptyString(entry, `${location}[${index}]`)) {
+      valid = false;
+    }
+  }
+  return valid;
+}
+
 if (!existsSync(evidencePath)) {
   console.error(`Page-evidence validation failed: missing ${toRepositoryPath(evidencePath)}`);
   process.exit(1);
@@ -175,6 +189,7 @@ if (flags.has('--refresh')) {
   const excluded = new Set((matrix.exclusions ?? []).map((entry) => entry.path));
   const refreshNotes = [];
   matrix.pages ??= {};
+  matrix.page_reviews ??= {};
 
   // Once the ledger is tracked, use its committed page records as the trusted
   // refresh baseline. This prevents a changed fence from retaining old evidence
@@ -231,6 +246,7 @@ if (flags.has('--refresh')) {
     if (excluded.has(path)) {
       continue;
     }
+    matrix.page_reviews[path] ??= {status: 'pending', reviewer: 'unassigned'};
     let page = matrix.pages[path];
     if (!page) {
       page = {
@@ -241,6 +257,7 @@ if (flags.has('--refresh')) {
         blocks: [],
       };
       matrix.pages[path] = page;
+      matrix.page_reviews[path] = {status: 'pending', reviewer: 'unassigned'};
       refreshNotes.push(`${path}: new page needs source provenance review`);
     }
 
@@ -258,6 +275,8 @@ if (flags.has('--refresh')) {
       );
       continue;
     }
+
+    matrix.page_reviews[path] = {status: 'pending', reviewer: 'unassigned'};
 
     const currentByFingerprint = new Map();
     for (const block of current.blocks) {
@@ -331,6 +350,11 @@ if (flags.has('--refresh')) {
       refreshNotes.push(`${path}: stale matrix page needs manual removal or exclusion review`);
     }
   }
+  for (const path of Object.keys(matrix.page_reviews)) {
+    if (!inventory.has(path) || excluded.has(path)) {
+      refreshNotes.push(`${path}: stale page review needs manual removal`);
+    }
+  }
 
   if (refreshNotes.length > 0) {
     console.error(`Refresh review notes (${refreshNotes.length}):`);
@@ -351,8 +375,8 @@ const pinnedRevision = readFileSync(revisionPath, 'utf8').trim();
 if (!/^[0-9a-f]{40}$/.test(pinnedRevision)) {
   fail('ROBONIX_SOURCE_REVISION: expected a full 40-character Git revision');
 }
-if (matrix.schema_version !== 2) {
-  fail('schema_version: expected 2');
+if (matrix.schema_version !== 3) {
+  fail('schema_version: expected 3');
 }
 if (matrix.source?.revision !== pinnedRevision) {
   fail(`source.revision: expected ${pinnedRevision}, found ${matrix.source?.revision ?? '<missing>'}`);
@@ -408,6 +432,22 @@ for (const [runName, run] of Object.entries(evidenceRuns)) {
   requireNonEmptyString(run.result, `${location}.result`);
   if (!['passed', 'failed', 'blocked', 'pending'].includes(run.status)) {
     fail(`${location}.status: expected passed, failed, blocked, or pending`);
+  }
+  if (run.status !== 'passed') {
+    requireNonEmptyString(run.gap, `${location}.gap`);
+  }
+  if (run.blocker_kinds !== undefined) {
+    if (requireNonEmptyStringList(run.blocker_kinds, `${location}.blocker_kinds`)) {
+      const allowedBlockerKinds = new Set(['platform', 'network', 'dependency', 'behavior']);
+      for (const blockerKind of run.blocker_kinds) {
+        if (!allowedBlockerKinds.has(blockerKind)) {
+          fail(`${location}.blocker_kinds: unknown blocker kind ${blockerKind}`);
+        }
+      }
+    }
+    if (run.status !== 'blocked') {
+      fail(`${location}.blocker_kinds: only blocked runs may declare blocker kinds`);
+    }
   }
   if (historical && !['failed', 'blocked'].includes(run.status)) {
     fail(`${location}.historical: only failed or blocked runs may be retained across source revisions`);
@@ -506,6 +546,48 @@ for (const path of matrixPaths.filter((path) => !activePaths.includes(path))) {
   fail(`${path}: matrix entry is not an active handbook page`);
 }
 
+const pageReviews = matrix.page_reviews ?? {};
+const pageReviewPaths = Object.keys(pageReviews).sort();
+const pageReviewStatusCounts = new Map();
+const pageReviewGaps = [];
+for (const path of activePaths.filter((path) => !Object.hasOwn(pageReviews, path))) {
+  fail(`${path}: active handbook page is missing a page review record`);
+}
+for (const path of pageReviewPaths.filter((path) => !activePaths.includes(path))) {
+  fail(`${path}: page review entry is not an active handbook page`);
+}
+for (const path of pageReviewPaths.filter((path) => activePaths.includes(path))) {
+  const review = pageReviews[path];
+  const location = `page_reviews.${path}`;
+  if (!review || typeof review !== 'object') {
+    fail(`${location}: expected a mapping`);
+    continue;
+  }
+  if (!['pending', 'approved'].includes(review.status)) {
+    fail(`${location}.status: expected pending or approved`);
+  }
+  pageReviewStatusCounts.set(
+    review.status ?? 'missing',
+    (pageReviewStatusCounts.get(review.status ?? 'missing') ?? 0) + 1,
+  );
+  const reviewerValid = requireNonEmptyString(review.reviewer, `${location}.reviewer`);
+  if (review.status === 'approved') {
+    if (reviewerValid && review.reviewer === 'unassigned') {
+      fail(`${location}.reviewer: approved pages need an accountable reviewer`);
+    }
+    if (requireNonEmptyString(review.reviewed_at, `${location}.reviewed_at`)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(review.reviewed_at)) {
+        fail(`${location}.reviewed_at: expected YYYY-MM-DD`);
+      }
+    }
+  } else {
+    if (review.reviewed_at !== undefined) {
+      fail(`${location}.reviewed_at: pending pages cannot claim a completed review date`);
+    }
+    pageReviewGaps.push({path, reviewer: review.reviewer ?? 'unassigned'});
+  }
+}
+
 const allowedSourceKinds = new Set([
   'implementation',
   'api',
@@ -516,6 +598,9 @@ const allowedSourceKinds = new Set([
 ]);
 const sourcePaths = new Set();
 let blockCount = 0;
+let evidenceRequiredBlockCount = 0;
+let acceptedEvidenceBlockCount = 0;
+let stagedSafetyBlockCount = 0;
 const classificationCounts = new Map();
 const evidenceStatusCounts = new Map();
 const acceptedScopesByRequirement = {
@@ -645,6 +730,7 @@ for (const path of matrixPaths) {
       );
     }
     if (['runnable', 'safety-gated'].includes(profile.classification)) {
+      evidenceRequiredBlockCount += group.lines.length;
       const validation = group.validation;
       if (!validation || typeof validation !== 'object') {
         fail(`${groupLocation}.validation: runnable blocks require a block-group evidence record`);
@@ -659,7 +745,7 @@ for (const path of matrixPaths) {
       }
       const allowedStatuses = profile.classification === 'safety-gated'
         ? ['staged-passed', 'passed', 'failed', 'blocked', 'pending']
-        : ['passed', 'failed', 'blocked', 'pending'];
+        : ['passed', 'failed', 'blocked', 'pending', 'platform-unavailable'];
       if (!allowedStatuses.includes(validation.status)) {
         fail(`${groupLocation}.validation.status: unknown status ${validation.status ?? '<missing>'}`);
       }
@@ -683,6 +769,33 @@ for (const path of matrixPaths) {
           fail(
             `${groupLocation}.validation: passed runnable evidence needs a passed ${evidenceRequirement} run; syntax-only and failed runs do not qualify`,
           );
+        }
+        if (validation.status === 'blocked') {
+          const currentBlockedRuns = runValidation.known.filter(
+            ([, run]) => run.historical !== true && run.status === 'blocked',
+          );
+          if (currentBlockedRuns.length === 0) {
+            fail(
+              `${groupLocation}.validation: blocked status needs a current recorded blocked run; use pending when no attempt was recorded`,
+            );
+          }
+        }
+        if (validation.status === 'platform-unavailable') {
+          requireNonEmptyStringList(
+            validation.prerequisites,
+            `${groupLocation}.validation.prerequisites`,
+          );
+          const currentPlatformBlockers = runValidation.known.filter(
+            ([, run]) =>
+              run.historical !== true &&
+              run.status === 'blocked' &&
+              run.blocker_kinds?.includes('platform'),
+          );
+          if (currentPlatformBlockers.length === 0) {
+            fail(
+              `${groupLocation}.validation: platform-unavailable status needs a current blocked platform probe`,
+            );
+          }
         }
       } else {
         const nonMotion = validation.last_non_motion_validation;
@@ -717,6 +830,19 @@ for (const path of matrixPaths) {
               fail(`${groupLocation}.validation.real_hardware_acceptance: passed status needs a passed hardware-scope run`);
             }
           }
+          if (validation.status === 'staged-passed') {
+            if (hardware?.status !== 'pending') {
+              fail(`${groupLocation}.validation.real_hardware_acceptance.status: staged-passed requires pending supervised hardware acceptance`);
+            }
+            requireNonEmptyString(
+              hardware?.remaining_supervised_step,
+              `${groupLocation}.validation.real_hardware_acceptance.remaining_supervised_step`,
+            );
+            requireNonEmptyStringList(
+              hardware?.prerequisites,
+              `${groupLocation}.validation.real_hardware_acceptance.prerequisites`,
+            );
+          }
           accepted =
             ['staged-passed', 'passed'].includes(validation.status) &&
             nonMotion.status === 'passed' &&
@@ -727,6 +853,12 @@ for (const path of matrixPaths) {
             );
         }
       }
+      if (accepted) {
+        acceptedEvidenceBlockCount += group.lines.length;
+        if (validation.status === 'staged-passed') {
+          stagedSafetyBlockCount += group.lines.length;
+        }
+      }
       if (!accepted) {
         requireNonEmptyString(validation.gap, `${groupLocation}.validation.gap`);
         evidenceGaps.push({
@@ -735,6 +867,7 @@ for (const path of matrixPaths) {
           profile: group.profile,
           status: validation.status ?? 'missing',
           gap: validation.gap ?? 'required evidence is not passed',
+          prerequisites: validation.prerequisites,
         });
       }
     }
@@ -824,21 +957,16 @@ if (!sourceRoot) {
 
 if (flags.has('--strict-evidence')) {
   for (const gap of evidenceGaps) {
+    const prerequisites = Array.isArray(gap.prerequisites)
+      ? ` Prerequisites: ${gap.prerequisites.join(' | ')}`
+      : '';
     fail(
-      `${gap.path}:${gap.lines.join(',')}: ${gap.profile} is ${gap.status}; ${gap.gap}`,
+      `${gap.path}:${gap.lines.join(',')}: ${gap.profile} is ${gap.status}; ${gap.gap}${prerequisites}`,
     );
   }
-}
-
-if (warnings.length > 0) {
-  console.warn(`Page-evidence warnings (${warnings.length}):`);
-  warnings.forEach((warning) => console.warn(`- ${warning}`));
-}
-
-if (failures.length > 0) {
-  console.error(`Page-evidence validation failed (${failures.length}):`);
-  failures.forEach((failure) => console.error(`- ${failure}`));
-  process.exit(1);
+  for (const gap of pageReviewGaps) {
+    fail(`${gap.path}: page review is pending (reviewer: ${gap.reviewer})`);
+  }
 }
 
 const classSummary = [...classificationCounts.entries()]
@@ -849,9 +977,39 @@ const evidenceSummary = [...evidenceStatusCounts.entries()]
   .sort(([left], [right]) => left.localeCompare(right))
   .map(([status, count]) => `${status}=${count}`)
   .join(', ');
+const reviewSummary = [...pageReviewStatusCounts.entries()]
+  .sort(([left], [right]) => left.localeCompare(right))
+  .map(([status, count]) => `${status}=${count}`)
+  .join(', ');
 const sourceSummary = sourceRoot
   ? `source-paths=${validatedSourcePaths}, source-head=${sourceHead?.slice(0, 12) ?? 'unknown'}`
   : 'source-paths=skipped';
+const evidenceGapBlockCount = evidenceGaps.reduce((count, gap) => count + gap.lines.length, 0);
+const readinessSummary =
+  `accepted-evidence=${acceptedEvidenceBlockCount}/${evidenceRequiredBlockCount}, ` +
+  `evidence-gaps=${evidenceGapBlockCount}, page-reviews=${reviewSummary || 'missing'}, ` +
+  `supervised-hardware-pending=${stagedSafetyBlockCount}`;
+
+if (warnings.length > 0) {
+  console.warn(`Page-evidence warnings (${warnings.length}):`);
+  warnings.forEach((warning) => console.warn(`- ${warning}`));
+}
+
+if (failures.length > 0) {
+  console.error(`Page-evidence readiness report: ${readinessSummary}`);
+  console.error(`Page-evidence gate failed (${failures.length}):`);
+  failures.forEach((failure) => console.error(`- ${failure}`));
+  process.exit(1);
+}
 console.log(
-  `Page-evidence validation passed: pages=${activePaths.length}, excluded=${excludedPaths.size}, blocks=${blockCount}, ${classSummary}; evidence=${evidenceSummary || 'not-applicable'}; ${sourceSummary}`,
+  `Page-evidence structural validation passed: pages=${activePaths.length}, excluded=${excludedPaths.size}, blocks=${blockCount}, ${classSummary}; evidence=${evidenceSummary || 'not-applicable'}; ${sourceSummary}`,
 );
+if (evidenceGapBlockCount > 0 || pageReviewGaps.length > 0) {
+  console.warn(
+    `Page-evidence readiness is incomplete: ${readinessSummary}. Run npm run check:page-evidence:strict for exact gaps.`,
+  );
+} else {
+  console.log(
+    `Page-evidence readiness gate accepted: ${readinessSummary}. Staged safety acceptance does not claim supervised motion or hardware completion.`,
+  );
+}

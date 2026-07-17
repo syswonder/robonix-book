@@ -43,6 +43,21 @@ whose scope is strong enough for the requirement; failed and blocked runs stay
 in the ledger as regression or prerequisite evidence without making a block
 green.
 
+Runnable execution states are deliberately distinct:
+
+- `passed` requires a current, qualifying passed run;
+- `pending` means the required procedure has not been run or no recorded attempt
+  reaches the claimed boundary;
+- `blocked` requires a current recorded blocked run and names the concrete
+  blocker;
+- `platform-unavailable` requires a current platform probe plus the exact OS,
+  runtime, device, service, network, or tool prerequisites needed for a rerun.
+
+Do not use `blocked` as shorthand for an unknown mixture of platform, network,
+simulator, ROS 2, audio, or package-manager constraints. A locally runnable
+block without qualifying execution remains `pending`, and strict readiness
+continues to fail it.
+
 When the source pin advances, a failed or blocked run from the old revision may
 remain with `historical: true` and its exact old commit. Historical evidence can
 never satisfy a block: passed and pending runs must be rerun at the current pin,
@@ -52,18 +67,31 @@ green.
 
 Safety-gated groups can use `staged-passed` when an actual integration or
 hardware run proves the last non-motion boundary. Their real-hardware status
-remains separate and may stay `pending`, with the required operator, emergency
-stop, limit, observed-motion, and shutdown evidence retained in the profile.
+remains separate and may stay `pending`, but the group must name the exact next
+supervised step and its concrete prerequisites, including the target robot,
+reviewed configuration, operator, emergency stop, limits, test area, observed
+motion, and shutdown evidence. These fields are acceptance conditions, not a
+claim that motion occurred.
 This avoids claiming a hardware result from syntax or from a generic mock.
 A full safety `passed` status additionally requires a named, current-pin,
 passed run whose scope is explicitly `hardware`; prose status alone cannot
 promote a staged non-motion check to real-hardware acceptance.
 
+Every active page also has a `page_reviews` entry. `pending` with reviewer
+`unassigned` makes the absence of accountable review explicit. `approved`
+requires a named reviewer and `YYYY-MM-DD` review date. Refreshing a page after
+its fence inventory changes resets the review to pending. Strict readiness
+fails pending page reviews; normal structural CI reports them without claiming
+review completion.
+
 The normal gate enforces the page inventory, source provenance, classifications,
-fingerprints, and evidence-record consistency while allowing honestly pending
-or blocked execution. Strict mode additionally fails every runnable group that
-is not passed and every safety group that has not reached at least a truthful
-staged non-motion pass.
+fingerprints, review-record shape, and evidence-record consistency while
+allowing honestly pending, blocked, or platform-unavailable execution. Its
+success line says **structural validation passed** and prints a separate
+readiness-incomplete report whenever execution or review gaps remain. Strict
+mode additionally fails every runnable group that is not passed, every safety
+group that has not reached at least a truthful staged non-motion pass, and every
+page whose accountable review is still pending.
 
 The 2026-07-17 ledger includes real pinned CLI parser, clean scaffold/build,
 shared-Driver lifecycle and shutdown, Atlas diagnostic, Python API, focused
@@ -84,6 +112,18 @@ could not fetch its required providers while DNS was unavailable (with Docker
 absent too). Keeping those records does not reopen blocks covered by the
 current passing reruns; they remain provenance for earlier failures and cannot
 qualify current-pin evidence.
+
+Browser rendering is recorded separately in
+`validation/browser-qa-20260717.json`. That report names the browser, operating
+system, desktop and 390 px viewports, reviewed routes, layout checks, legacy
+route result, and local screenshot hashes. It is rendering evidence only; it
+does not promote a hardware-dependent command or an unreviewed page to passed.
+`validation/runtime-communication-pptx-audit.json` records the external deck's
+digest and slide-by-slide reconciliation without redistributing the source
+file. `make check` validates both report schemas, every referenced Book page,
+the pinned revision, and—when `ROBONIX_SOURCE` is set—the deck audit's source
+paths. Local screenshot files are optional review aids; when present, their
+digests are checked.
 
 ## Commands
 
