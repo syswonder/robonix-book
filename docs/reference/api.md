@@ -36,7 +36,7 @@ cp -R "$ROBONIX_SOURCE/target/doc/." build/api/rust/
 
 | 包 | 角色 | 文档 |
 |---|---|---|
-| `robonix-api` | Python 开发工具包（原语、服务、技能、Atlas、生命周期、通道） | [API](https://robonix.syswonder.org/api/python/_autosummary/robonix_api.html) |
+| `robonix-api` | Python 开发工具包（原语、服务、技能、Atlas、生命周期、通道） | [公共 API](https://robonix.syswonder.org/api/python/public-api.html) · [模块索引](https://robonix.syswonder.org/api/python/_autosummary/robonix_api.html) |
 | `scene`（scene_service） | 场景 / 语义地图服务的 Python 实现 | [API](https://robonix.syswonder.org/api/python/_autosummary/scene_service.html) |
 
 > scene 是服务，它的**对外** API 是能力约定（见 [能力约定参考](contracts.md) 的 `robonix/system/scene/*`）；这里收录的是它的 Python 实现文档。

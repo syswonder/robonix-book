@@ -103,6 +103,16 @@ api-check:
 	test -s build/api/rust/rbnx/index.html
 	test -s build/api/python/_autosummary/robonix_api.html
 	test -s build/api/python/_autosummary/scene_service.html
+	test -s build/api/python/public-api.html
+	grep -q 'robonix_api.Primitive' build/api/python/_autosummary/robonix_api.html
+	grep -q 'robonix_api.Service' build/api/python/_autosummary/robonix_api.html
+	grep -q 'robonix_api.Skill' build/api/python/_autosummary/robonix_api.html
+	grep -q 'robonix_api.Primitive' build/api/python/public-api.html
+	grep -q 'robonix_api.atlas._Atlas.find_capability' build/api/python/public-api.html
+	grep -q 'robonix_api.atlas._Atlas.find_unique_capability' build/api/python/public-api.html
+	grep -q 'connect_capability' build/api/python/public-api.html
+	grep -q 'create_publisher' build/api/python/public-api.html
+	grep -q 'create_subscription' build/api/python/public-api.html
 
 api: source-check
 	$(MAKE) api-rust ROBONIX_SOURCE="$(ROBONIX_SOURCE)" API_CARGO_TARGET_DIR="$(API_CARGO_TARGET_DIR)"

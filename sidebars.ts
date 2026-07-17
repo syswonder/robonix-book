@@ -27,7 +27,10 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: '软件包开发',
-      items: ['developer-guide'],
+      items: [
+        'developer-guide',
+        {type: 'doc', id: 'tutorials/existing-python-feature', label: '抓积木接入示例'},
+      ],
     },
     {
       type: 'category',

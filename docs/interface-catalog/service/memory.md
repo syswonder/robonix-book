@@ -17,7 +17,7 @@ title: 记忆
 | `robonix/service/memory/save` | `rpc` | MCP | [`memory/Save`](../../reference/idl.md#memory-srv-save-srv)（`std_msgs/String` → `std_msgs/String`） | `service/memory/save.v1.toml` |
 | `robonix/service/memory/compact` | `rpc` | MCP | [`memory/Compact`](../../reference/idl.md#memory-srv-compact-srv)（空请求 → `std_msgs/String`） | `service/memory/compact.v1.toml` |
 
-参考实现：Robonix 源码中的 [`services/memsearch`](https://github.com/syswonder/robonix/tree/436204a0aa5301dcf682a38ad29523023ad5a3a5/services/memsearch)（`memsearch[onnx]` + `milvus-lite`）。三个记忆操作都用 `@memory.mcp(...)` 暴露，不挂载业务 gRPC servicer；工具名默认取能力约定 leaf：`search`、`save`、`compact`。`driver` 由 Robonix API 以 gRPC 提供。
+参考实现：Robonix 源码中的 [`services/memsearch`](https://github.com/syswonder/robonix/tree/edb7606c8dc57bc3957e122bcaff1669d0154df1/services/memsearch)（`memsearch[onnx]` + `milvus-lite`）。三个记忆操作都用 `@memory.mcp(...)` 暴露，不挂载业务 gRPC servicer；工具名默认取能力约定 leaf：`search`、`save`、`compact`。`driver` 由 Robonix API 以 gRPC 提供。
 
 ## 生命周期与运行行为
 

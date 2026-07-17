@@ -24,6 +24,6 @@ title: 场景服务
 
 `list_objects` 返回可见物理对象、机器人和房间标记，可用其稳定 ID 调用 `goal_near` 或 `goal_room`。`goal_near` 只接受物理对象，房间或命名区域应交给 `goal_room`。两个目标接口都需要已经收到且非空的 `occupancy_grid` 才能给出 `reachable=true`；否则只返回失败原因，不能直接作为[导航服务](../service/navigation.md)目标。
 
-输入侧：场景服务使用相机彩色图、深度图、相机内参和地图位姿做感知与世界坐标投影，使用 `occupancy_grid` 计算导航安全目标，并发现里程计与标准 `robonix/primitive/lidar/lidar3d` 输入。当前实现优先组合地图服务提供的机器人位姿与 `robonix/primitive/camera/extrinsics`；没有完整的位姿与显式外参组合时，再从 TF 查询相机到世界坐标系的变换。新部署应提供完整 URDF/TF，同时在迁移完成前为所选 RGB-D 相机声明显式外参能力。[Issue #156](https://github.com/syswonder/robonix/issues/156) 跟踪改为 TF 优先并移除旧外参接口的后续变更。
+输入侧：场景服务使用相机彩色图、深度图、内参、外参和地图位姿做感知与世界坐标投影，使用 `occupancy_grid` 计算导航安全目标，并发现里程计与标准 `robonix/primitive/lidar/lidar3d` 输入。当前米制 RGB-D 主路径组合 `robonix/service/map/pose` 与 `robonix/primitive/camera/extrinsics`；两者不可用时才查询 TF2。新部署仍必须提供连接 `map`、`base_link` 与相机光学坐标系的完整 URDF/TF，并使相机外参与之一致。不要实现旧的 `robonix/system/soma/sensor_extrinsics`；迁移计划见 [Issue #156](https://github.com/syswonder/robonix/issues/156)。
 
 激光雷达数据不直接创建视觉语义对象；它是否参与场景融合取决于当前服务配置和处理链。上表是只读查询接口；`system/scene` 还通过 HTTP 提供标记的增删改查，以及地图保存、加载、删除和位姿估计操作。这些 HTTP 路由不属于 `robonix/system/scene/*` 标准能力约定。参考实现位于 `system/scene`。

@@ -56,14 +56,15 @@ aplay -l
 
 ## 2. 安装 Robonix
 
-克隆开发分支并初始化能力约定与接口定义子模块：
+克隆源码，检出本手册校验过的提交，并初始化能力约定与接口定义子模块：
 
 ```bash
-git clone --branch dev-next --recurse-submodules \
-  https://github.com/syswonder/robonix.git
+git clone --recurse-submodules https://github.com/syswonder/robonix.git
 cd robonix
+git checkout --detach edb7606c8dc57bc3957e122bcaff1669d0154df1
+git submodule update --init --recursive
 
-git branch --show-current
+git rev-parse HEAD
 git submodule status --recursive
 make install
 ```
@@ -76,7 +77,7 @@ rbnx --version
 rbnx path root
 ```
 
-**预期结果：** `git branch --show-current` 输出 `dev-next`；`rbnx path root` 输出刚克隆的 Robonix 仓库绝对路径。
+**预期结果：** `git rev-parse HEAD` 输出 `edb7606c8dc57bc3957e122bcaff1669d0154df1`；`rbnx path root` 输出刚克隆的 Robonix 仓库绝对路径。
 
 ## 3. 配置视觉语言模型
 
