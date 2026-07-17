@@ -8,13 +8,16 @@ title: 语音
 
 能力约定 TOML 在 `capabilities/service/speech/`；直接和嵌套使用的接口定义语言（Interface Definition Language，IDL）文件位于 `capabilities/lib/{speech,asr,tts,audio,lifecycle}/`。
 
-> 表中的命名空间 Driver 是已有软件包的兼容接口。新软件包省略 Driver 条目时由框架自动使用共享的 `robonix/lifecycle/driver`；显式共享仍受支持，两种 Driver 只能选择一条。详见[生命周期兼容流程](../../integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+新软件包省略 Driver 条目，由框架自动注册共享的 `robonix/lifecycle/driver`；显式选择共享 Driver 的行为相同。未实现生命周期回调时，框架记录警告并执行空操作。
+
+:::warning[后向兼容：语音服务命名空间 Driver]
+`robonix/service/speech/driver`、`lifecycle/Driver` 和 `service/speech/driver.v1.toml` 只用于仍由软件包自行维护 Driver TOML 的旧实现。目前仍可使用，但计划迁移到共享 Driver；两种 Driver 不能同时注册。详见[生命周期兼容流程](../../integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+:::
 
 ## 接口
 
 | 能力约定 ID | 模式 | 默认实现传输 | 载荷（IDL） | 能力约定 TOML |
 |---|---|---|---|---|
-| `robonix/service/speech/driver` | `rpc` | gRPC（生命周期） | [`lifecycle/Driver`](../../reference/idl.md#lifecycle-srv-driver-srv) | `service/speech/driver.v1.toml` |
 | `robonix/service/speech/asr` | `rpc` | gRPC | [`asr/Recognize`](../../reference/idl.md#asr-srv-recognize-srv) | `service/speech/asr.v1.toml` |
 | `robonix/service/speech/asr_stream` | `rpc_bidirectional_stream` | gRPC | [`asr/RecognizeStream`](../../reference/idl.md#asr-srv-recognizestream-srv) | `service/speech/asr_stream.v1.toml` |
 | `robonix/service/speech/tts` | `rpc` | gRPC | [`tts/Synthesize`](../../reference/idl.md#tts-srv-synthesize-srv) | `service/speech/tts.v1.toml` |

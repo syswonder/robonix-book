@@ -27,4 +27,8 @@
 - **载荷（IDL）**：接口定义语言（Interface Definition Language，IDL）描述的消息或服务类型，解析到 `capabilities/lib/` 下的 `.msg` 或 `.srv`。Robonix 自带的 ROS 2 消息定义也从这里生成，使不同 ROS 2 发行版上的 Robonix 组件使用同一套数据结构。
 - **能力约定 TOML**：能力约定描述文件相对 `capabilities/` 的路径；绝对路径见 `rbnx path capabilities`。
 
-> `robonix/lifecycle/driver` 是新提供方共享的生命周期入口，不是业务数据接口。新软件包省略 Driver 条目时由框架自动使用该约定，不创建自己的 Driver TOML；显式声明共享 Driver 也受支持。各领域页面仍保留的 `<provider-namespace>/driver` 是已有软件包使用的兼容接口，不应删除，也不能与共享 Driver 同时声明。精确旧清单在旧生成服务完全不存在时可以受管地正向使用共享运行时 Driver；共享选择绝不反向降级。完整兼容与可选迁移流程见[软件包与部署清单规范](../integration-guide/packaging-spec.md#4-生命周期与启动责任)。
+`robonix/lifecycle/driver` 是提供方共享的生命周期入口，不是业务数据接口。新软件包省略 Driver 条目时由框架自动使用该约定，不创建自己的 Driver TOML；显式声明共享 Driver 也受支持。
+
+:::warning[后向兼容：已有命名空间 Driver]
+各领域页面仍列出的 `<provider-namespace>/driver` 是已有软件包自己维护的兼容接口。目前仍可使用，但计划迁移到共享 Driver，且不能与共享 Driver 同时注册。完整兼容与迁移流程见[软件包与部署清单规范](../integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+:::

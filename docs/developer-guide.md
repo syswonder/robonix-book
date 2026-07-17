@@ -236,16 +236,22 @@ def deactivate():
 
 @service.on_shutdown
 def shutdown():
-    pass
+    return Ok()
 ```
 
-| 清单中的 Driver 约定 | 启动行为 |
+| 新软件包清单中的 Driver 约定 | 启动行为 |
 |---|---|
 | 0 条 | 自动选择并注册共享 `robonix/lifecycle/driver`；提供方仍有 Driver |
-| 1 条 | 共享约定只接受共享运行时 Driver；精确的 `<provider-namespace>/driver` 既可继续使用同名旧 Driver，也可在旧生成服务完全不存在时正向升级到共享运行时 Driver |
+| 1 条 `robonix/lifecycle/driver` | 显式选择共享 Driver，行为与省略 Driver 条目相同 |
 | 多于 1 条 | 软件包启动失败；一个提供方只能有一个生命周期入口 |
 
-每个提供方都使用一条生命周期 Driver。当前软件包通常不在清单中声明 Driver；框架会自动选择并注册共享的 `robonix/lifecycle/driver`。该约定及 `lifecycle/Driver` IDL 由 Robonix 主仓库提供，不需要创建 Driver TOML。显式声明共享 Driver 仍受支持。已有软件包可以继续使用唯一且与主命名空间精确对应的 `<provider-namespace>/driver` 及其本地 TOML。旧清单由 `rbnx` 或 Soma 受管启动时，如果旧生成服务完整存在就继续注册旧 ID；如果旧 Servicer 与注册函数均不存在、而共享服务对完整存在，兼容标记只允许这一个“旧清单 → 共享运行时”方向。省略或显式共享的清单绝不反向降级到旧 Driver；部分生成服务、无 Driver、无关 ID 和两条 Driver 都使启动失败。完整兼容与可选迁移流程见[软件包与部署清单规范](integration-guide/packaging-spec.md#4-生命周期与启动责任)。
+每个提供方都使用一条生命周期 Driver。新软件包通常不在清单中声明 Driver；框架会自动选择并注册共享的 `robonix/lifecycle/driver`。该约定及 `lifecycle/Driver` IDL 由 Robonix 主仓库提供，不需要创建 Driver TOML。显式声明共享 Driver 仍受支持，但不会改变运行行为。
+
+:::warning[后向兼容：已有命名空间 Driver]
+早期软件包可能自己维护 Driver TOML，并在清单中声明唯一的 `<provider-namespace>/driver`。这种完整的旧实现目前仍受支持，但计划逐步迁移到共享 Driver。维护旧包时保留原有 Driver 条目和 TOML，不要再追加共享 Driver。
+
+若旧清单保持不变、旧生成服务完全不存在，而受管运行时只注册带兼容标记的共享 Driver，也允许单向迁移并输出警告。部分生成服务、命名空间不匹配或多条 Driver 都会使启动失败。旧包的完整验收和迁移步骤见[软件包与部署清单规范](integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+:::
 
 生命周期处理函数按需实现。某个回调缺失时，框架会记录警告并执行空操作；原语或服务仍会在 `CMD_INIT`、`CMD_ACTIVATE` 后进入 `ACTIVE`。处理函数显式返回 `Err` 时，启动或状态转换仍会失败。
 
@@ -287,7 +293,7 @@ rbnx package-new my_skill --type skill
 rbnx package-new my_camera --type primitive --path ./packages/my_camera
 ```
 
-`package-new` 会生成清单、`build.sh`、`start.sh`、Python 模块和空的 `capabilities/`。开始实现后补上配置说明；如果软件包还需要释放框架之外的进程或资源，再增加幂等的 `stop.sh`。发布前的目录应整理为：
+`--path` 只改变目标目录；`--type` 仍决定生成原语、服务还是技能的提供方类、命名空间和默认软件包名称，两者都必须正确。`package-new` 会生成清单、`build.sh`、`start.sh`、Python 模块和空的 `capabilities/`。开始实现后补上配置说明；如果软件包还需要释放框架之外的进程或资源，再增加幂等的 `stop.sh`。发布前的目录应整理为：
 
 ```text
 primitives/my_camera/
@@ -407,7 +413,7 @@ service.run()
 - `Err("reason")`：不可恢复错误；
 - `Deferred("reason")`：依赖尚未就绪，保持当前状态并把原因写入 `state_detail`。当前 `rbnx boot` 和 Executor 不会自动重试；调用方或操作方需要在修复依赖后重新发起生命周期流程。
 
-`on_init`、`on_activate` 和 `on_deactivate` 必须返回 `Ok`、`Err` 或 `Deferred`；抛出的异常会转换为错误，漏写返回值或返回其他类型会触发 `TypeError` 并使 Driver RPC 失败。`on_shutdown` 可以省略返回值，运行时会在执行 teardown 后把 `None` 视为 `Ok()`。
+已实现的生命周期处理函数都必须返回 `Ok`、`Err` 或 `Deferred`；抛出的异常会转换为错误，漏写返回值或返回其他类型会触发 `TypeError` 并使 Driver RPC 失败。不需要处理某个阶段时，直接省略对应回调，由框架记录警告并执行安全空操作。
 
 ## 8. 开发服务
 
@@ -1022,7 +1028,7 @@ def connect_camera(_config):
 service.run()
 ```
 
-`find_unique_capability` 负责发现并消除多实例歧义，`connect_capability` 在 Atlas 中建立消费者到提供方的连接，`create_subscription_from_channel` 使用返回的真实端点与传输参数。只有在话题名由 Robonix 之外的系统固定、且调用方有意绕过 Atlas 发现时，才直接调用 `create_subscription(..., declare=False)`；这种写法不会为消费端声明新能力，也不能替代能力发现。
+`find_unique_capability` 负责发现并消除多实例歧义，`connect_capability` 在 Atlas 中建立消费者到提供方的连接，`create_subscription_from_channel` 使用返回的真实端点。当前实现尚未把 Atlas 返回的字符串 QoS 名称转换为 ROS 2 QoS 配置，而是使用后端默认值；需要精确 QoS 时，先完成能力发现，再用 `channel.endpoint` 和显式 `qos` 调用 `create_subscription(..., declare=False)`。只有在话题名由 Robonix 之外的系统固定、且调用方有意绕过 Atlas 发现时，才完全跳过能力发现；这种写法不会为消费端声明新能力。
 
 `create_publisher` 和 `create_subscription` 会立即创建 ROS 对象，应在 provider 注册后调用，通常放在 `on_init`。`declare_ros2_topic` 和 `declare_ros2_service` 只向 Atlas 声明端点；它们不会替开发者创建 `rclpy` 发布者、订阅者或服务。
 
@@ -1166,6 +1172,7 @@ rpc SynthesizeStream(robonix.tts.SynthesizeStream_Request)
 ```python
 from collections.abc import Iterator
 
+import audio_pb2
 import grpc
 import tts_pb2
 
@@ -1174,11 +1181,13 @@ def synthesize_stream(
     request: tts_pb2.SynthesizeStream_Request,
     context: grpc.ServicerContext,
 ) -> Iterator[tts_pb2.SynthesizeAudioChunk]:
-    for chunk in synthesizer.generate(request.text, voice=request.voice):
+    for sequence, data in enumerate(
+        synthesizer.generate(request.text, voice=request.voice)
+    ):
         if not context.is_active():
             return
         yield tts_pb2.SynthesizeAudioChunk(
-            chunk=chunk,
+            chunk=audio_pb2.AudioChunk(data=data, sequence=sequence),
             encoding="pcm_s16le",
             sample_rate_hz=16000,
         )
@@ -1311,11 +1320,15 @@ for event in stub.RecognizeStream(asr_requests(), timeout=60.0):
 装饰器只在导入阶段登记处理函数，不会自行监听端口。`provider.bootstrap()` 按以下顺序完成非阻塞启动：
 
 1. 向 Atlas 注册提供方；
-2. 创建共享或兼容生命周期 Driver，并把 `@provider.grpc` 处理函数绑定到生成的 Servicer；
+2. 创建共享 `robonix/lifecycle/driver`，并把 `@provider.grpc` 处理函数绑定到生成的 Servicer；
 3. 监听 gRPC 端口并向 Atlas 声明这些能力；
 4. 启动 MCP HTTP 端点并声明 `@provider.mcp` 能力；
 5. 启动心跳；
-6. 等待启动器通过 Driver 发送初始化和激活命令。回调缺失时 Driver 记录 warning 并执行 no-op；提供方仍保留共享或兼容的命名空间 Driver。
+6. 等待启动器通过 Driver 发送初始化和激活命令。回调缺失时 Driver 记录警告并执行空操作；提供方仍保留唯一的共享 Driver。
+
+:::warning[后向兼容：已有命名空间 Driver]
+旧软件包若在清单中精确声明 `<provider-namespace>/driver`，则继续按[兼容流程](integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)绑定完整的旧生成服务，或在满足单向迁移条件时使用共享运行时 Driver。该方式计划迁移；新软件包不要照此创建 Driver TOML。
+:::
 
 `provider.run()` 先执行同一套 bootstrap，再阻塞等待退出信号。Driver 的 `CMD_SHUTDOWN` 会先完成业务关闭回调和响应，再停止提供方；进程信号路径也会调用 `on_shutdown`。框架会关闭通过 `connect_capability` 建立的通道、受管子进程和 gRPC server，但软件包自行创建的线程、设备句柄和后台任务仍必须在生命周期回调中释放。
 
@@ -1345,7 +1358,11 @@ for event in stub.RecognizeStream(asr_requests(), timeout=60.0):
 | `rbnx chat` | 启动交互界面 |
 | `rbnx logs [-d <dir>] [-t <tag>] [-l <level>] [-f] [--json]` | 读取、筛选或跟随 Scribe 结构化日志 |
 
-`rbnx clean -f robonix_manifest.yaml` 默认保留 `rbnx-boot/cache/`；只有加 `--cache` 才删除远程软件包缓存。单独执行 `rbnx start --config <file>` 时仍会先读取软件包清单；启动器确认提供方只注册可接受的唯一生命周期 Driver 后，通过 `CMD_INIT` 发送合并配置。新包由框架自动使用共享 Driver；已有包可继续使用精确命名空间 Driver，或在旧生成服务完全不存在时按受管兼容标记正向使用共享运行时 Driver。配置文件路径不会暴露给提供方进程。
+`rbnx clean -f robonix_manifest.yaml` 默认保留 `rbnx-boot/cache/`；只有加 `--cache` 才删除远程软件包缓存。单独执行 `rbnx start --config <file>` 时仍会先读取软件包清单；启动器确认提供方只注册唯一的共享生命周期 Driver 后，通过 `CMD_INIT` 发送合并配置。配置文件路径不会暴露给提供方进程。
+
+:::warning[后向兼容：`rbnx start` 启动旧软件包]
+精确声明 `<provider-namespace>/driver` 和本地 Driver TOML 的旧软件包仍可使用 `rbnx start`，也可在旧生成服务完全不存在时按受管兼容标记单向使用共享运行时 Driver。该方式计划迁移，不能与共享 Driver 条目同时使用。完整规则见[软件包与部署清单规范](integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+:::
 
 ## 16. 配置字段
 
@@ -1363,8 +1380,12 @@ for event in stub.RecognizeStream(asr_requests(), timeout=60.0):
 | `build` | 构建命令，可选；省略表示无构建步骤 |
 | `start` | 启动命令，必填 |
 | `stop` | 停止命令，可选；由 `rbnx boot` / Soma 受管关闭时，在 Driver `CMD_SHUTDOWN` 后、终止进程组前执行；单独 `rbnx start` 不自动执行 |
-| `capabilities` | 能力约定引用和预期导出清单；每项含约定 ID `name`，可选业务约定 TOML `path`，不替代码声明普通业务能力。未列 Driver 时，框架自动选择共享 `robonix/lifecycle/driver`；显式共享仍受支持。已有包可保留唯一的精确命名空间 Driver 与本地 `path`，并可在旧生成服务完全缺失时正向使用共享运行时 Driver。共享选择不反向降级；多条 Driver 会使启动失败 |
+| `capabilities` | 能力约定引用和预期导出清单；每项含约定 ID `name`，可选业务约定 TOML `path`，不替代码声明普通业务能力。未列 Driver 时，框架自动选择共享 `robonix/lifecycle/driver`；显式选择共享 Driver 仍受支持，多条 Driver 会使启动失败 |
 | `depends` | 依赖元数据；解析、安装和构建排序仍在设计中，当前只展示记录，不自动获取、安装或注入路径 |
+
+:::warning[后向兼容：`capabilities` 中的命名空间 Driver]
+旧软件包可暂时在 `capabilities` 中保留唯一的精确 `<provider-namespace>/driver` 及其本地 TOML `path`，但计划迁移到共享 Driver。完整兼容和迁移规则见[软件包与部署清单规范](integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+:::
 
 ### 16.2 部署清单
 

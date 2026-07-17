@@ -11,4 +11,8 @@
 | [本体模型](soma.md) | `robonix/system/soma/*` | 5 | YAML/URDF、软件包启动、轮廓与运行状态快照 |
 | [健康评估](vitals.md) | `robonix/system/vitals/*` | 3 | 本体健康阈值评估与模块健康快照 |
 
-> Atlas（能力目录本身）不走能力约定，而使用自己的 gRPC 接口，详见[能力目录](../../architecture/atlas.md)。新的系统软件包（包括 Scene）由框架自动使用共享的 `robonix/lifecycle/driver` 接收初始化、激活、停用和关闭命令，不再创建新的 `robonix/system/*/driver` TOML。已有系统软件包若声明唯一的命名空间 Driver，仍按相同线协议兼容运行。
+Atlas（能力目录本身）不走能力约定，而使用自己的 gRPC 接口，详见[能力目录](../../architecture/atlas.md)。新的系统软件包（包括 Scene）由框架自动注册共享的 `robonix/lifecycle/driver`，接收初始化、激活、停用和关闭命令，不创建新的 `robonix/system/*/driver` TOML。未实现生命周期回调时，框架记录警告并执行空操作。
+
+:::warning[后向兼容：系统命名空间 Driver]
+已有系统软件包可以暂时继续使用自己维护的唯一命名空间 Driver 和 Driver TOML，但计划迁移到共享 Driver，且不能同时注册两种 Driver。详见[生命周期兼容流程](../../integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+:::

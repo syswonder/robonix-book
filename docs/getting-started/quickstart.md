@@ -11,9 +11,11 @@
 
 ## 1. 检查主机
 
-默认图形界面路径需要可用的 X Server 和图形栈，以及 Git、Make、Python 3.10+、Rust stable、uv、Docker Engine 和 Compose v2。Webots 可以使用主机的 Intel、AMD 或 NVIDIA 图形设备；也可以显式选择 Xvfb 进行 CPU 软件渲染。浏览器流式画面是当前实现的例外：`compose.stream.yaml` 会申请 NVIDIA 设备，因此该路径还需要 NVIDIA 驱动和 `nvidia-container-toolkit`。
+默认图形界面路径需要可用的 X Server 和图形栈，以及 Git、Make、Python 3.10+、Rust stable、uv、Docker Engine 和 Compose v2。
 
-Webots 清单即使使用模拟语音后端，也会在 `rbnx boot` 阶段初始化本地 `audio_driver`。真实设备可用 `arecord -l` 和 `aplay -l` 检查。无声卡主机可以把设备设为字符串 `null`，使用 ALSA 内置的空 PCM 完成非音频链路验证；无需创建 `.asoundrc`。`-l` 只列出硬件设备，不会显示 `null` 等 PCM 插件；插件列表使用 `-L` 查询。
+:::note[本教程使用的图形环境]
+当前完整 Webots 测试使用 NVIDIA GPU、NVIDIA 驱动和 `nvidia-container-toolkit`；下面的主流程以这条已验证路径为准。仓库的基础 Compose 也映射了 `/dev/dri`，镜像内还包含 Xvfb，但 Intel/AMD 图形和 CPU 软件渲染尚未纳入完整端到端验收，只作为兼容与排错路径。
+:::
 
 在 Ubuntu / Debian 上安装基础工具：
 
@@ -50,13 +52,9 @@ uv --version
 docker version --format '{{.Server.Version}}'
 docker compose version
 python3 -c 'import grpc_tools.protoc; print("grpc_tools: ok")'
-arecord -l
-aplay -l
-arecord -L | grep -x null
-aplay -L | grep -x null
 ```
 
-**预期结果：** 版本命令均以状态码 0 退出；Python 版本不低于 3.10，`grpc_tools: ok` 可见，Docker 命令不需要 `sudo`，`docker compose version` 显示 Compose v2。若要使用主机的本地音频，`arecord -l` 或 `aplay -l` 还应列出目标硬件；无声卡主机只需确认两个 `-L` 命令均输出 `null`。
+**预期结果：** 版本命令均以状态码 0 退出；Python 版本不低于 3.10，`grpc_tools: ok` 可见，Docker 命令不需要 `sudo`，`docker compose version` 显示 Compose v2。
 
 ## 2. 安装 Robonix
 
@@ -139,13 +137,6 @@ bash examples/webots/sim/start.sh --world office.wbt
 
 ### 终端 2：Robonix 系统
 
-无声卡主机在本终端设置 ALSA 空设备。变量由 `audio_driver` 在 `rbnx boot` 的初始化阶段读取，与 `rbnx build` 无关；有真实音频设备时不要设置这两个变量。
-
-```bash
-export AUDIO_MIC_DEVICE='null'
-export AUDIO_SPEAKER_DEVICE='null'
-```
-
 ```bash
 export PATH="$HOME/.cargo/bin:$PATH"
 export VLM_API_KEY='sk-...'
@@ -157,6 +148,18 @@ export RMW_IMPLEMENTATION=rmw_zenoh_cpp
 cd /path/to/robonix/examples/webots
 rbnx boot
 ```
+
+:::tip[测试机没有音频设备]
+先按上面的正常流程启动。只有启动摘要明确显示 `audio_driver` 因找不到输入或输出设备而失败、且本次不需要验证真实录放音时，才停止本次启动，在同一终端设置空设备后重新执行 `rbnx boot`：
+
+```bash
+export AUDIO_MIC_DEVICE='null'
+export AUDIO_SPEAKER_DEVICE='null'
+rbnx boot
+```
+
+字符串 `null` 选择 ALSA 内置的空 PCM，不需要创建 `.asoundrc`。
+:::
 
 Webots 部署清单配置以下系统组件和软件包：
 
@@ -242,7 +245,10 @@ printf 'DISPLAY=%s\n' "${DISPLAY:-<unset>}"
 docker ps --filter name=robonix_tiago_sim
 ```
 
-本地图形桌面通常使用 `DISPLAY=:0`。若日志包含 X11 权限错误，按 `start.sh` 打印的 `xhost` 命令授权本地 Docker 用户。没有可用 X Server 的主机可以显式选择软件渲染；需要在浏览器中查看仿真画面时再开启流式模式：
+本地图形桌面通常使用 `DISPLAY=:0`。若日志包含 X11 权限错误，按 `start.sh` 打印的 `xhost` 命令授权本地 Docker 用户。
+
+:::warning[替代渲染路径尚未完成完整验收]
+没有可用 X Server 时，可以用 Xvfb 做低速排错：
 
 ```bash
 WEBOTS_HEADLESS_MODE=xvfb ROBONIX_FORCE_CPU=1 \
@@ -251,7 +257,20 @@ WEBOTS_HEADLESS_MODE=xvfb ROBONIX_FORCE_CPU=1 \
 ROBONIX_SIM_STREAM=1 bash examples/webots/sim/start.sh
 ```
 
-`xvfb` 使用 CPU 软件渲染，不需要 NVIDIA 设备，但仿真速度通常低于使用硬件加速的主机。当前浏览器流式路径会由 Compose 申请 NVIDIA 设备；使用 `ROBONIX_SIM_STREAM=1` 前，主机必须已安装 NVIDIA 驱动和 `nvidia-container-toolkit`。仅有 Intel 或 AMD 图形设备时，使用默认图形界面路径或显式 Xvfb 路径。
+`xvfb` 使用 CPU 软件渲染，不需要 NVIDIA 设备，但速度明显较低。当前浏览器流式路径会由 Compose 申请 NVIDIA 设备；使用 `ROBONIX_SIM_STREAM=1` 前，主机必须已安装 NVIDIA 驱动和 `nvidia-container-toolkit`。基础 Compose 虽然把 `/dev/dri` 映射进容器，但 Intel/AMD 与 Xvfb 路径都需要在目标主机单独验收，不能用 NVIDIA CI 的结果代替。
+:::
+
+### `audio_driver` 在无声卡主机上启动失败
+
+如果本机本应有麦克风或扬声器，先检查 ALSA 是否识别到硬件，再对照 `audio_driver` 日志中的设备名：
+
+```bash
+arecord -l
+aplay -l
+rbnx logs -t audio_driver -l warn
+```
+
+`-l` 只列硬件设备。确认机器确实没有音频设备、且本次只验证非音频链路时，按第 5 节的“测试机没有音频设备”提示卡选择 ALSA 空设备；不要把该配置用于真实语音测试。
 
 ### 软件包启动失败
 

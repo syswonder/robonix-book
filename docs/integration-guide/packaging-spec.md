@@ -326,7 +326,7 @@ skill:
 | `path` / `url` | 二选一 | 本地软件包路径，或 Git 仓库 URL |
 | `branch` | `url` 可选 | branch 或 tag；省略时取远端默认分支。当前不承诺任意 commit SHA |
 | `manifest` | 可选 | 选择软件包内的目标清单文件 |
-| `config` | 可选，默认 `{}` | 实例配置；通过该提供方唯一的生命周期 Driver 的 `CMD_INIT` 发送。新软件包省略 Driver 条目时自动使用共享 Driver；已有命名空间 Driver 继续兼容 |
+| `config` | 可选，默认 `{}` | 实例配置；通过该提供方唯一的共享生命周期 Driver 的 `CMD_INIT` 发送 |
 
 `path` 相对机器人部署清单目录解析。使用 `url` 的软件包在构建时克隆到 `rbnx-boot/cache/<repository-name>/`；缓存目录来自 URL 的仓库名，不来自实例 `name`。同一仓库的多个实例复用源码检出，但各自启动独立进程并接收独立配置。
 
@@ -334,7 +334,7 @@ skill:
 
 ### 3.3 `config` 传递
 
-`rbnx boot` 将该实例的 `config` 序列化为 `CMD_INIT.config_json`，并发送给该提供方唯一的生命周期 Driver。新软件包由框架自动使用 `robonix/lifecycle/driver`；已有软件包可以继续使用唯一的 `<provider-namespace>/driver`。Robonix API 把配置解析为 `dict` 传给 handler：
+`rbnx boot` 将该实例的 `config` 序列化为 `CMD_INIT.config_json`，并通过该提供方唯一的共享 `robonix/lifecycle/driver` 发送。Robonix API 把配置解析为 `dict` 传给 handler：
 
 ```python
 from robonix_api import Err, Ok, Service
@@ -395,7 +395,7 @@ Mapping 上游的 `config/rtabmap_params.template.yaml` 只作为复制起点，
 
 ## 4. 生命周期与启动责任
 
-每个原语、服务和技能提供方都使用一条生命周期 Driver 接收部署配置和状态命令。当前软件包不需要在清单中声明 Driver；框架会自动选择并注册共享的 `robonix/lifecycle/driver`。显式声明共享 Driver 仍受支持。已有软件包可以继续选择唯一且与提供方主命名空间精确对应的旧 Driver；受管启动也允许这种旧清单在旧生成服务完全不存在时正向使用共享运行时 Driver。完整兼容流程见 4.2 节。一个提供方不能同时暴露两种 Driver。
+每个原语、服务和技能提供方都使用一条生命周期 Driver 接收部署配置和状态命令。新软件包不需要在清单中声明 Driver；框架会自动选择并注册共享的 `robonix/lifecycle/driver`。显式声明共享 Driver仍受支持，但运行行为相同。一个提供方始终只有一个生命周期入口。
 
 ```text
 CMD_INIT       parse and validate instance config
@@ -406,14 +406,14 @@ CMD_SHUTDOWN   stop workers, child processes and hardware output
 
 原语或服务在启动时依次接收 `CMD_INIT` 和 `CMD_ACTIVATE`；技能完成 `CMD_INIT` 后保持 `INACTIVE`，第一次需要时再由 Executor 激活。生命周期回调可以暂时不实现：框架会为缺失的回调记录 warning，并执行安全的空操作；缺少 `on_init` 和 `on_activate` 的原语或服务仍会在两条命令后进入 `ACTIVE`。回调显式返回错误时，启动仍应失败。重复 `ACTIVATE` 必须幂等；实现了 `on_shutdown` 时，它必须停止软件包启动的子进程和设备输出。
 
-单独执行 `rbnx start` 时，`rbnx` 选择清单中的 Driver；未显式声明时选择共享 `robonix/lifecycle/driver`。它发送 `CMD_INIT`，并对非技能提供方继续发送 `CMD_ACTIVATE`；技能停在 `INACTIVE`。省略或显式共享的选择只接受共享运行时 Driver。唯一的精确旧命名空间 Driver 可以继续同名运行；当它的旧 Servicer 与注册函数均不存在、而共享服务对完整存在时，启动器设置的正向兼容标记允许运行时改用共享 Driver。反向“共享清单 → 旧运行时”不受支持；清单同时声明多个 Driver 时启动失败。每个提供方始终有且只有一条 Driver，省略的是清单声明，不是运行时 Driver。由 `rbnx boot` 管理时，这段生命周期由启动流程与 Soma 统一承担，避免 `rbnx start` 重复发送命令。
+单独执行 `rbnx start` 时，`rbnx` 使用共享 `robonix/lifecycle/driver`。它发送 `CMD_INIT`，并对非技能提供方继续发送 `CMD_ACTIVATE`；技能停在 `INACTIVE`。清单省略 Driver 条目时，省略的是清单声明，不是运行时 Driver。由 `rbnx boot` 管理时，这段生命周期由启动流程与 Soma 统一承担，避免 `rbnx start` 重复发送命令。
 
 `rbnx boot` 的配置与进程责任如下：
 
 1. 把部署清单读为通用 YAML 值，应用 `env`，递归展开所有标量中的 `$VAR` / `${VAR}`，再解码为部署字段；
 2. 启动系统组件；
 3. 通过 Soma 或 `rbnx start` 启动软件包，等待它向 Atlas 注册；
-4. 确认提供方只注册了清单选择的 Driver，或唯一获准的“旧清单 → 共享运行时”Driver，发送 `CMD_INIT(config_json)` 并等待目标状态；
+4. 确认提供方只注册了共享 Driver，发送 `CMD_INIT(config_json)` 并等待目标状态；
 5. 将系统和提供方日志写入部署目录的 `rbnx-boot/logs/`；
 6. 收到 Ctrl-C 或 `rbnx shutdown` 后按生命周期关闭整套部署。
 
@@ -428,11 +428,17 @@ capabilities:
   - name: robonix/primitive/chassis/odom
 ```
 
-按需要实现 `on_init`、`on_activate`、`on_deactivate` 和 `on_shutdown`；暂未实现的回调由框架 warning 后执行空操作。软件包也可以显式加入 `name: robonix/lifecycle/driver`，其行为与自动选择相同。省略或显式共享的清单若注册旧命名空间 Driver，启动必定失败；正向兼容只适用于 4.2 节的精确旧清单。一个软件包清单最多只能包含一条 Driver 约定。
+按需要实现 `on_init`、`on_activate`、`on_deactivate` 和 `on_shutdown`；暂未实现的回调由框架 warning 后执行空操作。软件包也可以显式加入 `name: robonix/lifecycle/driver`，其行为与自动选择相同。新清单不得声明其他 Driver，也不能包含多条 Driver 约定。
 
 ### 4.2 已有命名空间 Driver 的兼容流程
 
-早期软件包通常把 Driver TOML 保存在自己的仓库中，并使用 `<provider-namespace>/driver` 作为能力约定 ID。这种软件包仍可构建和启动；运行时会输出迁移提示，但 `config`、初始化、激活、停用和关闭流程保持可用。兼容握手只接受精确的主命名空间旧 ID，并分成两种合法结果：旧 Servicer 与注册函数完整存在时继续注册旧 Driver；这一对旧生成服务完全不存在而共享服务对完整存在时，由 `rbnx` 或 Soma 设置的标记允许清单仍旧、运行时先正向升级为共享 Driver。部分旧服务、部分共享服务、无关 ID、零条或多条 Driver 都拒绝启动。
+:::warning[后向兼容：已有命名空间 Driver]
+早期软件包通常把 Driver TOML 保存在自己的仓库中，并使用 `<provider-namespace>/driver` 作为能力约定 ID。这种完整的旧实现目前仍可构建和启动，但计划逐步迁移到共享 Driver。维护旧包时保留原有 Driver 条目和 TOML，不要同时追加 `robonix/lifecycle/driver`。
+
+兼容握手只接受精确的主命名空间旧 ID，并分成两种合法结果：旧 Servicer 与注册函数完整存在时继续注册旧 Driver；旧生成服务完全不存在而共享服务完整存在时，由 `rbnx` 或 Soma 设置的兼容标记允许单向改用共享 Driver，并输出迁移警告。部分旧服务、部分共享服务、无关 ID、零条或多条 Driver 都拒绝启动。
+:::
+
+以下内容仅用于维护和迁移已有软件包。新软件包直接按 4.1 节使用共享 Driver。
 
 例如，已有底盘原语可能包含：
 

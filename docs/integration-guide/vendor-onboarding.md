@@ -5,7 +5,7 @@
 
 <div class="procedure-meta">
   <div><strong>源码仓库</strong><code>syswonder/robonix</code></div>
-  <div><strong>参考部署</strong>AgileX Ranger Mini v3</div>
+  <div><strong>参考部署</strong><a href="https://syswonder.github.io/robonix-package-catalog/robots/robonix.robot.agilex.ranger_mini_v3/">AgileX Ranger Mini v3</a></div>
   <div><strong>交付目标</strong>从空目录到可验收部署</div>
 </div>
 
@@ -31,7 +31,7 @@ robot-<vendor>-<model>/
 
 `assets/robot.jpg` 只供 Robonix 软件包目录的机器人列表展示，不参与构建、启动或模型推理。准备把机器人仓库提交到目录时再添加并压缩该图片；不发布目录条目时可以省略。
 
-硬件驱动通常放在独立原语仓库中，由 `robonix_manifest.yaml` 的 `url` 引用；只有暂不复用的部署私有代码才放在本体仓库。可参考 [`robot-agilex-ranger_mini_v3`](https://github.com/syswonder/robot-agilex-ranger_mini_v3) 的部署编排，以及用于学习软件包结构的 [`template-rbnx`](https://github.com/syswonder/template-rbnx/tree/60dc85834c2714022b1821e6fce6c629c0314699)。采用任何参考部署前，都要核对其整机 URDF 是否包含当前机器人实际安装的全部部件；缺少的坐标关系必须先补齐，不能依赖另一份分离 URDF。
+硬件驱动通常放在独立原语仓库中，由 `robonix_manifest.yaml` 的 `url` 引用；只有暂不复用的部署私有代码才放在本体仓库。先查看目录中的 [AgileX Ranger Mini v3 本体页面](https://syswonder.github.io/robonix-package-catalog/robots/robonix.robot.agilex.ranger_mini_v3/)了解已发布的硬件组成和软件包，再进入 [`robot-agilex-ranger_mini_v3`](https://github.com/syswonder/robot-agilex-ranger_mini_v3) 查看实际部署清单、配置和包装脚本。学习单个软件包结构时使用 [`template-rbnx`](https://github.com/syswonder/template-rbnx/tree/60dc85834c2714022b1821e6fce6c629c0314699)。采用任何参考部署前，都要核对其整机 URDF 是否包含当前机器人实际安装的全部部件；缺少的坐标关系必须先补齐，不能依赖另一份分离 URDF。
 
 AgileX 仓库依赖包装脚本设置部署目录和宿主环境，构建与启动应使用：
 
@@ -459,7 +459,11 @@ capabilities:
   - name: robonix/primitive/chassis/odom
 ```
 
-这是一份新软件包清单。清单未列 Driver 时，框架会自动提供共享生命周期 Driver。已有接入仓库若使用 `<provider-namespace>/driver` 和本地 Driver TOML，应先保持原结构并按[兼容流程](packaging-spec.md#42-已有命名空间-driver-的兼容流程)验收；不要在保留旧条目的同时显式追加共享 Driver。
+这是一份新软件包清单。清单未列 Driver 时，框架会自动提供共享生命周期 Driver。
+
+:::warning[后向兼容：已有命名空间 Driver]
+已有接入仓库若使用 `<provider-namespace>/driver` 和本地 Driver TOML，应暂时保持原结构并按[兼容流程](packaging-spec.md#42-已有命名空间-driver-的兼容流程)验收。该方式计划迁移到共享 Driver；不要在保留旧条目的同时追加共享 Driver。
+:::
 
 `stop` 不是必填字段。`rbnx boot` 关闭受管软件包时会先请求 Driver 的 `CMD_SHUTDOWN`，再运行已配置的 `stop` hook，最后用进程组终止作为兜底；独立执行 `rbnx start` 不会调用 `stop`。保留本例的 `stop:` 时，`scripts/stop.sh` 必须可重复执行，并负责关闭由软件包创建、但不属于受管进程组的厂商守护进程、容器或其他外部资源。
 
@@ -627,6 +631,8 @@ service:
 ```
 
 `sensor_providers` 的值是 Atlas 提供方 ID，不是话题名。支持角色为 `lidar2d`、`lidar3d`、`rgb`、`depth`、`imu` 和 `odom`；RGB-D 必须同时指定 `rgb` 与 `depth`。`rtabmap_params` 可以在部署清单中对文件做少量最终覆盖，但完整基线仍应保存在部署仓库。字段以 Mapping 仓库根目录的 `config.spec` 为准。
+
+参考实现为 [`service-map-rbnx`](https://github.com/syswonder/service-map-rbnx)。`algo` 省略时使用默认且推荐的 `rtabmap`；也可显式选择 `dlio` 或 `fastlio2`。目前只有 RTAB-Map 路径持续维护。DLIO 和 FAST-LIO2 不保证兼容其最新上游版本；当前参考实现中的 `fastlio2` 还被标记为漂移故障，仅用于诊断和复现。新本体应先使用 RTAB-Map 完成接入和验收，再根据传感器与平台条件评估其他算法。
 
 旧 `rtabmap_profile` 和 `sensors` 仍可用于迁移并产生警告；新部署不得依赖它们。
 

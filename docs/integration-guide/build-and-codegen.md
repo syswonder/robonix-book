@@ -178,7 +178,9 @@ capabilities:
 
 清单只列业务能力约定。框架会自动选择并注册共享的 `robonix/lifecycle/driver`；不要在 `capabilities/` 中创建 Driver TOML。生命周期回调按需实现，缺失回调由框架 warning 后执行空操作。业务接口仍由软件包内的 `inspect.v1.toml` 定义。
 
-已有软件包若使用 `<provider-namespace>/driver` 和本地 Driver TOML，应保留原 `name` 与 `path`，代码生成仍会读取它。不要在保留旧 Driver 的同时显式追加共享 Driver；同一清单出现两条 Driver 会使启动失败。兼容验证和可选迁移步骤见[软件包与部署清单规范](packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+:::warning[后向兼容：已有命名空间 Driver]
+已有软件包若使用 `<provider-namespace>/driver` 和本地 Driver TOML，应暂时保留原 `name` 与 `path`，代码生成仍会读取它。该方式计划迁移到共享 Driver；不要在保留旧 Driver 的同时追加共享 Driver。兼容验证和迁移步骤见[软件包与部署清单规范](packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+:::
 
 软件包内能力约定描述中的：
 

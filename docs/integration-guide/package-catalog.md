@@ -85,11 +85,15 @@ capabilities:
 | `package.tags` | 是 | 字符串列表，用于页面显示和过滤 |
 | `package.maintainers` | 是 | 字符串列表，每项必须是 `Name <email@domain>` |
 | `capabilities[].name` | 否 | 软件包声明的 Robonix 能力约定 ID |
-| `capabilities[].path` | 否 | 软件包内能力约定 TOML 的相对路径；已有命名空间 Driver 可以继续用它引用本地 Driver TOML |
+| `capabilities[].path` | 否 | 软件包内能力约定 TOML 的相对路径 |
 
 旧软件包清单中的 `package.vendor` 仍可读取，以保证已有软件包能继续构建和启动；运行时会忽略它，软件包目录也不使用该字段。新软件包使用 `package.name`、`package.tags` 和 `package.maintainers` 表达名称、分类和维护归属。
 
-新软件包通常省略 Driver 条目，由框架自动提供 `robonix/lifecycle/driver`；显式声明共享 Driver 仍有效。已有软件包可以继续发布唯一的 `<provider-namespace>/driver` 及其本地 TOML；目录校验不会要求立即迁移。一个清单不能同时声明命名空间 Driver 与共享 Driver。
+新软件包通常省略 Driver 条目，由框架自动提供 `robonix/lifecycle/driver`；显式声明共享 Driver 仍有效。
+
+:::warning[后向兼容：已有命名空间 Driver]
+已有软件包可以暂时继续发布唯一的 `<provider-namespace>/driver` 及其本地 Driver TOML；目录校验不会要求立即迁移。该方式计划迁移到共享 Driver，一个清单不能同时声明两种 Driver。
+:::
 
 ## 机器人部署元数据
 

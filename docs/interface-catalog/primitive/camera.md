@@ -8,7 +8,11 @@ title: 相机
 
 能力约定 TOML 在源码树的 [`capabilities/primitive/camera/`](https://github.com/syswonder/robonix/tree/181d3eb974fd495a795ed120a0a4c6e6f342d179/capabilities/primitive/camera)，接口定义语言（Interface Definition Language，IDL）位于 [`capabilities/lib/camera/`](https://github.com/syswonder/robonix/tree/181d3eb974fd495a795ed120a0a4c6e6f342d179/capabilities/lib/camera) 与固定版本的 [`common_interfaces`](https://github.com/enkerewpo/common_interfaces/tree/0ecd0f70791fe200f057b12bfc626beb21bad639) 子模块。下文的帧方向和标定字段以这些源码定义为准。
 
-> 表中的命名空间 Driver 是已有软件包的兼容接口。新软件包省略 Driver 条目时由框架自动使用共享的 `robonix/lifecycle/driver`；显式共享仍受支持，两种 Driver 只能选择一条。详见[生命周期兼容流程](../../integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+新软件包省略 Driver 条目，由框架自动注册共享的 `robonix/lifecycle/driver`；显式选择共享 Driver 的行为相同。未实现生命周期回调时，框架记录警告并执行空操作。
+
+:::warning[后向兼容：相机命名空间 Driver]
+`robonix/primitive/camera/driver`、`lifecycle/Driver` 和 `primitive/camera/driver.v1.toml` 只用于仍由软件包自行维护 Driver TOML 的旧实现。目前仍可使用，但计划迁移到共享 Driver；两种 Driver 不能同时注册。详见[生命周期兼容流程](../../integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+:::
 
 ## 接口
 
@@ -16,7 +20,6 @@ title: 相机
 
 | 能力约定 ID（`contract_id`） | 模式 | Tiago 参考实现传输 | 载荷（IDL） | 能力约定 TOML |
 |--------------------------|------|-------------|-------------|-----------|
-| `robonix/primitive/camera/driver` | `rpc` | gRPC（旧命名空间 Driver） | [`lifecycle/Driver`](../../reference/idl.md#lifecycle-srv-driver-srv) | `primitive/camera/driver.v1.toml` |
 | `robonix/primitive/camera/rgb` | `topic_out` | ROS 2 | [`sensor_msgs/Image`](../../reference/idl.md#common-interfaces-sensor-msgs-msg-image-msg) | `primitive/camera/rgb.v1.toml` |
 | `robonix/primitive/camera/depth` | `topic_out` | ROS 2 | [`sensor_msgs/Image`](../../reference/idl.md#common-interfaces-sensor-msgs-msg-image-msg) | `primitive/camera/depth.v1.toml` |
 | `robonix/primitive/camera/extrinsics` | `topic_out` | ROS 2（兼容回退） | [`geometry_msgs/TransformStamped`](../../reference/idl.md#common-interfaces-geometry-msgs-msg-transformstamped-msg) | `primitive/camera/extrinsics.v1.toml` |

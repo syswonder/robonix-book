@@ -48,7 +48,11 @@ gRPC 适合确定性的跨进程控制面、请求—响应和流式接口。Rob
 - 每个受管提供方的生命周期 Driver；
 - 语音识别、语音合成等面向程序调用的服务接口。
 
-`rbnx boot` 或 Soma 先通过 Atlas 找到提供方的 Driver，再直接调用 `Driver(CMD_INIT)` 和 `Driver(CMD_ACTIVATE)`。未显式声明时使用共享的 `robonix/lifecycle/driver`；既有软件包可继续使用唯一的 `<provider-namespace>/driver`，但两者不能同时声明。Executor 首次调用仍处于 `INACTIVE` 的技能时，也通过该提供方实际声明的 gRPC Driver 激活技能。生命周期回调可以留空，Driver 仍会存在并以 warning + no-op 完成状态转换。
+`rbnx boot` 或 Soma 先通过 Atlas 找到提供方的共享 `robonix/lifecycle/driver`，再直接调用 `Driver(CMD_INIT)` 和 `Driver(CMD_ACTIVATE)`。Executor 首次调用仍处于 `INACTIVE` 的技能时，也通过该 Driver 激活技能。生命周期回调可以留空；Driver 仍会存在，并以 warning 和空操作完成状态转换。
+
+:::warning[后向兼容：已有命名空间 Driver]
+已有软件包可以暂时继续使用自己维护的 `<provider-namespace>/driver` 和 Driver TOML，但不能同时注册共享 Driver。该兼容方式计划迁移，详见[软件包与部署清单规范](../integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+:::
 
 gRPC 的请求、响应和流式模型见 [gRPC 官方介绍](https://grpc.io/docs/what-is-grpc/introduction/)。
 

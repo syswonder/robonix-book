@@ -59,33 +59,26 @@ rbnx build -f robonix_manifest.yaml
 
 每个内置系统块都会整体编码为 `--config-json`；当前二进制仍单独读取的字段（例如 `listen`、Atlas 地址和 Pilot 的 VLM 配置）还会转换为对应命令行参数。监听端口已被占用或 Pilot 必填参数为空时，`rbnx boot` 会在启动该组件前失败，避免连接到遗留进程。
 
-<span id="soma-sidecar-与进程配置"></span>
+#### Soma 本体描述与进程配置 \{#soma-sidecar-与进程配置}
 
-#### Soma sidecar 与进程配置
+部署目录中的 `soma.yaml` 描述机器人本体，`robonix_manifest.yaml` 中的 `system.soma` 只配置 Soma 进程。只要部署包含 `primitive:` 或 `skill:`，即使没有写 `system.soma`，`rbnx boot` 也会自动补出该系统块。同目录存在 `soma.yaml` 时，启动器会自动把它作为本体描述传给 Soma，不需要在清单中重复填写路径。
 
-部署目录中的 `soma.yaml` 描述机器人本体；部署清单中的 `system.soma` 和可选的 `config` 文件配置 Soma **进程**。这两类 YAML 不能互换。只要部署包含 `primitive:` 或 `skill:`，即使没有写 `system.soma`，`rbnx boot` 也会自动补出该系统块。若 `robot_yaml` 缺失、为 `null` 或为空字符串，并且当前 `-f` 选中的部署清单同目录存在字面文件名 `soma.yaml`，启动器会自动使用该 sidecar。
-
-显式配置示例如下；通常只需要覆盖实际不同于默认值的字段：
+正常部署通常只需要按网络可达性覆盖监听地址和日志级别：
 
 ```yaml
 system:
   soma:
-    listen: 127.0.0.1:50091
-    atlas_endpoint: 127.0.0.1:50051
-    provider_id: soma
-    robot_yaml: soma.yaml
-    config: config/soma-runtime.yaml
+    listen: 0.0.0.0:50091
     log: info
-    runtime_reader_command: [python3, -u, "{script}", "{config}"]
 ```
 
-`robot_yaml` 和 `config` 的相对路径都以当前部署清单所在目录为基准；绝对路径保持不变。启动器还会把 `deployment_manifest` 固定为本次 `rbnx boot -f` 实际选择的清单，避免 Soma 从 sidecar 邻近位置误选另一个部署配置。`atlas_endpoint` 也接受兼容别名 `atlas`。Soma 自身的默认值为 Atlas `127.0.0.1:50051`、监听地址 `127.0.0.1:50091`、提供方 ID `soma`。
+只有本体描述文件不叫 `soma.yaml` 时，才在 `system.soma.robot_yaml` 中写相对部署目录的路径。`rbnx boot` 会把本次 `-f` 选中的部署清单路径自动传给 Soma，避免 Soma 误读同目录中的另一个清单。Soma 默认连接 `127.0.0.1:50051` 的 Atlas，默认监听 `127.0.0.1:50091`，默认提供方 ID 为 `soma`。
 
-整个 `system.soma` 块会通过 `--config-json` 到达 Soma；当前除上面的类型化启动字段外，Soma 还从中读取 `runtime_reader_command`，Scribe 读取 `log`。可选的 `config` 文件主要用于手工启动或运维固定参数；它和本体 `soma.yaml` 是两个文件。若手工启动 Soma 而没有提供本体文件，错误签名是：
+Soma 会根据 Atlas 中发现的里程计和关节状态能力，在 `rbnx-boot/logs/soma-runtime/` 下生成临时 ROS 2 订阅脚本和数据源 JSON，再自动启动读取器。这些文件是运行产物，不是开发者需要维护的配置文件。
 
-```text
-missing robot_yaml: set --robot-yaml, ROBONIX_SOMA_ROBOT_YAML, or provide it in --config <yaml>
-```
+:::info[Webots 的跨容器特例]
+Webots 示例把 ROS 2 图放在仿真容器中，而 Soma 主进程运行在宿主机，因此该示例在自己的 `system.soma.runtime_reader_command` 中使用 `docker exec`，让自动生成的读取器在仿真容器内运行。原生 ROS 2 机器人不需要这个字段；只有把 Soma 与 ROS 2 图刻意分到不同运行环境时，才需要按对应容器或远程执行环境覆盖它。
+:::
 
 启动诊断应同时检查前台阶段、Atlas 能力和 Soma 自己的日志：
 
@@ -118,10 +111,16 @@ rbnx logs -d /path/to/deploy/rbnx-boot/logs -t soma --json
 2. 执行 `rbnx start -p <package>`。
 3. 等待恰好一个新提供方注册。
 4. 校验注册的提供方 ID 与部署项 `name` 一致。
-5. 解析清单选择的 Driver；未显式声明时使用共享 `robonix/lifecycle/driver`。确认提供方只注册了兼容的唯一 Driver，调用 `Driver(CMD_INIT)`，并把部署项 `config:` 编码为 `config_json`。已有软件包可显式保留唯一的命名空间 Driver。
+5. 选择共享 `robonix/lifecycle/driver`，确认提供方只注册这一条 Driver，调用 `Driver(CMD_INIT)`，并把部署项 `config:` 编码为 `config_json`。
 6. 对非技能提供方再调用 `Driver(CMD_ACTIVATE)`，等待其进入 `ACTIVE`。
 
-生命周期 Driver 是每个受管提供方的标准管理接口。清单省略 Driver 或显式选择共享 Driver 时，运行时必须只注册共享 `robonix/lifecycle/driver`，不会向旧命名空间 Driver 降级。旧清单若精确声明 `<namespace>/driver`，可以继续使用对应的完整旧 Driver；当这一对旧生成服务完全不存在、运行时只注册带受管兼容标记的共享 Driver 时，也允许单向迁移并输出警告。旧服务只出现一部分、缺失、命名空间不匹配或同时注册多个 Driver 都会失败。缺少生命周期回调时，框架记录警告并执行空操作，原语或服务仍可在初始化和激活后进入 `ACTIVE`。
+生命周期 Driver 是每个受管提供方的标准管理接口。新软件包不需要声明或编写 Driver TOML；框架自动注册唯一的共享 `robonix/lifecycle/driver`。软件包也可以显式选择这条共享 Driver，运行结果相同。生命周期回调按需实现；缺少某个回调时，框架记录警告并执行空操作，原语或服务仍可在初始化和激活后进入 `ACTIVE`。
+
+:::warning[后向兼容：已有命名空间 Driver]
+早期软件包可能在自己的 `capabilities/` 目录中保存 Driver TOML，并在清单中声明唯一的 `<provider-namespace>/driver`。这种完整的旧实现目前仍可继续构建和启动，但计划逐步迁移到共享 Driver；维护旧仓库时不要同时追加 `robonix/lifecycle/driver`。
+
+受管启动还支持一个单向迁移场景：旧清单仍精确声明命名空间 Driver，但旧生成服务完全不存在，运行时只注册带兼容标记的共享 Driver，此时启动器会输出迁移警告。旧服务只存在一部分、Driver ID 与提供方命名空间不匹配，或同一提供方注册多条 Driver，都会使启动失败。旧包的完整维护和迁移步骤见[软件包与部署清单规范](../integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+:::
 
 某个非内置软件包启动失败时，`rbnx boot` 会将它列入最终 `failures` 段，并保留其他已成功启动的组件。内置系统组件的启动前校验或进程创建失败会终止本次启动并清理已启动的子进程。除 Soma 的第一阶段就绪检查外，当前启动器不会统一等待每个内置组件的业务健康接口，因此“进程已创建”不等于“业务已就绪”。
 
@@ -131,7 +130,7 @@ rbnx logs -d /path/to/deploy/rbnx-boot/logs -t soma --json
 
 ## 配置如何到达提供方
 
-部署项的 `config:` 不是一组自动导出的环境变量。`rbnx` 或本体服务将该配置序列化为 JSON，并通过最终解析出的唯一 `Driver(CMD_INIT, config_json)` 发送；提供方实现了 `on_init` 时在其中解析，未实现时框架记录警告并忽略空操作中的配置。新软件包由框架自动使用共享 Driver；通过上面的单向兼容规则运行的旧清单仍使用相同线协议。内置系统二进制继续使用 `--config-json` 和类型化命令行参数。
+部署项的 `config:` 不是一组自动导出的环境变量。`rbnx` 或本体服务将该配置序列化为 JSON，并通过共享 Driver 的 `Driver(CMD_INIT, config_json)` 发送；提供方实现了 `on_init` 时在其中解析，未实现时框架记录警告并忽略空操作中的配置。内置系统二进制继续使用 `--config-json` 和类型化命令行参数。
 
 `rbnx` 直接管理的非内置系统软件包和服务会在 `<deploy>/rbnx-boot/instances/<provider-id>.json` 保存一份实例配置，供诊断使用；该文件路径不会传给提供方。本体服务直接管理的原语和技能从部署清单内存值发送配置，当前不依赖该实例文件。
 

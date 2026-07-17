@@ -8,13 +8,16 @@ title: 激光雷达
 
 能力约定 TOML 在 `capabilities/primitive/lidar/`，接口定义语言（Interface Definition Language，IDL）文件在 `capabilities/lib/lidar/` 与 `capabilities/lib/common_interfaces/`。
 
-> 表中的命名空间 Driver 是已有软件包的兼容接口。新软件包省略 Driver 条目时由框架自动使用共享的 `robonix/lifecycle/driver`；显式共享仍受支持，两种 Driver 只能选择一条。详见[生命周期兼容流程](../../integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+新软件包省略 Driver 条目，由框架自动注册共享的 `robonix/lifecycle/driver`；显式选择共享 Driver 的行为相同。未实现生命周期回调时，框架记录警告并执行空操作。
+
+:::warning[后向兼容：激光雷达命名空间 Driver]
+`robonix/primitive/lidar/driver`、`lifecycle/Driver` 和 `primitive/lidar/driver.v1.toml` 只用于仍由软件包自行维护 Driver TOML 的旧实现。目前仍可使用，但计划迁移到共享 Driver；两种 Driver 不能同时注册。详见[生命周期兼容流程](../../integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+:::
 
 ## 接口
 
 | 能力约定 ID | 模式 | Tiago 参考实现传输 | 载荷（IDL） | 能力约定 TOML |
 |---|---|---|---|---|
-| `robonix/primitive/lidar/driver` | `rpc` | gRPC（旧命名空间 Driver） | [`lifecycle/Driver`](../../reference/idl.md#lifecycle-srv-driver-srv) | `primitive/lidar/driver.v1.toml` |
 | `robonix/primitive/lidar/lidar` | `topic_out` | ROS 2 | [`sensor_msgs/LaserScan`](../../reference/idl.md#common-interfaces-sensor-msgs-msg-laserscan-msg) | `primitive/lidar/lidar.v1.toml` |
 | `robonix/primitive/lidar/lidar3d` | `topic_out` | 未实现 | [`sensor_msgs/PointCloud2`](../../reference/idl.md#common-interfaces-sensor-msgs-msg-pointcloud2-msg) | `primitive/lidar/lidar3d.v1.toml` |
 | `robonix/primitive/lidar/snapshot` | `rpc` | MCP | [`lidar/GetLaserScan`](../../reference/idl.md#lidar-srv-getlaserscan-srv) | `primitive/lidar/lidar_snapshot.v1.toml` |

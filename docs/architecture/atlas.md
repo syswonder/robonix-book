@@ -132,6 +132,10 @@ Python 提供方框架默认每 30 秒发送一次心跳；Executor、Pilot、So
 | `QueryContract` / `ListContracts` | 查询标准能力约定描述文件 |
 | `InspectAtlas` | 获取提供方、能力和通道的调试快照 |
 
-未显式声明 Driver 时，运行时为提供方选择共享的 `robonix/lifecycle/driver`；清单也可以显式写出该约定。已有软件包可显式保留一条 `<provider-namespace>/driver`。每个提供方始终有且只有一条 Driver；Atlas 把两种约定都识别为 Driver，并会拒绝同一提供方同时声明两条生命周期入口。
+未显式声明 Driver 时，运行时为提供方选择共享的 `robonix/lifecycle/driver`；清单也可以显式写出该约定。每个提供方始终有且只有一条 Driver。
+
+:::warning[后向兼容：已有命名空间 Driver]
+已有软件包可以暂时保留一条自己维护的 `<provider-namespace>/driver` 和 Driver TOML，但不能同时注册共享 Driver。该兼容方式计划迁移，详见[软件包与部署清单规范](../integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+:::
 
 Atlas 的线协议定义位于 `system/atlas/proto/atlas.proto`。标准能力约定描述文件位于 Robonix 源码树的 `capabilities/`；它们如何映射到 ROS 2、gRPC 与 MCP 见[运行时通信](runtime-communication.md)。

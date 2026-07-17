@@ -33,7 +33,11 @@ rear_camera    + robonix/primitive/camera/rgb + gRPC
 | `robonix/system/*` | Robonix 系统接口，例如执行器、规划器、场景服务和本体服务 |
 | `robonix/lifecycle/*` | 跨提供方类别复用的生命周期管理接口 |
 
-这些前缀是能力约定命名空间。Atlas 的提供方类别仍只有原语、服务和技能；`system` 和 `lifecycle` 都不是新的提供方类别。每个新提供方由框架自动使用共享的 `robonix/lifecycle/driver`，该约定允许跨主命名空间注册。已有软件包的 `<provider-namespace>/driver` 仍兼容；维护和迁移步骤见[软件包与部署清单规范](../integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+这些前缀是能力约定命名空间。Atlas 的提供方类别仍只有原语、服务和技能；`system` 和 `lifecycle` 都不是新的提供方类别。每个新提供方由框架自动使用共享的 `robonix/lifecycle/driver`，该约定允许跨主命名空间注册。
+
+:::warning[后向兼容：已有命名空间 Driver]
+已有软件包可以暂时继续使用自己维护的 `<provider-namespace>/driver` 和 Driver TOML，但计划迁移到共享 Driver。维护和迁移步骤见[软件包与部署清单规范](../integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+:::
 
 普通能力约定应位于提供方主命名空间下。若不一致，Robonix API 和 Atlas 会记录警告，并将能力标记为 `namespace_mismatch`，但不会阻止注册、启动或调用。确实需要跨命名空间复用的能力约定可以在描述文件中设置：
 

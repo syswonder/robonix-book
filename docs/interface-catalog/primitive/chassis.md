@@ -9,13 +9,16 @@ title: 底盘
 
 > **注意**：目标式导航不属于底盘原语，由 `robonix/service/navigation/navigate`、`robonix/service/navigation/navigate/status` 和 `robonix/service/navigation/navigate/cancel` 承担（通常 Nav2）——详见 [导航服务](../service/navigation.md)。map 帧位姿查询也不在这里，而是 `robonix/service/map/pose` 的职责。底盘原语只负责下发 `robonix/primitive/chassis/move` / `robonix/primitive/chassis/twist_in` 瞬时运动输入，以及通过 `robonix/primitive/chassis/odom` 反馈底盘自身的运动事实。
 
-> 表中的命名空间 Driver 是已有软件包的兼容接口。新软件包省略 Driver 条目时由框架自动使用共享的 `robonix/lifecycle/driver`；显式共享仍受支持，两种 Driver 只能选择一条。详见[生命周期兼容流程](../../integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+新软件包省略 Driver 条目，由框架自动注册共享的 `robonix/lifecycle/driver`；显式选择共享 Driver 的行为相同。未实现生命周期回调时，框架记录警告并执行空操作。
+
+:::warning[后向兼容：底盘命名空间 Driver]
+`robonix/primitive/chassis/driver`、`lifecycle/Driver` 和 `primitive/chassis/driver.v1.toml` 只用于仍由软件包自行维护 Driver TOML 的旧实现。目前仍可使用，但计划迁移到共享 Driver；两种 Driver 不能同时注册。详见[生命周期兼容流程](../../integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+:::
 
 ## 接口
 
 | 能力约定 ID（`contract_id`） | 模式 | Tiago 参考实现传输 | 载荷（IDL） | 能力约定 TOML |
 |--------------------------|------|-------------|-------------|-----------|
-| `robonix/primitive/chassis/driver` | `rpc` | gRPC（旧命名空间 Driver） | [`lifecycle/Driver`](../../reference/idl.md#lifecycle-srv-driver-srv) | `primitive/chassis/driver.v1.toml` |
 | `robonix/primitive/chassis/move` | `rpc` | gRPC | [`chassis/ExecuteMoveCommand`](../../reference/idl.md#chassis-srv-executemovecommand-srv)（`MoveCommand` → `std_msgs/String`） | `primitive/chassis/move.v1.toml` |
 | `robonix/primitive/chassis/twist_in` | `topic_in` | ROS 2 | [`geometry_msgs/Twist`](../../reference/idl.md#common-interfaces-geometry-msgs-msg-twist-msg) | `primitive/chassis/twist_in.v1.toml` |
 | `robonix/primitive/chassis/odom` | `topic_out` | ROS 2 | [`nav_msgs/Odometry`](../../reference/idl.md#common-interfaces-nav-msgs-msg-odometry-msg) | `primitive/chassis/odom.v1.toml` |

@@ -8,13 +8,16 @@ title: 空间地图
 
 能力约定 TOML 在 `capabilities/service/map/`；直接使用的接口定义语言（Interface Definition Language，IDL）文件位于 `capabilities/lib/{map,lifecycle,common_interfaces}/`。
 
-> 表中的命名空间 Driver 是已有软件包的兼容接口。新软件包省略 Driver 条目时由框架自动使用共享的 `robonix/lifecycle/driver`；显式共享仍受支持，两种 Driver 只能选择一条。详见[生命周期兼容流程](../../integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+新软件包省略 Driver 条目，由框架自动注册共享的 `robonix/lifecycle/driver`；显式选择共享 Driver 的行为相同。未实现生命周期回调时，框架记录警告并执行空操作。
+
+:::warning[后向兼容：空间地图命名空间 Driver]
+`robonix/service/map/driver`、`lifecycle/Driver` 和 `service/map/driver.v1.toml` 只用于仍由软件包自行维护 Driver TOML 的旧实现。目前仍可使用，但计划迁移到共享 Driver；两种 Driver 不能同时注册。详见[生命周期兼容流程](../../integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+:::
 
 ## 接口
 
 | 能力约定 ID | 模式 | 参考实现传输 | 载荷（IDL） | 能力约定 TOML |
 |---|---|---|---|---|
-| `robonix/service/map/driver` | `rpc` | gRPC（生命周期） | [`lifecycle/Driver`](../../reference/idl.md#lifecycle-srv-driver-srv) | `service/map/driver.v1.toml` |
 | `robonix/service/map/lifecycle` | `topic_out` | ROS 2 话题（瞬态本地） | [`map/MapLifecycle`](../../reference/idl.md#map-msg-maplifecycle-msg) | `service/map/lifecycle.v1.toml` |
 | `robonix/service/map/occupancy_grid` | `topic_out` | ROS 2 话题 | [`nav_msgs/OccupancyGrid`](../../reference/idl.md#common-interfaces-nav-msgs-msg-occupancygrid-msg) | `service/map/occupancy_grid.v1.toml` |
 | `robonix/service/map/pose` | `topic_out` | ROS 2 话题 | [`geometry_msgs/PoseWithCovarianceStamped`](../../reference/idl.md#common-interfaces-geometry-msgs-msg-posewithcovariancestamped-msg) | `service/map/pose.v1.toml` |
@@ -34,11 +37,11 @@ title: 空间地图
 
 `robonix/service/map/odom` 是建图算法自带里程计的可选输出。部署通过 `sensor_providers.odom` 绑定外部底盘里程计时，参考实现会刻意跳过这条能力声明，避免同一机器人出现两个 odom 提供方；消费者应改用绑定的底盘原语，而不是等待 Mapping 重发同一数据。
 
-输入侧由 `sensor_providers` 选择并绑定 `lidar2d`、`lidar3d`、`rgb`、`depth`、`imu`、`odom` 角色；只解析实际绑定的 Atlas 提供方。默认 RTAB-Map 可使用二维或三维激光雷达、RGB-D 和可选外部里程计；DLIO 路径需要三维激光雷达和 IMU。`fastlio2` 在当前参考实现中标为漂移故障，仅保留用于复现。
+输入侧由 `sensor_providers` 选择并绑定 `lidar2d`、`lidar3d`、`rgb`、`depth`、`imu`、`odom` 角色；只解析实际绑定的 Atlas 提供方。默认 RTAB-Map 可使用二维或三维激光雷达、RGB-D 和可选外部里程计；DLIO 路径需要三维激光雷达和 IMU。
 
-参考实现为 [`service-map-rbnx`](https://github.com/syswonder/service-map-rbnx/tree/ce4092a1bee8847d6314af957f0225c8371d9aa6)。`algo` 默认并推荐 `rtabmap`，也可选择 `dlio`；机器人部署保存完整 `config/rtabmap_params.yaml`，并在建图服务的 `config.params_file` 中引用。共享仓库模板不会在运行时隐式加载。命名地图持久化目前只支持 RTAB-Map：`map_mode: mapping` 建图后调用 `save_map(map_id)`，`map_mode: localization` 配合已有 `map_id` 加载不可变副本并保持地图坐标系稳定。
+参考实现为 [`service-map-rbnx`](https://github.com/syswonder/service-map-rbnx/tree/ce4092a1bee8847d6314af957f0225c8371d9aa6)。`algo` 默认并推荐 `rtabmap`，也可选择 `dlio` 或 `fastlio2`。目前只有 RTAB-Map 路径持续维护；DLIO 和 FAST-LIO2 不保证兼容其最新上游版本，当前参考实现还将 `fastlio2` 标记为漂移故障，仅保留用于诊断和复现。机器人部署保存完整 `config/rtabmap_params.yaml`，并在建图服务的 `config.params_file` 中引用。共享仓库模板不会在运行时隐式加载。命名地图持久化目前只支持 RTAB-Map：`map_mode: mapping` 建图后调用 `save_map(map_id)`，`map_mode: localization` 配合已有 `map_id` 加载不可变副本并保持地图坐标系稳定。
 
-输出话题的适配面覆盖各个 `algo`，但地图数据库、`pose_estimate`、模式切换和重置的实现直接调用 RTAB-Map 数据库或 ROS 服务。选择 DLIO 时不能假设这些管理 RPC 可用，应按响应中的 `ok` 和 `detail` 处理失败。
+输出话题的适配面覆盖各个 `algo`，但地图数据库、`pose_estimate`、模式切换和重置的实现直接调用 RTAB-Map 数据库或 ROS 服务。选择 DLIO 或 FAST-LIO2 时不能假设这些管理 RPC 可用，应按响应中的 `ok` 和 `detail` 处理失败。
 
 > 实现文档：[README（部署、`params_file`、传感器绑定与兼容迁移）](https://github.com/syswonder/service-map-rbnx/blob/ce4092a1bee8847d6314af957f0225c8371d9aa6/README.md) · [`config.spec`（全部 instance 配置、类型、默认值与约束）](https://github.com/syswonder/service-map-rbnx/blob/ce4092a1bee8847d6314af957f0225c8371d9aa6/config.spec) · [实现注册](https://github.com/syswonder/service-map-rbnx/blob/ce4092a1bee8847d6314af957f0225c8371d9aa6/src/mapping_rbnx/atlas_bridge.py)
 
