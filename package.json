@@ -1,0 +1,60 @@
+{
+  "name": "robonix-book",
+  "version": "0.1.0",
+  "license": "MulanPSL-2.0",
+  "private": true,
+  "scripts": {
+    "start": "docusaurus start",
+    "build": "docusaurus build && python3 scripts/write-legacy-pages.py build",
+    "serve": "docusaurus serve",
+    "clear": "docusaurus clear",
+    "check:code-blocks": "node scripts/check-code-blocks.mjs",
+    "check:page-evidence": "node scripts/check-page-evidence.mjs",
+    "check:page-evidence:strict": "node scripts/check-page-evidence.mjs --strict-evidence",
+    "check:validation-artifacts": "node scripts/check-validation-artifacts.mjs",
+    "page-evidence:inventory": "node scripts/check-page-evidence.mjs --inventory",
+    "page-evidence:refresh": "node scripts/check-page-evidence.mjs --refresh",
+    "check:assets": "node scripts/check-doc-assets.mjs",
+    "typecheck": "tsc --noEmit",
+    "docs:version": "docusaurus docs:version",
+    "write-translations": "docusaurus write-translations"
+  },
+  "dependencies": {
+    "@docusaurus/core": "3.10.2",
+    "@docusaurus/faster": "3.10.2",
+    "@docusaurus/preset-classic": "3.10.2",
+    "@easyops-cn/docusaurus-search-local": "0.55.2",
+    "@fontsource/jetbrains-mono": "^5.2.8",
+    "@fontsource/manrope": "5.2.8",
+    "@fontsource/noto-sans-sc": "^5.2.8",
+    "@mdx-js/react": "^3.0.0",
+    "clsx": "^2.1.1",
+    "prism-react-renderer": "^2.4.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@docusaurus/module-type-aliases": "3.10.2",
+    "@docusaurus/tsconfig": "3.10.2",
+    "@docusaurus/types": "3.10.2",
+    "@types/react": "^19.1.0",
+    "js-yaml": "5.2.1",
+    "smol-toml": "1.7.0",
+    "typescript": "~6.0.2"
+  },
+  "browserslist": {
+    "production": [
+      ">0.5%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 3 chrome version",
+      "last 3 firefox version",
+      "last 5 safari version"
+    ]
+  },
+  "engines": {
+    "node": ">=20.0"
+  }
+}

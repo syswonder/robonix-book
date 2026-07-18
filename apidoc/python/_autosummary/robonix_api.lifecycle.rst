@@ -3,11 +3,11 @@ robonix\_api.lifecycle
 
 .. automodule:: robonix_api.lifecycle
 
-   
+
    .. rubric:: Functions
 
    .. autosummary::
-   
+
       bind_user_handler
       build_lifecycle_servicer
       coerce_response
@@ -15,4 +15,3 @@ robonix\_api.lifecycle
       driver_pascal_for_namespace
       parse_cfg
       resolve_servicer
-   

@@ -8,6 +8,11 @@ Robonix Python API
   service (perception ingest, scene graph, MCP tools). Its *consumer* API is
   the ``robonix/system/scene/*`` contracts; this is the internal reference.
 
+.. toctree::
+   :maxdepth: 2
+
+   public-api
+
 .. autosummary::
    :toctree: _autosummary
    :recursive:

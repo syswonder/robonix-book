@@ -1,0 +1,38 @@
+[book]
+authors = ["Robonix contributors"]
+language = "zh"
+description = "Robonix dev-next 实验分支的安装、开发、本体接入与接口参考"
+src = "src"
+title = "Robonix 开发手册"
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+
+# In-page table of contents: a `[toc]` marker anywhere in a page expands to
+# a heading outline. Build dependency: `cargo install mdbook-toc`.
+[preprocessor.toc]
+command = "mdbook-toc"
+marker = "[toc]"
+
+[output.html]
+additional-css = ["theme/wide.css"]
+additional-js = ["mermaid.min.js", "mermaid-init.js", "theme/build-info.js"]
+default-theme = "light"
+preferred-dark-theme = "navy"
+git-repository-url = "https://github.com/syswonder/robonix-book"
+edit-url-template = "https://github.com/syswonder/robonix-book/edit/main/{path}"
+mathjax-support = true
+
+[output.html.fold]
+enable = true
+level = 1
+
+[output.html.search]
+enable = true
+limit-results = 30
+use-boolean-and = true
+boost-title = 3
+boost-hierarchy = 2
+boost-paragraph = 1
+expand = true
+heading-split-level = 2

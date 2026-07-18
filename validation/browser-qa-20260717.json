@@ -1,0 +1,47 @@
+{
+  "date": "2026-07-17",
+  "site": "http://127.0.0.1:8767/",
+  "environment": {
+    "os": "macOS 26.5.1 (25F80)",
+    "architecture": "arm64",
+    "browser": "Google Chrome 150.0.7871.125"
+  },
+  "viewports": [
+    {
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "width": 390,
+      "height": 844
+    }
+  ],
+  "pages": [
+    "/",
+    "/integration-guide/vendor-onboarding",
+    "/developer-guide",
+    "/architecture/runtime-communication",
+    "/reference/idl",
+    "/interface-catalog"
+  ],
+  "results": {
+    "http_status": "all requested pages returned 200",
+    "page_overflow": "documentElement.scrollWidth equaled innerWidth on both viewports for every page",
+    "mobile_code_and_tables": "wide code blocks and tables remained inside local horizontal scroll containers",
+    "soma_section": "minimum file, field tables, derivation rules, complete YAML, and diagnostics rendered without page overflow",
+    "developer_toc": "16 entries, all level-two sections",
+    "lazy_images": "all three reviewed lazy images completed loading after scroll",
+    "legacy_routes": "42 legacy pages and 191 archived fragments passed the static checker; all 42 legacy routes returned successfully"
+  },
+  "local_screenshots": [
+    {
+      "path": "/tmp/robonix-book-qa-soma-desktop.png",
+      "sha256": "76615fe0b1cb34c3fd4b70f5a04c107f85d6af379af50d890605a2f2db1d131c"
+    },
+    {
+      "path": "/tmp/robonix-book-qa-soma-mobile-390-section.png",
+      "sha256": "620dc6648f0f402c01cb3f07913f87a9f8a8eeef1347e52585345dd62b436c86"
+    }
+  ],
+  "limitations": "This is rendering and navigation evidence. It does not replace execution evidence for hardware-dependent procedures or accountable page-review sign-off. Screenshot files are local review aids rather than committed CI artifacts; regenerate them from the recorded routes and viewports when rechecking the report."
+}

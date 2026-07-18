@@ -1,0 +1,63 @@
+---
+title: 音频
+---
+<span id="音频-robonixprimitiveaudio"></span>
+# 音频
+
+音频原语覆盖麦克风采集与扬声器播放，是[交互服务](../system/liaison.md)语音处理链路的两端。`mic`（`topic_out`）持续输出音频块，`speaker`（`topic_in`）接收音频块播放。多设备提供方可以实现 `list_devices` / `select_device`，客户端音频桥可以实现 `bridge_info` 来发布反向 WebSocket 访问地址；这三个接口都不是所有音频提供方的必选项。
+
+能力约定 TOML 在 `capabilities/primitive/audio/`，接口定义语言（Interface Definition Language，IDL）文件在 `capabilities/lib/audio/`。
+
+新软件包省略 Driver 条目，由框架自动注册共享的 `robonix/lifecycle/driver`；显式选择共享 Driver 的行为相同。未实现生命周期回调时，框架记录警告并执行空操作。
+
+:::warning[后向兼容：音频命名空间 Driver]
+`robonix/primitive/audio/driver`、`lifecycle/Driver` 和 `primitive/audio/driver.v1.toml` 只用于仍由软件包自行维护 Driver TOML 的旧实现。目前仍可使用，但计划迁移到共享 Driver；两种 Driver 不能同时注册。详见[生命周期兼容流程](../../integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+:::
+
+## 接口
+
+| 能力约定 ID | 模式 | 载荷（IDL） | 能力约定 TOML |
+|---|---|---|---|
+| `robonix/primitive/audio/bridge_info` | `rpc` | [`audio/GetAudioBridgeInfo`](../../reference/idl.md#audio-srv-getaudiobridgeinfo-srv) | `primitive/audio/bridge_info.v1.toml` |
+| `robonix/primitive/audio/mic` | `topic_out` | [`audio/AudioChunk`](../../reference/idl.md#audio-msg-audiochunk-msg) | `primitive/audio/mic.v1.toml` |
+| `robonix/primitive/audio/speaker` | `topic_in` | [`audio/AudioChunk`](../../reference/idl.md#audio-msg-audiochunk-msg) | `primitive/audio/speaker.v1.toml` |
+| `robonix/primitive/audio/list_devices` | `rpc` | [`audio/ListAudioDevices`](../../reference/idl.md#audio-srv-listaudiodevices-srv) | `primitive/audio/list_devices.v1.toml` |
+| `robonix/primitive/audio/select_device` | `rpc` | [`audio/SelectAudioDevice`](../../reference/idl.md#audio-srv-selectaudiodevice-srv) | `primitive/audio/select_device.v1.toml` |
+
+`audio/AudioChunk` 是麦克风、扬声器、语音识别和语音合成共用的流元素（`timestamp_ns + data + sequence + duration_s`）。它不携带编码、采样率、声道数或采样位数，不是自描述音频容器；提供方与消费方必须通过会话或部署配置约定格式。当前交互服务的语音路径默认使用 16 kHz、单声道、`pcm_s16le`，改变格式时必须同步修改两端。
+
+固定设备提供方可以不注册 `list_devices` / `select_device`，也可以对查询返回 `UNIMPLEMENTED`；调用方此时应继续使用当前原语的默认设备。`bridge_info` 仅适用于客户端桥，不能作为本地 ALSA 提供方的必备探针。
+
+## ALSA 设备选择
+
+ALSA 参考实现按部署配置、环境变量、自动探测的顺序选择设备。部署清单应优先使用 `config.mic_device` 和 `config.speaker_device`；省略字段或写成 YAML 空值 `null` 表示自动探测。字符串 `"null"` 则是 ALSA 内置的空 PCM：采集端生成静音样本，播放端丢弃样本，通常不需要额外创建 `.asoundrc`。
+
+```yaml
+primitive:
+  - name: audio_driver
+    url: https://github.com/syswonder/primitive-audio-driver-rbnx
+    branch: main
+    config:
+      mic_device: "null"
+      speaker_device: "null"
+```
+
+`AUDIO_MIC_DEVICE` 和 `AUDIO_SPEAKER_DEVICE` 是兼容旧部署的运行时覆盖项。需要使用时，应在执行 `rbnx boot` 的同一环境中导出；`rbnx build` 不读取这两个变量。
+
+`arecord` 和 `aplay` 由 `alsa-utils` 提供。`arecord -l` 与 `aplay -l` 只列出硬件设备；使用 `-L` 查询 PCM 插件，或直接探测空 PCM：
+
+```bash
+arecord -L | grep -x null
+aplay -L | grep -x null
+
+arecord -D null -q -d 1 -t raw -f S16_LE -r 16000 -c 1 /dev/null
+head -c 48000 /dev/zero \
+  | aplay -D null -q -t raw -f S16_LE -r 24000 -c 1
+```
+
+参考实现：
+
+- [ALSA 音频原语](https://github.com/syswonder/primitive-audio-driver-rbnx)：使用机器人 Linux 主机上的麦克风和扬声器。
+- [客户端音频桥](https://github.com/syswonder/primitive-audio-client-bridge-rbnx)：由 Robonix Client 连接机器人，并提供客户端电脑上的麦克风和扬声器。
+
+Robonix 源码树只在 Webots 部署清单中通过远程 `main` 分支引用这两个软件包，不包含它们的 `package_manifest.yaml` 或实现源码。部署后应以 `rbnx caps -v` 的实际注册结果确认可用接口，不能只根据上面的仓库链接推断运行时能力。

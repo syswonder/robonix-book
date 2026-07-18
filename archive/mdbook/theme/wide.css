@@ -1,0 +1,431 @@
+/* Fonts — must precede all rules (CSS @import requirement). Text uses
+   Noto Sans CJK SC (Latin + Chinese); code uses JetBrains Mono. Loaded
+   from Google Fonts; fallbacks cover offline. */
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+SC:wght@400;500;700&display=swap");
+
+/* Widen mdBook content + apply Robonix brand color (#283689). */
+:root {
+    --content-max-width: 980px;
+    /* mdBook applies the mono font via `var(--mono-font) !important`, so a
+       plain `code { font-family }` rule can't win — override the variable.
+       --code-font-size shrinks code (JetBrains Mono renders large). */
+    --mono-font: "JetBrains Mono", "Noto Sans CJK SC", "Noto Sans SC",
+        ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --code-font-size: 0.88em;
+}
+
+body {
+    font-size: 1.7rem;
+}
+
+.content p,
+.content ol,
+.content ul {
+    line-height: 1.62;
+}
+
+/* ── Documentation release channel ─────────────────────────────────── */
+.release-channel {
+    position: sticky;
+    top: 0;
+    z-index: 110;
+    color: #f8f9ff;
+    background: #1c285f;
+    border-bottom: 1px solid #6f82d7;
+}
+
+.release-channel__inner {
+    min-height: 5.6rem;
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    padding: 0.8rem 1.6rem;
+    font-size: 1.6rem;
+    line-height: 1.45;
+}
+
+.release-channel__label {
+    color: #bfc9f3;
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.release-channel__branch {
+    flex: none;
+    padding: 0.35rem 0.85rem;
+    color: #1c285f;
+    background: #f4c95d;
+    border-radius: 999px;
+}
+
+.release-channel code {
+    color: inherit;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.release-channel__revision {
+    flex: none;
+    color: #d8def8;
+    font-family: var(--mono-font);
+    font-size: 1.4rem;
+}
+
+.release-channel__source {
+    flex: none;
+    color: #fff;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 0.18em;
+}
+
+/* The mdBook menu remains visible below the persistent release channel. */
+#mdbook-menu-bar.sticky {
+    top: 5.6rem;
+}
+
+/* ── Task-oriented landing cards ───────────────────────────────────── */
+.task-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin: 1.4rem 0 2rem;
+}
+
+.task-card {
+    display: block;
+    min-height: 8.5rem;
+    padding: 1rem 1.1rem;
+    color: inherit !important;
+    text-decoration: none !important;
+    background: color-mix(in srgb, var(--bg) 94%, #5e73cf 6%);
+    border: 1px solid color-mix(in srgb, var(--fg) 20%, transparent);
+    border-left: 4px solid #5368c3;
+    border-radius: 0.45rem;
+    transition: border-color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+}
+
+.task-card:hover {
+    border-color: #5368c3;
+    box-shadow: 0 0.45rem 1.1rem rgba(24, 37, 89, 0.12);
+    transform: translateY(-2px);
+}
+
+.task-card:focus-visible {
+    outline: 3px solid #7c91ea;
+    outline-offset: 3px;
+}
+
+.task-card__eyebrow {
+    display: block;
+    margin-bottom: 0.35rem;
+    color: #5368c3;
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+}
+
+.task-card__title {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-size: 1.9rem;
+    font-weight: 700;
+}
+
+.task-card__description {
+    display: block;
+    color: color-mix(in srgb, var(--fg) 78%, transparent);
+    line-height: 1.55;
+    font-size: 1.6rem;
+}
+
+/* A page outline is local navigation. Keep the global chapter tree on the
+   left and give the page outline its own reading rail on wide screens. */
+@media (min-width: 1180px) {
+    .content main:has(> h1:first-child + ul) {
+        max-width: 1260px;
+    }
+
+    .content main > h1:first-child + ul {
+        position: sticky;
+        top: 12.2rem;
+        float: right;
+        box-sizing: border-box;
+        width: 25rem;
+        max-height: calc(100vh - 14.5rem);
+        margin: 0.4rem 0 2.5rem 4rem;
+        padding: 1.2rem 0 1.2rem 1.8rem;
+        overflow: auto;
+        color: color-mix(in srgb, var(--fg) 78%, transparent);
+        font-size: 1.4rem;
+        line-height: 1.48;
+        list-style: none;
+        border-left: 2px solid color-mix(in srgb, var(--fg) 16%, transparent);
+    }
+
+    .content main > h1:first-child + ul::before {
+        content: "本页目录";
+        display: block;
+        margin-bottom: 0.8rem;
+        color: var(--fg);
+        font-size: 1.3rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+    }
+
+    .content main > h1:first-child + ul ul {
+        padding-inline-start: 1.4rem;
+    }
+
+    .content main > h1:first-child + ul li {
+        margin: 0.45rem 0;
+    }
+}
+
+@media (max-width: 1179px) {
+    .content main > h1:first-child + ul {
+        margin: 1.5rem 0 2.5rem;
+        padding: 1.4rem 1.8rem 1.4rem 3.6rem;
+        background: color-mix(in srgb, var(--bg) 95%, #5e73cf 5%);
+        border: 1px solid color-mix(in srgb, var(--fg) 16%, transparent);
+        border-radius: 0.45rem;
+    }
+}
+
+/* Procedure metadata and verifiable outcomes. */
+.procedure-meta {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin: 1rem 0 1.5rem;
+}
+
+.procedure-meta > div {
+    padding: 0.75rem 0.85rem;
+    background: color-mix(in srgb, var(--bg) 94%, #5e73cf 6%);
+    border: 1px solid color-mix(in srgb, var(--fg) 16%, transparent);
+    border-radius: 0.35rem;
+}
+
+.procedure-meta strong {
+    display: block;
+    margin-bottom: 0.2rem;
+    color: #5368c3;
+    font-size: 1.25rem;
+    text-transform: uppercase;
+}
+
+.expected-result {
+    margin: 1rem 0;
+    padding: 0.8rem 1rem;
+    background: color-mix(in srgb, var(--bg) 92%, #2f855a 8%);
+    border-left: 4px solid #2f855a;
+    border-radius: 0.25rem;
+}
+
+.expected-result::before {
+    content: "验收结果";
+    display: block;
+    margin-bottom: 0.35rem;
+    color: #2f855a;
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+@media (max-width: 900px) {
+    .release-channel__inner {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .release-channel__revision {
+        display: none;
+    }
+
+    #mdbook-menu-bar.sticky {
+        top: 8.8rem;
+    }
+}
+
+@media (max-width: 650px) {
+    .release-channel__label {
+        display: none;
+    }
+
+    .release-channel__inner {
+        min-height: 5.2rem;
+        flex-wrap: nowrap;
+    }
+
+    #mdbook-menu-bar.sticky {
+        top: 5.2rem;
+    }
+
+    .task-grid,
+    .procedure-meta {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .task-card {
+        transition: none;
+    }
+}
+
+/* Replace mdbook's default `❱` fold indicator with a clear chevron.
+   The toggle is rendered as <a><div>❱</div></a>; we hide the inner div
+   and inject a CSS triangle via ::before that rotates on expand. */
+.chapter-fold-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.6em;
+    height: 1.6em;
+    margin-left: 0.4em;
+    color: inherit;
+    opacity: 0.75;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: opacity 0.15s ease;
+}
+.chapter-fold-toggle > div {
+    display: none;
+}
+.chapter-fold-toggle::before {
+    content: "";
+    display: block;
+    width: 0.38em;
+    height: 0.38em;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(-45deg); /* collapsed: points right */
+    transform-origin: center;
+    transition: transform 0.15s ease;
+}
+.chapter-fold-toggle:hover {
+    opacity: 1;
+    background: rgba(127, 127, 127, 0.18);
+}
+/* When the chapter is expanded, the chevron points down. The -2px nudge
+   keeps the rotated box optically centred. */
+.chapter-item.expanded > .chapter-link-wrapper > .chapter-fold-toggle::before {
+    transform: rotate(45deg) translate(-1px, -1px);
+}
+
+/* Constrain large diagrams (e.g. cap-lifecycle.png) — full-width is ugly. */
+img[src$="cap-lifecycle.png"] {
+    display: block;
+    max-width: 560px;
+    width: 100%;
+    margin: 1em auto;
+}
+
+/* Light theme: override accent colors to Robonix blue. */
+.light {
+    --links: #283689;
+    --sidebar-active: #283689;
+    --searchresults-header-fg: #283689;
+}
+
+/* Rust theme uses the same palette as light for our purposes. */
+.rust {
+    --links: #283689;
+    --sidebar-active: #283689;
+}
+
+/* Dark themes get a lighter variant of the brand color for contrast. */
+.coal, .navy, .ayu {
+    --links: #6178c8;
+    --sidebar-active: #6178c8;
+}
+
+/* ── Muted syntax highlighting (light themes) ─────────────────────────
+   Default mdbook highlight palette is too neon. Tone it down to a
+   github-light-ish scheme that harmonises with the brand navy. */
+.light .hljs, .rust .hljs {
+    background: #f6f8fa;
+    color: #24292e;
+}
+.light .hljs-keyword, .rust .hljs-keyword,
+.light .hljs-built_in, .rust .hljs-built_in {
+    color: #283689;
+    font-weight: 600;
+}
+.light .hljs-string, .rust .hljs-string {
+    color: #1f6f43;
+}
+.light .hljs-comment, .rust .hljs-comment {
+    color: #8a929b;
+    font-style: italic;
+}
+.light .hljs-number, .rust .hljs-number,
+.light .hljs-literal, .rust .hljs-literal {
+    color: #b15c1a;
+}
+.light .hljs-title, .rust .hljs-title,
+.light .hljs-function .hljs-title, .rust .hljs-function .hljs-title {
+    color: #4b3789;
+    font-weight: 600;
+}
+.light .hljs-type, .rust .hljs-type,
+.light .hljs-class, .rust .hljs-class {
+    color: #2c5282;
+}
+.light .hljs-attr, .rust .hljs-attr,
+.light .hljs-symbol, .rust .hljs-symbol {
+    color: #5a6b85;
+}
+
+/* RIDL syntax: keywords bold, title/attr/symbol/type distinct colors */
+pre code.language-ridl .hljs-comment {
+    color: #6a737d;
+    font-style: italic;
+}
+pre code.language-ridl .hljs-keyword {
+    font-weight: bold;
+}
+pre code.language-ridl .hljs-title {
+    color: #0030f2;
+    font-weight: 600;
+}
+pre code.language-ridl .hljs-attr {
+    color: #0d7377;
+}
+pre code.language-ridl .hljs-symbol {
+    color: #6b4e9e;
+}
+pre code.language-ridl .hljs-type,
+pre code.language-ridl .hljs-variable {
+    color: #0d7377;
+}
+pre code.language-ridl .hljs-built_in {
+    color: #b21e00;
+}
+
+/* ── Typography ──────────────────────────────────────────────────────────
+   Body text: Noto Sans CJK SC (Latin + Chinese).
+   Code / monospace: JetBrains Mono, with CJK falling back to Noto Sans CJK SC
+   (JetBrains Mono has no CJK glyphs). */
+html,
+body,
+.content,
+.content p,
+.content li,
+.content td,
+.menu-title {
+    font-family: "Noto Sans CJK SC", "Noto Sans SC",
+        -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* Make links whose text is inline `code` read as clickable — link colour +
+   underline, so a payload like `chassis/srv/…` doesn't look like plain
+   monospace text. */
+a > code,
+.content a code {
+    color: var(--links);
+    text-decoration: underline;
+}

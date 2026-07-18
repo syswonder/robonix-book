@@ -1,0 +1,157 @@
+# Validate every documentation change and publish main to GitHub Pages.
+name: Validate and deploy mdBook
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+  schedule:
+    # External links are intentionally checked out of band: remote sites can
+    # be rate-limited or temporarily unavailable and must not block a docs PR.
+    - cron: "23 3 * * 1"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "docs-${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    env:
+      ROBONIX_REF: dev-next
+      ROBONIX_HOME: ${{ runner.temp }}/robonix-home
+      MDBOOK_VERSION: 0.5.0
+      MDBOOK_MERMAID_VERSION: 0.17.0
+      MDBOOK_TOC_VERSION: 0.15.4
+    steps:
+      - name: Checkout documentation
+        uses: actions/checkout@v4
+
+      # The handbook describes dev-next. Check it out before generating any
+      # status or reference material so the rendered site names the exact
+      # source revision it was validated against.
+      - name: Checkout Robonix dev-next
+        uses: actions/checkout@v4
+        with:
+          repository: syswonder/robonix
+          ref: ${{ env.ROBONIX_REF }}
+          path: robonix
+          submodules: recursive
+
+      - name: Install pinned mdBook toolchain
+        run: |
+          curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal
+          source "$HOME/.cargo/env"
+          cargo install mdbook --version "$MDBOOK_VERSION" --locked
+          cargo install mdbook-mermaid --version "$MDBOOK_MERMAID_VERSION" --locked
+          cargo install mdbook-toc --version "$MDBOOK_TOC_VERSION" --locked
+          mdbook --version
+          mdbook-mermaid --version
+          mdbook-toc --version
+
+      - name: Build rbnx documentation generator
+        run: |
+          source "$HOME/.cargo/env"
+          cargo build --manifest-path robonix/Cargo.toml --locked --release -p robonix-cli
+          robonix/target/release/rbnx setup "$PWD/robonix"
+
+      - name: Stamp exact Robonix source revision
+        run: ./scripts/write-build-info.sh robonix "$ROBONIX_REF"
+
+      - name: Verify generated Contract and IDL reference
+        run: |
+          generated="$RUNNER_TEMP/generated-reference"
+          mkdir -p "$generated"
+          robonix/target/release/rbnx docs --out-dir "$generated"
+          diff -u src/reference/contracts.md "$generated/contracts.md"
+          diff -u src/reference/idl.md "$generated/idl.md"
+
+      - name: Build the book
+        run: |
+          source "$HOME/.cargo/env"
+          ./scripts/build-highlight.sh
+
+      # API docs are supplementary. Failures here do not invalidate the
+      # handbook, while the book, links, and generated reference above do.
+      - name: Build Rust API docs
+        continue-on-error: true
+        run: |
+          source "$HOME/.cargo/env"
+          cargo doc --manifest-path robonix/Cargo.toml --locked --no-deps --workspace
+          mkdir -p book/api/rust
+          cp -r robonix/target/doc/. book/api/rust/
+
+      - name: Build Python API docs
+        continue-on-error: true
+        env:
+          ROBONIX_SPHINX_MOCKS: "torch,rclpy,cv2,open3d,scipy,sklearn,semantic_map_mcp"
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install sphinx furo numpy grpcio protobuf pyyaml
+          python3 -m pip install ./robonix/pylib/robonix-api
+          mkdir -p book/api/python
+          ROBONIX_API_SRC="$PWD/robonix/pylib/robonix-api" \
+          ROBONIX_SCENE_SRC="$PWD/robonix/system/scene" \
+            python3 -m sphinx -b html apidoc/python book/api/python
+
+      - name: Check local links and anchors
+        run: >-
+          python3 scripts/check-local-links.py book
+          --allow-missing-prefix api/rust
+          --allow-missing-prefix api/python
+
+      - name: Upload documentation preview
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: robonix-book-preview
+          path: book
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Configure Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: book
+
+  external-links:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check external links (advisory)
+        uses: lycheeverse/lychee-action@v2
+        with:
+          fail: false
+          jobSummary: true
+          args: >-
+            --no-progress
+            --exclude-loopback
+            --max-retries 2
+            --timeout 20
+            'src/**/*.md'
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
