@@ -48,7 +48,6 @@ robot-<vendor>-<model>/
 ├── soma.yaml                   # 本体部件树、尺寸、能力归属
 ├── urdf/                       # 唯一、完整的机器人 URDF 及其资源
 ├── config/                     # 本体专属建图、导航等参数
-├── scripts/                    # CAN、设备权限等启动前准备
 ├── .env.example                # 只列变量名和非敏感默认值
 └── README.md                   # 支持矩阵、安装、构建、启动和验收
 ```

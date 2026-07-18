@@ -477,7 +477,7 @@ capabilities:
   - name: robonix/primitive/chassis/odom
 ```
 
-旧包的 Python 入口不需要为了 Book 更新而重写。当前 Robonix API 优先绑定清单精确选择且完整存在的旧生成服务；如果该旧服务对完全不存在，并且受管启动明确标记这是旧清单迁移，它才绑定完整的共享生成服务并向 Atlas 注册 `robonix/lifecycle/driver`：
+旧包的 Python 入口不需要为了 Book 更新而重写。当前 Robonix API 优先绑定清单精确选择且完整存在的旧生成服务；如果该旧服务完全不存在，并且受管启动明确标记这是旧清单迁移，它才绑定完整的共享生成服务并向 Atlas 注册 `robonix/lifecycle/driver`：
 
 ```python title="acme_chassis/main.py"
 from robonix_api import Ok, Primitive
