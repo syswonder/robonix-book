@@ -3,6 +3,8 @@
 
 本章面向负责一台真实机器人或仿真本体的集成工程师。完成后，你将得到一个可独立克隆、构建和启动的**机器人部署仓库（Robot Deployment）**：仓库内包含整机描述、硬件实例、机器人专属配置，以及对社区软件包的引用。
 
+本文使用 `ACME`、`acme_rover`、`robot-acme-rover`、`acme_chassis`、`base_chassis` 等名称贯穿示例。实际接入时，请替换为自己的厂商、型号、部署仓库、软件包和运行实例名称；不要把示例名称当作固定要求。
+
 <div class="procedure-meta">
   <div><strong>源码仓库</strong><code>syswonder/robonix</code></div>
   <div><strong>参考部署</strong><a href="https://syswonder.github.io/robonix-package-catalog/robots/robonix.robot.agilex.ranger_mini_v3/">AgileX Ranger Mini v3</a></div>
@@ -33,14 +35,16 @@ robot-<vendor>-<model>/
 
 硬件驱动通常放在独立原语仓库中，由 `robonix_manifest.yaml` 的 `url` 引用；只有暂不复用的部署私有代码才放在本体仓库。先查看目录中的 [AgileX Ranger Mini v3 本体页面](https://syswonder.github.io/robonix-package-catalog/robots/robonix.robot.agilex.ranger_mini_v3/)了解已发布的硬件组成和软件包，再进入 [`robot-agilex-ranger_mini_v3`](https://github.com/syswonder/robot-agilex-ranger_mini_v3) 查看实际部署清单、配置和包装脚本。学习单个软件包结构时使用 [`template-rbnx`](https://github.com/syswonder/template-rbnx/tree/60dc85834c2714022b1821e6fce6c629c0314699)。采用任何参考部署前，都要核对其整机 URDF 是否包含当前机器人实际安装的全部部件；缺少的坐标关系必须先补齐，不能依赖另一份分离 URDF。
 
-AgileX 仓库依赖包装脚本设置部署目录和宿主环境，构建与启动应使用：
+如果构建或启动前需要设置部署目录、环境变量、设备权限、CAN / 串口、RMW router 或容器参数，把这些准备步骤统一收敛到部署仓库的 `build.sh` 和 `start.sh`。这样使用者只需要执行固定入口，脚本内部再调用 `rbnx build` 或 `rbnx boot`。
+
+例如 AgileX 参考仓库就通过包装脚本完成宿主环境准备，构建与启动使用：
 
 ```bash
 bash build.sh
 bash start.sh
 ```
 
-不要绕过包装脚本直接执行 `rbnx build -f` 或 `rbnx boot -f`。
+直接执行裸的 `rbnx build -f` 或 `rbnx boot -f` 只适合没有额外宿主准备的部署；如果仓库已经提供包装脚本，应优先使用脚本入口。
 
 ## 1. 建立可追溯的开发环境
 
@@ -388,6 +392,7 @@ rbnx logs -d /path/to/deploy/rbnx-boot/logs -t soma --json
 软件包目录中已有匹配软件包时直接引用，不复制源码。没有时，从 `template-rbnx/primitives/mock_chassis` 或命令生成骨架：
 
 ```bash
+# 示例名 acme_chassis；实际项目请替换为自己的底盘原语包名。
 rbnx package-new acme_chassis --type primitive
 ```
 
@@ -407,7 +412,7 @@ primitives/acme_chassis/
     └── main.py
 ```
 
-脚手架不会猜测软件包是否接受部署参数，也不会生成厂商资源的清理逻辑。本节的 ACME 底盘示例后续会公开 `can_port`、`sentinel_timeout_s` 等配置，并演示可选的停止清理入口，因此准备发布时还要补入：
+脚手架不会猜测软件包是否接受部署参数，也不会生成厂商资源的清理逻辑。如有需要，可按需补充：
 
 ```text
 primitives/acme_chassis/
