@@ -627,7 +627,7 @@ service:
     manifest: package_manifest.yaml
     config:
       params_file: config/rtabmap_params.yaml
-      occupancy_sources: [lidar]
+      occupancy_sources: [lidar, depth]
       sensor_providers:
         lidar2d: front_lidar
         odom: base_chassis
@@ -636,6 +636,8 @@ service:
 ```
 
 `sensor_providers` 的值是 Atlas 提供方 ID，不是话题名。支持角色为 `lidar2d`、`lidar3d`、`rgb`、`depth`、`imu` 和 `odom`；RGB-D 必须同时指定 `rgb` 与 `depth`。`rtabmap_params` 可以在部署清单中对文件做少量最终覆盖，但完整基线仍应保存在部署仓库。字段以 Mapping 仓库根目录的 `config.spec` 为准。
+
+底盘里程计接入不是只填一个提供方 ID。底盘原语必须同时发布 `nav_msgs/Odometry` 和一致的 `odom → base_link` TF；当前 RTAB-Map 路径在传感器时间戳通过 TF 取外部里程位姿，并只发布 `map → odom`。完整数据流、模板参数含义和验证命令见[建图参数与里程计接入](../tutorials/mapping-and-odometry.md)。
 
 参考实现为 [`service-map-rbnx`](https://github.com/syswonder/service-map-rbnx)。`algo` 省略时使用默认且推荐的 `rtabmap`；也可显式选择 `dlio` 或 `fastlio2`。目前只有 RTAB-Map 路径持续维护。DLIO 和 FAST-LIO2 不保证兼容其最新上游版本；当前参考实现中的 `fastlio2` 还被标记为漂移故障，仅用于诊断和复现。新本体应先使用 RTAB-Map 完成接入和验收，再根据传感器与平台条件评估其他算法。
 

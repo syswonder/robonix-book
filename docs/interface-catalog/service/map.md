@@ -39,6 +39,8 @@ title: 空间地图
 
 输入侧由 `sensor_providers` 选择并绑定 `lidar2d`、`lidar3d`、`rgb`、`depth`、`imu`、`odom` 角色；只解析实际绑定的 Atlas 提供方。默认 RTAB-Map 可使用二维或三维激光雷达、RGB-D 和可选外部里程计；DLIO 路径需要三维激光雷达和 IMU。
 
+外部里程计模式下，底盘原语同时提供 `nav_msgs/Odometry` 和 `odom → base_link` TF；当前 RTAB-Map 参考实现在传感器时间戳查询 TF，而不是再同步一份 `/odom` 订阅。Mapping 负责发布 `map → odom`。详细配置、参数表和验证命令见[建图参数与里程计接入](../../tutorials/mapping-and-odometry.md)。
+
 参考实现为 [`service-map-rbnx`](https://github.com/syswonder/service-map-rbnx/tree/ce4092a1bee8847d6314af957f0225c8371d9aa6)。`algo` 默认并推荐 `rtabmap`，也可选择 `dlio` 或 `fastlio2`。目前只有 RTAB-Map 路径持续维护；DLIO 和 FAST-LIO2 不保证兼容其最新上游版本，当前参考实现还将 `fastlio2` 标记为漂移故障，仅保留用于诊断和复现。机器人部署保存完整 `config/rtabmap_params.yaml`，并在建图服务的 `config.params_file` 中引用。共享仓库模板不会在运行时隐式加载。命名地图持久化目前只支持 RTAB-Map：`map_mode: mapping` 建图后调用 `save_map(map_id)`，`map_mode: localization` 配合已有 `map_id` 加载不可变副本并保持地图坐标系稳定。
 
 输出话题的适配面覆盖各个 `algo`，但地图数据库、`pose_estimate`、模式切换和重置的实现直接调用 RTAB-Map 数据库或 ROS 服务。选择 DLIO 或 FAST-LIO2 时不能假设这些管理 RPC 可用，应按响应中的 `ok` 和 `detail` 处理失败。

@@ -19,6 +19,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'integration-guide/index',
         'integration-guide/vendor-onboarding',
+        {type: 'doc', id: 'tutorials/mapping-and-odometry', label: '建图与里程计'},
         'integration-guide/packaging-spec',
         'integration-guide/build-and-codegen',
         'integration-guide/package-catalog',
