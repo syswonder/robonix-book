@@ -29,6 +29,6 @@ title: 语音
 
 `speak` 是“合成并直接播放”的 MCP 入口；其 `target` 填 `list_speakers` 返回的扬声器 `provider_id`，留空时使用部署配置的默认扬声器，否则取第一个可用实例。`list_speakers` 只返回通过 gRPC 暴露扬声器能力的运行实例，因此返回的 ID 可以直接用于 `speak.target`；仅通过 ROS 2 暴露的扬声器不会出现在该列表中。`tts` 返回完整音频缓冲区，`tts_stream` 返回音频分块，两者都由调用方播放。`list_speakers` 列出的是播放目标，不是 TTS 音色。流式能力约定只能走 gRPC（ROS 2 不原生支持流式 RPC）。
 
-参考实现：Robonix 源码中的 [`services/speech`](https://github.com/syswonder/robonix/tree/181d3eb974fd495a795ed120a0a4c6e6f342d179/services/speech)。`local` 配置组合使用 Whisper 单次识别、FunASR 流式识别和 Edge TTS；其中 ASR 模型在本机运行，Edge TTS 仍需要访问 Microsoft 服务。部署也可选择 Tencent 或自定义后端。某个后端初始化失败时，对应的 ASR、TTS 或唤醒词调用会返回 `UNAVAILABLE`。
+参考实现：Robonix 源码中的 [`services/speech`](https://github.com/syswonder/robonix/tree/181d3eb974fd495a795ed120a0a4c6e6f342d179/services/speech)。`local` 后端使用 FunASR 完成客户端连续语音交互所需的流式识别，使用 Edge TTS 完成合成；Edge TTS 仍需要访问 Microsoft 服务。Whisper 只服务于单次识别接口，当前支持不完善且默认权重超过 20 GB，不建议用于快速上手。部署也可选择腾讯云或自定义后端；腾讯云账号、密钥、引擎和清单字段见[语音后端配置](../../appendix/speech-backends.md)。某个后端初始化失败时，对应的 ASR、TTS 或唤醒词调用会返回 `UNAVAILABLE`。
 
 > 实现依据：[软件包清单](https://github.com/syswonder/robonix/blob/181d3eb974fd495a795ed120a0a4c6e6f342d179/services/speech/package_manifest.yaml) · [gRPC / MCP 注册](https://github.com/syswonder/robonix/blob/181d3eb974fd495a795ed120a0a4c6e6f342d179/services/speech/speech_service/service.py) · [`DialogEvent` IDL](https://github.com/syswonder/robonix/blob/181d3eb974fd495a795ed120a0a4c6e6f342d179/capabilities/lib/speech/msg/DialogEvent.msg)

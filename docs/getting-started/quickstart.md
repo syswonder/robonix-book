@@ -112,11 +112,10 @@ printf 'VLM_BASE_URL=%s\nVLM_MODEL=%s\n' "$VLM_BASE_URL" "$VLM_MODEL"
 
 ```bash
 cd examples/webots
-unset SPEECH_BACKEND
 rbnx build
 ```
 
-构建读取 `examples/webots/robonix_manifest.yaml`，准备本地软件包，并把清单中通过 `url:` 引用的音频、建图、导航和自主探索仓库放入 `rbnx-boot/cache/`。语音服务默认使用本地 FunASR 流式识别；第一次构建会安装本地语音依赖并下载 `paraformer-zh-streaming` 模型。第一次构建时间主要取决于容器镜像、模型下载、网络和 CPU；不要把冷启动时间与复用缓存后的启动时间混为一谈。
+构建读取 `examples/webots/robonix_manifest.yaml`，准备本地软件包，并把清单中通过 `url:` 引用的音频、建图、导航和自主探索仓库放入 `rbnx-boot/cache/`。语音服务默认使用本地 FunASR 流式识别；第一次构建会安装本地语音依赖并下载 `paraformer-zh-streaming` 模型。腾讯云是可选后端，账号开通、密钥和部署清单配置见[语音后端配置](../appendix/speech-backends.md)。Whisper 当前支持不完善且模型体积过大，本快速上手不启用它。第一次构建时间主要取决于容器镜像、模型下载、网络和 CPU；不要把冷启动时间与复用缓存后的启动时间混为一谈。
 
 **预期结果：** `rbnx build` 以状态码 0 退出。构建脚本的输出直接显示在当前终端，各软件包的构建产物位于各自的 `rbnx-build/`；随后执行 `rbnx boot` 时，运行日志才会写入当前部署目录的 `rbnx-boot/logs/`。
 
@@ -142,7 +141,6 @@ export PATH="$HOME/.cargo/bin:$PATH"
 export VLM_API_KEY='sk-...'
 export VLM_BASE_URL='https://api.example.com/v1'
 export VLM_MODEL='your-model-name'
-unset SPEECH_BACKEND
 export RMW_IMPLEMENTATION=rmw_zenoh_cpp
 
 cd /path/to/robonix/examples/webots

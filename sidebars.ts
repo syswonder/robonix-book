@@ -107,6 +107,13 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: '附录',
+      items: [
+        {type: 'doc', id: 'appendix/speech-backends', label: '语音后端配置'},
+      ],
+    },
+    {
+      type: 'category',
       label: '参与维护',
       items: ['contributing/documentation'],
     },
