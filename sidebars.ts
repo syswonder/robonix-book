@@ -19,6 +19,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'integration-guide/index',
         'integration-guide/vendor-onboarding',
+        {type: 'doc', id: 'tutorials/mapping-and-odometry', label: '建图与里程计'},
         'integration-guide/packaging-spec',
         'integration-guide/build-and-codegen',
         'integration-guide/package-catalog',
@@ -103,6 +104,13 @@ const sidebars: SidebarsConfig = {
         'reference/contracts',
         'reference/idl',
         'reference/api',
+      ],
+    },
+    {
+      type: 'category',
+      label: '附录',
+      items: [
+        {type: 'doc', id: 'appendix/speech-backends', label: '语音后端配置'},
       ],
     },
     {
