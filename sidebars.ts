@@ -116,7 +116,10 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: '参与维护',
-      items: ['contributing/documentation'],
+      items: [
+        {type: 'doc', id: 'contributing/robonix', label: '贡献 Robonix 代码'},
+        {type: 'doc', id: 'contributing/documentation', label: '维护文档'},
+      ],
     },
   ],
 };
