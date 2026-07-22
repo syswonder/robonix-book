@@ -22,9 +22,27 @@ title: 执行器
 
 `Execute(plan: pilot/Plan)` 流回 `RtdlEvent`：`plan_started` 表示方案开始，`node_state` 携带节点状态与叶子调用结果，`plan_complete` 给出方案终态。
 
+## 异步能力执行
+
+Executor 用一组同属一个提供方的 MCP 能力约定管理导航、抓取等长时间任务：
+
+| 能力约定 ID | 作用 |
+|---|---|
+| `<id>` | 启动任务 |
+| `<id>/status` | 查询任务状态 |
+| `<id>/cancel` | 请求取消任务 |
+
+只有 `/status` 和 `/cancel` 同时注册时，Executor 才把 `<id>` 识别为异步能力；两者都不存在时按同步能力执行，只存在其中一条时在主调用前报配置错误。该自动识别目前只适用于 MCP 能力调用。
+
+主调用成功后，Executor 从响应中读取可选的 `run_id`，每 2 秒轮询一次 `/status`。状态响应必须包含 `state`，其值可以是 `PENDING`、`RUNNING`、`PAUSED`、`SUCCEEDED`、`FAILED`、`CANCELED`、`CANCELLED` 或 `TIMEOUT`，并可通过 `detail` 补充说明。`SUCCEEDED`、`FAILED`、`CANCELED` / `CANCELLED` 和 `TIMEOUT` 是终态。
+
+方案取消时，Executor 会对仍在运行的异步调用请求 `<id>/cancel`。稳定、非空的 `run_id` 是并发运行的必要条件；为兼容旧提供方，空 `run_id` 会使状态与取消请求使用 `{}`，此时提供方必须把空请求解释为当前或最近一次运行。普通 RTDL 只需要调用主能力，不应手工插入轮询或取消节点。提供方的完整实现要求和示例见[开发者指南 14.5](../../developer-guide.md#145-mcp-与-grpc)。
+
 ## 运行时内置工具
 
-执行器还会在 Atlas 中注册 10 条 `robonix/system/executor/builtin/*` MCP 能力：`read_file`、`write_file`、`patch_file`、`list_dir`、`run_command`、`cancel_plan`、`get_all_plans`、`get_plan_status`、`stop_plan_at` 和 `read_capability_doc`。它们在 Atlas 中声明为 MCP 传输，但目标提供方正是 Executor 自身时，分发器会改走进程内实现，不连接其 `internal://...` 记账端点。这些能力没有标准 TOML；它们是当前内置实现的运行时表面，并会进入规划器的可调用目录。
+执行器仍会在 Atlas 中注册 10 条 `robonix/system/executor/builtin/*` MCP 能力：`read_file`、`write_file`、`patch_file`、`list_dir`、`run_command`、`cancel_plan`、`get_all_plans`、`get_plan_status`、`stop_plan_at` 和 `read_capability_doc`。它们在 Atlas 中声明为 MCP 传输，但目标提供方正是 Executor 自身时，分发器会改走进程内实现，不连接其 `internal://...` 记账端点。
+
+其中 `cancel_plan`、`get_all_plans`、`get_plan_status` 和 `stop_plan_at` 是迁移中的旧方案控制实现，Pilot 会把它们从模型可见的能力目录中移除。新的规划流程通过根级方案控制操作表达取消或停止意图，再由 Pilot 调用 `control_plan`；活动方案及其操作状态来自 `list_active_plans`。业务 RTDL 不应再调用这四条旧内置能力。其余内置工具仍可按模型能力使用。内置能力没有标准 TOML，它们属于当前 Executor 的运行时实现。
 
 文件与命令工具以 `ROBONIX_WORKSPACE` 为边界；未设置时使用执行器的当前工作目录。部署方应把该目录和执行器进程权限视为模型可操作的安全边界。
 

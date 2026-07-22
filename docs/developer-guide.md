@@ -187,6 +187,8 @@ string message
 
 `rpc` 不等于 gRPC，也不要求使用 gRPC 装饰器。它只说明“一次请求、一次响应”：选择 gRPC 时使用 `@provider.grpc(...)`，选择 MCP 时使用 `@provider.mcp(...)`，选择 ROS 2 service 时由 `rclpy` 创建服务，再用 `provider.declare_ros2_service(...)` 向 Atlas 声明端点。提供方应根据现有实现、调用方和部署拓扑选择传输。
 
+`rpc` 的一次响应也不表示业务动作必须已经结束。通过 MCP 启动导航、抓取等长时间任务时，提供方可以同时注册主能力及其 `/status`、`/cancel` 子能力，由 Executor 持续查询状态并响应方案取消。该约定见 [14.5 MCP 与 gRPC](#145-mcp-与-grpc)。
+
 模型需要发现并离散调用的工具通常使用 MCP；确定性的进程间控制、生命周期和流式请求通常使用 gRPC；机器人内部已有的高频传感与控制图通常保留 ROS 2。能力约定只定义语义，不会替开发者自动选择传输。提供方声明的传输、Atlas 返回的端点和消费者建立的客户端必须一致。
 
 当前 Python 运行时不会在装饰器注册阶段完整校验“模式—传输”矩阵，因此还要通过端到端测试确认生成类型、提供方和消费者选择了同一传输。
@@ -1043,6 +1045,66 @@ def tool(req: RequestType) -> ResponseType:
 ```
 
 `contract_id` 是能力约定 ID。装饰器在模块导入时记录处理函数；`provider.bootstrap()` 或 `provider.run()` 才会创建服务端点、向 Atlas 声明能力并开始接收请求。`description` 可省略；显式值优先，否则读取处理函数的 docstring。装饰器会返回原函数，因此业务逻辑仍可直接单元测试。
+
+#### MCP 长时间任务
+
+一次调用内即可返回最终结果的能力是同步能力。导航、抓取等动作在启动后仍需持续运行时，同一个提供方应注册三条 MCP 能力约定：
+
+| 能力约定 ID | 职责 | 最低响应要求 |
+|---|---|---|
+| `<id>` | 启动任务 | 返回启动结果；建议包含稳定、非空的 `run_id` |
+| `<id>/status` | 查询任务状态 | 返回字符串字段 `state`，可附带字符串字段 `detail` |
+| `<id>/cancel` | 请求取消任务 | 返回该能力约定定义的取消响应 |
+
+Executor 在分发 `<id>` 前查询同一提供方的 MCP 能力目录：
+
+- 两条子能力都不存在时，`<id>` 按同步能力执行，首次调用返回后节点结束；
+- `/status` 与 `/cancel` 同时存在时，`<id>` 按异步能力执行；
+- 只存在其中一条时，配置不完整，Executor 不会启动主任务，而是直接让该节点失败。
+
+异步能力的执行顺序如下：
+
+1. Executor 调用 `<id>` 启动任务，并从响应 JSON 中读取 `run_id`。
+2. Executor 每 2 秒调用一次 `<id>/status`，直到收到终态。
+3. 方案被取消且任务仍在运行时，Executor 调用 `<id>/cancel`。
+4. 普通 RTDL 方案只调用 `<id>`；状态查询和取消由 Executor 管理，不应作为普通业务步骤重复编排。
+
+`/status` 返回的 `state` 不区分大小写，可使用下列值：
+
+| 状态 | 是否终态 | 含义 |
+|---|:---:|---|
+| `PENDING` | 否 | 已接受，尚未开始运行 |
+| `RUNNING` | 否 | 正在运行 |
+| `PAUSED` | 否 | 已暂停，尚未结束 |
+| `SUCCEEDED` | 是 | 成功完成 |
+| `FAILED` | 是 | 执行失败 |
+| `CANCELED` / `CANCELLED` | 是 | 已取消 |
+| `TIMEOUT` | 是 | 执行超时 |
+
+缺少 `state` 或返回未知状态会使节点失败。`detail` 用于携带进度或终态说明。处理函数无法完成查询或取消时，应抛出 `RuntimeError`，不要把错误伪装成正常响应。
+
+`run_id` 用于区分同一能力的多次运行，提供方支持并发任务时必须返回稳定、非空的 ID，并让 `/status` 与 `/cancel` 按该 ID 定位同一次运行。当前 Executor 兼容不返回 `run_id` 的旧接口：此时两条子能力收到空请求 `{}`，提供方必须明确将它解释为当前或最近一次运行；这种兼容方式不适合并发任务。
+
+下面是接口形态的最小示例；请求和响应类型必须来自当前软件包的代码生成结果：
+
+```python
+@service.mcp("robonix/service/example/run")
+def run(req: Run_Request) -> Run_Response:
+    run_id = start_work(req)
+    return Run_Response(accepted=True, run_id=run_id)
+
+@service.mcp("robonix/service/example/run/status")
+def run_status(req: RunStatus_Request) -> RunStatus_Response:
+    state, detail = get_work_status(req.run_id)
+    return RunStatus_Response(state=state, detail=detail)
+
+@service.mcp("robonix/service/example/run/cancel")
+def run_cancel(req: CancelRun_Request) -> CancelRun_Response:
+    accepted = cancel_work(req.run_id)
+    return CancelRun_Response(accepted=accepted)
+```
+
+三条能力分别需要与自身请求和响应匹配的 `.srv` 和能力约定 TOML。它们都使用 `mode = "rpc"` 和 MCP 传输；`/status`、`/cancel` 不是新的模式，也不是 Executor 的通用控制面接口。完整的导航实现可参考本指南第 8 节。
 
 #### gRPC 生成代码
 
