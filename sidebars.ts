@@ -56,6 +56,8 @@ const sidebars: SidebarsConfig = {
             {type: 'doc', id: 'interface-catalog/primitive/index', label: '原语概览'},
             {type: 'doc', id: 'interface-catalog/primitive/chassis', label: '底盘'},
             {type: 'doc', id: 'interface-catalog/primitive/arm', label: '机械臂'},
+            {type: 'doc', id: 'interface-catalog/primitive/hand', label: '灵巧手'},
+            {type: 'doc', id: 'interface-catalog/primitive/quadruped', label: '四足底盘'},
             {type: 'doc', id: 'interface-catalog/primitive/camera', label: '相机'},
             {type: 'doc', id: 'interface-catalog/primitive/lidar', label: '激光雷达'},
             {type: 'doc', id: 'interface-catalog/primitive/imu', label: '惯性测量单元'},

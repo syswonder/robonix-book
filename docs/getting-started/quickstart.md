@@ -214,7 +214,9 @@ bash examples/webots/sim/start.sh --world kitchen.wbt
 | `complete_apartment.wbt`<br />![Webots 完整公寓场景预览](/img/webots/complete_apartment.jpg) | `break_room.wbt`<br />![Webots 休息室场景预览](/img/webots/break_room.jpg) |
 | `kitchen.wbt`<br />![Webots 厨房场景预览](/img/webots/kitchen.jpg) |  |
 
-`office.wbt` 使用镜像内的资源种子。第一次运行其他内置场景前，先下载一次 Cyberbotics 官方离线资源包；后续启动会复用持久化缓存：
+默认的 `office.wbt` 第一次启动时，会通过 `https://ghfast.top/` 下载一次带校验和的 [`webots-office-seed-v3`](https://github.com/syswonder/robonix-assets/releases/tag/webots-office-seed-v3)，随后从持久化 Webots 缓存卷复用。要绕过镜像站直连 GitHub，可把 `ROBONIX_WEBOTS_SEED_MIRROR` 设为空；`ROBONIX_WEBOTS_SEED_URL` 可以覆盖完整下载地址。
+
+第一次运行其他内置场景前，先下载一次 Cyberbotics 官方离线资源包；后续启动同样复用持久化缓存：
 
 ```bash
 ROBONIX_WEBOTS_DOWNLOAD_ALL_ASSETS=1 \
@@ -245,17 +247,25 @@ docker ps --filter name=robonix_tiago_sim
 
 本地图形桌面通常使用 `DISPLAY=:0`。若日志包含 X11 权限错误，按 `start.sh` 打印的 `xhost` 命令授权本地 Docker 用户。
 
-:::warning[替代渲染路径尚未完成完整验收]
-没有可用 X Server 时，可以用 Xvfb 做低速排错：
+:::info[无本地桌面时使用浏览器流]
+`ROBONIX_SIM_STREAM=1` 会启动浏览器查看器：主机存在 `/dev/nvidia0` 时自动选择 NVIDIA Xorg，否则回退到 Xvfb 软件渲染。Xvfb 不需要 NVIDIA 设备，但速度明显较低。
 
 ```bash
-WEBOTS_HEADLESS_MODE=xvfb ROBONIX_FORCE_CPU=1 \
-  bash examples/webots/sim/start.sh
-
 ROBONIX_SIM_STREAM=1 bash examples/webots/sim/start.sh
 ```
 
-`xvfb` 使用 CPU 软件渲染，不需要 NVIDIA 设备，但速度明显较低。当前浏览器流式路径会由 Compose 申请 NVIDIA 设备；使用 `ROBONIX_SIM_STREAM=1` 前，主机必须已安装 NVIDIA 驱动和 `nvidia-container-toolkit`。基础 Compose 虽然把 `/dev/dri` 映射进容器，但 Intel/AMD 与 Xvfb 路径都需要在目标主机单独验收，不能用 NVIDIA CI 的结果代替。
+本机打开 `http://127.0.0.1:8080/`。查看器连接优化后的 WebSocket 端口 `1235`，不要连接 Webots 原始端口 `1234`。端口可分别通过 `ROBONIX_SIM_VIEWER_PORT` 和 `ROBONIX_SIM_STREAM_PORT` 覆盖。
+
+远程机器运行时，把查看器和 WebSocket 一起转发：
+
+```bash
+ssh -N \
+  -L 18080:127.0.0.1:8080 \
+  -L 11235:127.0.0.1:1235 \
+  user@server
+```
+
+然后打开 `http://127.0.0.1:18080/?wsPort=11235`。
 :::
 
 ### `audio_driver` 在无声卡主机上启动失败

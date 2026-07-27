@@ -25,7 +25,7 @@ RETIRED_IDL_FRAGMENT_COMPATIBILITY = {
 }
 LEGACY_DRIVER_ROW = re.compile(
     r'^\| `robonix/(?:primitive|service)/[^`]+/driver` '
-    r'\| Legacy-compatible lifecycle[^\n]+$',
+    r'\| [^\n]+$',
     re.MULTILINE,
 )
 

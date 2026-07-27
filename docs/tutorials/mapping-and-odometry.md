@@ -72,7 +72,7 @@ curl --fail --location \
 | `RGBD/CreateOccupancyGrid` | `true` | 为每个图节点创建局部占据格栅 |
 | `Grid/RangeMax` | `6.0` | 建格时使用的最大传感器距离，单位米；`0` 表示不限制 |
 | `Grid/CellSize` | `0.05` | 占据格栅分辨率，单位米；值越小，地图越细且内存与计算开销越高 |
-| `Grid/RayTracing` | `true` | 从传感器到障碍格做射线更新并填充自由空间；关闭后更容易保留过期障碍点 |
+| `Grid/RayTracing` | `true` | 从传感器到障碍格做射线更新并填充自由空间；关闭后会保留深度相机观测到、但后续二维雷达射线从下方穿过的高处障碍，同时也更容易留下过期障碍 |
 | `Grid/3D` | `false` | 只生成二维投影；三维 OctoMap 需要更多内存和时间 |
 | `Grid/NormalsSegmentation` | `false` | 不通过点云法向分离地面，改用高度通过滤波 |
 | `Grid/MaxObstacleHeight` | `1.0` | 障碍点的最大高度；`0` 表示不限制 |
@@ -90,7 +90,7 @@ curl --fail --location \
 | `Icp/MaxTranslation` | `0.5` | 单次 ICP 修正可接受的最大平移，单位米 |
 | `Icp/MaxRotation` | `0.78` | 单次 ICP 修正可接受的最大旋转，单位弧度 |
 
-Webots Tiago 示例的部署文件将 `RGBD/LinearUpdate` 和 `RGBD/AngularUpdate` 设为 `0.05`，将 `Rtabmap/DetectionRate` 设为 `5.0`，并增加 `Mem/NotLinkedNodesKept: false`。这些是针对该仿真传感器频率和算力的部署值，不是新机器人的通用默认值。可执行示例见 [`examples/webots/config/rtabmap_params.yaml`](https://github.com/syswonder/robonix/blob/dev/examples/webots/config/rtabmap_params.yaml)。
+Webots Tiago 示例同时融合激光雷达和 RGB-D，将 `Grid/RayTracing` 设为 `false`，避免后续从桌面下方穿过的二维雷达射线清掉深度相机已经观测到的桌面等高处障碍。它还将 `RGBD/LinearUpdate` 和 `RGBD/AngularUpdate` 设为 `0.05`，将 `Rtabmap/DetectionRate` 设为 `5.0`，并增加 `Mem/NotLinkedNodesKept: false`。这些是针对该仿真传感器组合、频率和算力的部署值，不是新机器人的通用默认值。可执行示例见固定修订中的 [`examples/webots/config/rtabmap_params.yaml`](https://github.com/syswonder/robonix/blob/02603f426a19bf7e196c7f48919cef9089b7425e/examples/webots/config/rtabmap_params.yaml)。
 
 ## 验证顺序
 
@@ -138,6 +138,6 @@ rbnx logs -t mapping -l info
 - 节点过稀时，逐步降低 `RGBD/LinearUpdate` 和 `RGBD/AngularUpdate`；节点过密导致计算堆积时则提高。
 - 处理跟不上输入时，降低 `Rtabmap/DetectionRate`，不要仅增大队列。
 - 旋转时配准失败时，先检查 TF/时间/里程计，再调整 ICP 门限。
-- `Grid/RayTracing=false` 会减少自由空间清理，容易留下幽灵障碍。当前 Webots 基线保持 `true`；混合激光与深度时，仍要验证低矮障碍不会被错误清除。
+- `Grid/RayTracing=false` 会减少自由空间清理，容易留下幽灵障碍；设为 `true` 又可能让低位二维雷达错误清掉 RGB-D 看到的桌面等高处障碍。Webots 混合传感器基线选择 `false`，真实部署必须用“障碍移走”和“雷达从障碍下方穿过”两类场景共同验证。
 
 地图稳定后再运行 Explore、保存空间地图、标注房间并测试导航。保存、加载和位姿重定位接口见[空间地图](../interface-catalog/service/map.md)。

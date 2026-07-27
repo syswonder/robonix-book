@@ -6,12 +6,12 @@ hide_table_of_contents: true
 
 > 由 `rbnx docs` 自动生成，请勿手改。
 
-本页收录从 IDL 包含根（`rbnx docs --include`，默认 `capabilities/lib/`）收集的全部 ROS IDL（`.msg` / `.srv`）原文，按 ROS 包分组（共 302 个文件）。[能力约定参考](contracts.md) 的载荷列链到这里对应的锚点。
+本页收录从 IDL 包含根（`rbnx docs --include`，默认 `capabilities/lib/`）收集的全部 ROS IDL（`.msg` / `.srv`）原文，按 ROS 包分组（共 315 个文件）。[能力约定参考](contracts.md) 的载荷列链到这里对应的锚点。
 
 <details className="idl-package-index">
 <summary>展开 ROS package 索引</summary>
 
-[action_msgs](#action_msgs) · [actionlib_msgs](#actionlib_msgs) · [asr](#asr) · [audio](#audio) · [builtin_interfaces](#builtin_interfaces) · [camera](#camera) · [chassis](#chassis) · [composition_interfaces](#composition_interfaces) · [diagnostic_msgs](#diagnostic_msgs) · [executor](#executor) · [geometry_msgs](#geometry_msgs) · [health](#health) · [liaison](#liaison) · [lidar](#lidar) · [lifecycle](#lifecycle) · [lifecycle_msgs](#lifecycle_msgs) · [map](#map) · [memory](#memory) · [module_health](#module_health) · [nav_msgs](#nav_msgs) · [navigation](#navigation) · [perception](#perception) · [pilot](#pilot) · [rcl_interfaces](#rcl_interfaces) · [rosgraph_msgs](#rosgraph_msgs) · [semantic_map](#semantic_map) · [sensor_msgs](#sensor_msgs) · [shape_msgs](#shape_msgs) · [soma](#soma) · [speech](#speech) · [statistics_msgs](#statistics_msgs) · [std_msgs](#std_msgs) · [std_srvs](#std_srvs) · [stereo_msgs](#stereo_msgs) · [test_msgs](#test_msgs) · [trajectory_msgs](#trajectory_msgs) · [tts](#tts) · [unique_identifier_msgs](#unique_identifier_msgs) · [visualization_msgs](#visualization_msgs) · [vitals](#vitals) · [voiceprint](#voiceprint)
+[action_msgs](#action_msgs) · [actionlib_msgs](#actionlib_msgs) · [asr](#asr) · [audio](#audio) · [builtin_interfaces](#builtin_interfaces) · [camera](#camera) · [chassis](#chassis) · [composition_interfaces](#composition_interfaces) · [diagnostic_msgs](#diagnostic_msgs) · [executor](#executor) · [geometry_msgs](#geometry_msgs) · [hand](#hand) · [health](#health) · [liaison](#liaison) · [lidar](#lidar) · [lifecycle](#lifecycle) · [lifecycle_msgs](#lifecycle_msgs) · [map](#map) · [memory](#memory) · [module_health](#module_health) · [nav_msgs](#nav_msgs) · [navigation](#navigation) · [perception](#perception) · [pilot](#pilot) · [quadruped](#quadruped) · [rcl_interfaces](#rcl_interfaces) · [rosgraph_msgs](#rosgraph_msgs) · [semantic_map](#semantic_map) · [sensor_msgs](#sensor_msgs) · [shape_msgs](#shape_msgs) · [soma](#soma) · [speech](#speech) · [statistics_msgs](#statistics_msgs) · [std_msgs](#std_msgs) · [std_srvs](#std_srvs) · [stereo_msgs](#stereo_msgs) · [test_msgs](#test_msgs) · [trajectory_msgs](#trajectory_msgs) · [tts](#tts) · [unique_identifier_msgs](#unique_identifier_msgs) · [visualization_msgs](#visualization_msgs) · [vitals](#vitals) · [voiceprint](#voiceprint)
 
 </details>
 
@@ -1186,6 +1186,181 @@ Vector3  torque
 
 std_msgs/Header header
 Wrench wrench
+```
+
+## hand
+
+### FingerState `msg` {/* #hand-msg-fingerstate-msg */}
+
+`hand/msg/FingerState.msg`
+
+```rosidl
+# Current per-finger positions, published on the state_finger stream. The
+# finger-level counterpart to JointState; driver reports whatever
+# (finger, type) pairs it maps.
+FingerValue[] fingers  # value = current normalized position [0,1]
+```
+
+### FingerValue `msg` {/* #hand-msg-fingervalue-msg */}
+
+`hand/msg/FingerValue.msg`
+
+```rosidl
+# One finger motion addressed by (finger, type), with a normalized value.
+# Reused across move_finger (target), state_finger (current) and
+# set_finger_*_limits (limit). The driver maps this to the hand's underlying
+# axes, so it stays hardware-independent.
+string  finger       # thumb|index|middle|ring|pinky
+string  type         # bend | sway | oppose | other; endpoints defined by JointInfo
+float64 value        # normalized [0,1]
+```
+
+### GetHandInfo `srv` {/* #hand-srv-gethandinfo-srv */}
+
+`hand/srv/GetHandInfo.srv`
+
+```rosidl
+# Query hand metadata: the full control-axis layout. Call before driving axes:
+# move_finger works off (finger, type); the joint-level interface (move_joint,
+# set_joint_*_limits) addresses axes by the `name` returned here.
+---
+bool ok               # false = metadata unavailable (driver/hardware not ready)
+string message        # non-empty on failure: human-readable reason
+JointInfo[] joints    # every control axis; empty when ok=false -- do not read unless ok=true
+```
+
+### JointInfo `msg` {/* #hand-msg-jointinfo-msg */}
+
+`hand/msg/JointInfo.msg`
+
+```rosidl
+# One control axis (degree of freedom) of the hand, self-describing.
+# Returned by info. A physical finger may expose several axes (e.g. bend at
+# two links); address each by `name`, ordered palm->tip by joint_index.
+# `finger`+`type` group them for the finger-level interface but are NOT unique
+# on their own.
+# finger role, mapped from the thumb outward (drop the outermost when fewer):
+#   3-finger -> thumb,index,middle   4-finger -> +ring   5-finger -> +pinky
+#   DOF beyond 5 human fingers: leave finger="", keep the real type, by name
+string  finger       # thumb|index|middle|ring|pinky; "" if not finger-mapped
+# type + normalized value [0,1] endpoints (intrinsic axes, observer-independent):
+#   bend   : 0 = extended (straight)    1 = flexed (curled)
+#   sway   : 0 = toward pinky (ulnar)   1 = toward thumb (radial)
+#   oppose : 0 = neutral                1 = full opposition   (thumb only)
+#   other  : 0 and 1 defined by `description`
+string  type         # bend | sway | oppose | other
+uint8   joint_index  # position along the finger chain, palm(0) -> tip; 0 if single
+string  name         # unique addressing key; opaque -- never parse it for meaning
+string  description  # human/LLM readable; MUST state 0/1 for type=other, and what/where the DOF is for finger=""
+```
+
+### JointState `msg` {/* #hand-msg-jointstate-msg */}
+
+`hand/msg/JointState.msg`
+
+```rosidl
+# Current per-axis positions, published on the state_joint stream. Each entry
+# carries its axis `name`, so the stream is self-describing -- the axis-level
+# counterpart to FingerState.
+JointValue[] joints   # value = current normalized position [0,1]
+```
+
+### JointValue `msg` {/* #hand-msg-jointvalue-msg */}
+
+`hand/msg/JointValue.msg`
+
+```rosidl
+# One control axis addressed by name, with a normalized value. Reused across
+# move_joint (target), state_joint (current), set_joint_*_limits (limit) --
+# the value's meaning is fixed by whichever interface carries it.
+string  name         # matches a JointInfo.name from info; opaque -- never parse it
+float64 value        # normalized [0,1]
+```
+
+### MoveFinger `srv` {/* #hand-srv-movefinger-srv */}
+
+`hand/srv/MoveFinger.srv`
+
+```rosidl
+# Finger-level position command: address a finger's motion by (finger, type),
+# e.g. index bend or thumb oppose. Hardware-independent -- the driver maps
+# each (finger, type) to the hand's underlying axes. Only listed pairs move;
+# unlisted hold. See contract for accept semantics.
+FingerValue[] targets  # value = target normalized position [0,1]
+---
+bool ok                # true = accepted & dispatched (not necessarily reached)
+string message         # non-empty on rejection: human-readable reason
+```
+
+### MoveJoint `srv` {/* #hand-srv-movejoint-srv */}
+
+`hand/srv/MoveJoint.srv`
+
+```rosidl
+# Axis-level position command: address individual control axes by name (from
+# info's JointInfo.name). The precise / full-spectrum path; for hardware-
+# independent control prefer move_finger. Only listed axes move; unlisted hold.
+# See contract for accept semantics.
+JointValue[] targets   # value = target normalized position [0,1]
+---
+bool ok                # true = accepted & dispatched (not necessarily reached)
+string message         # non-empty on rejection: human-readable reason
+```
+
+### SetFingerSpeedLimits `srv` {/* #hand-srv-setfingerspeedlimits-srv */}
+
+`hand/srv/SetFingerSpeedLimits.srv`
+
+```rosidl
+# Set per-finger speed limit by (finger, type) (normalized [0,1]). Motor
+# parameter, typically configured by skill/service in task context. The driver
+# maps each (finger, type) to its underlying axes. Only listed pairs updated.
+FingerValue[] limits   # value = speed limit [0,1]
+---
+bool ok                # true = limits accepted & applied; false = rejected, reason in message
+string message
+```
+
+### SetFingerTorqueLimits `srv` {/* #hand-srv-setfingertorquelimits-srv */}
+
+`hand/srv/SetFingerTorqueLimits.srv`
+
+```rosidl
+# Set per-finger torque limit by (finger, type) (normalized [0,1]). Motor
+# parameter, typically configured by skill/service in task context. The driver
+# maps each (finger, type) to its underlying axes. Only listed pairs updated.
+FingerValue[] limits   # value = torque limit [0,1]
+---
+bool ok                # true = limits accepted & applied; false = rejected, reason in message
+string message
+```
+
+### SetJointSpeedLimits `srv` {/* #hand-srv-setjointspeedlimits-srv */}
+
+`hand/srv/SetJointSpeedLimits.srv`
+
+```rosidl
+# Set per-axis speed limit by name (normalized [0,1]). Motor parameter,
+# typically configured by skill/service in task context. Only listed axes
+# are updated.
+JointValue[] limits    # value = speed limit [0,1]
+---
+bool ok                # true = limits accepted & applied; false = rejected, reason in message
+string message
+```
+
+### SetJointTorqueLimits `srv` {/* #hand-srv-setjointtorquelimits-srv */}
+
+`hand/srv/SetJointTorqueLimits.srv`
+
+```rosidl
+# Set per-axis torque limit by name (normalized [0,1]). Motor parameter,
+# typically configured by skill/service in task context. Only listed axes
+# are updated.
+JointValue[] limits    # value = torque limit [0,1]
+---
+bool ok                # true = limits accepted & applied; false = rejected, reason in message
+string message
 ```
 
 ## health
@@ -2406,6 +2581,20 @@ uint64 timestamp_ms
 string goal
 string success_criterion
 string status
+```
+
+## quadruped
+
+### SetPosture `srv` {/* #quadruped-srv-setposture-srv */}
+
+`quadruped/srv/SetPosture.srv`
+
+```rosidl
+# Set a quadruped to a named body posture, such as stand, sit, or crouch.
+string posture_name
+---
+bool success
+string message
 ```
 
 ## rcl_interfaces
