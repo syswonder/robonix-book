@@ -84,6 +84,7 @@ def main() -> None:
     }
     failures: list[str] = []
     checked = 0
+    generated_targets_skipped = 0
     generated_fragments_skipped = 0
 
     for source, document in parsed.items():
@@ -97,6 +98,12 @@ def main() -> None:
             output = output_for_path(resolved.path, args.build)
             checked += 1
             if output is None:
+                # The fast ``make check`` target intentionally omits rustdoc
+                # and Sphinx output. Keep same-site API links domain-independent
+                # and defer their file checks to ``make full-check``.
+                if resolved.path.startswith(GENERATED_API_PREFIX):
+                    generated_targets_skipped += 1
+                    continue
                 failures.append(f"{source_route}: missing target {href}")
                 continue
 
@@ -126,7 +133,8 @@ def main() -> None:
         raise SystemExit(1)
     print(
         f"built link check: {checked} internal targets available; "
-        f"skipped {generated_pages_skipped} generated API pages and "
+        f"skipped {generated_pages_skipped} generated API pages, "
+        f"{generated_targets_skipped} absent generated API targets, and "
         f"{generated_fragments_skipped} generated API fragments"
     )
 
