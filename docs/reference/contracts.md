@@ -2,7 +2,7 @@
 
 > 由 `rbnx docs` 自动生成，请勿手改。
 
-本页罗列 `capabilities/` 下的所有标准能力约定（共 98 条）。
+本页罗列 `capabilities/` 下的所有标准能力约定（共 113 条）。
 载荷列链到对应的 [ROS IDL](idl.md)。概念与字段含义见 [接口目录](../interface-catalog/index.md)。
 
 :::warning[后向兼容：已有命名空间 Driver]
@@ -14,9 +14,11 @@
 | `robonix/primitive/audio/driver` | Legacy-compatible lifecycle interface for audio primitive providers. | primitive | `rpc` | [`lifecycle/srv/Driver.srv`](idl.md#lifecycle-srv-driver-srv) | `primitive/audio/driver.v1.toml` |
 | `robonix/primitive/camera/driver` | Legacy-compatible lifecycle interface for camera primitive providers. | primitive | `rpc` | [`lifecycle/srv/Driver.srv`](idl.md#lifecycle-srv-driver-srv) | `primitive/camera/driver.v1.toml` |
 | `robonix/primitive/chassis/driver` | Legacy-compatible lifecycle interface for chassis primitive providers. | primitive | `rpc` | [`lifecycle/srv/Driver.srv`](idl.md#lifecycle-srv-driver-srv) | `primitive/chassis/driver.v1.toml` |
+| `robonix/primitive/hand/driver` | - | primitive | `rpc` | [`lifecycle/srv/Driver.srv`](idl.md#lifecycle-srv-driver-srv) | `primitive/hand/driver.v1.toml` |
 | `robonix/primitive/health/driver` | Legacy-compatible lifecycle interface for health primitive providers. | primitive | `rpc` | [`lifecycle/srv/Driver.srv`](idl.md#lifecycle-srv-driver-srv) | `primitive/health/driver.v1.toml` |
 | `robonix/primitive/imu/driver` | Legacy-compatible lifecycle interface for IMU primitive providers. | primitive | `rpc` | [`lifecycle/srv/Driver.srv`](idl.md#lifecycle-srv-driver-srv) | `primitive/imu/driver.v1.toml` |
 | `robonix/primitive/lidar/driver` | Legacy-compatible lifecycle interface for lidar primitive providers. | primitive | `rpc` | [`lifecycle/srv/Driver.srv`](idl.md#lifecycle-srv-driver-srv) | `primitive/lidar/driver.v1.toml` |
+| `robonix/primitive/quadruped/driver` | Lifecycle control interface for quadruped primitive providers. | primitive | `rpc` | [`lifecycle/srv/Driver.srv`](idl.md#lifecycle-srv-driver-srv) | `primitive/quadruped/driver.v1.toml` |
 | `robonix/primitive/robot_description/driver` | Legacy-compatible lifecycle interface for robot-description primitive providers. | primitive | `rpc` | [`lifecycle/srv/Driver.srv`](idl.md#lifecycle-srv-driver-srv) | `primitive/robot_description/driver.v1.toml` |
 | `robonix/service/map/driver` | Legacy-compatible lifecycle interface for map service providers. | service | `rpc` | [`lifecycle/srv/Driver.srv`](idl.md#lifecycle-srv-driver-srv) | `service/map/driver.v1.toml` |
 | `robonix/service/memory/driver` | Legacy-compatible lifecycle interface for memory service providers. | service | `rpc` | [`lifecycle/srv/Driver.srv`](idl.md#lifecycle-srv-driver-srv) | `service/memory/driver.v1.toml` |
@@ -47,12 +49,25 @@
 | `robonix/primitive/chassis/move` | Low-level bounded chassis motion command without global path planning. | primitive | `rpc` | [`chassis/srv/ExecuteMoveCommand.srv`](idl.md#chassis-srv-executemovecommand-srv) | `primitive/chassis/move.v1.toml` |
 | `robonix/primitive/chassis/odom` | Raw chassis odometry in the local odom frame. | primitive | `topic_out` | [`common_interfaces/nav_msgs/msg/Odometry.msg`](idl.md#common-interfaces-nav-msgs-msg-odometry-msg) | `primitive/chassis/odom.v1.toml` |
 | `robonix/primitive/chassis/twist_in` | Velocity command input consumed by a chassis controller. | primitive | `topic_in` | [`common_interfaces/geometry_msgs/msg/Twist.msg`](idl.md#common-interfaces-geometry-msgs-msg-twist-msg) | `primitive/chassis/twist_in.v1.toml` |
+| `robonix/primitive/hand/info` | - | primitive | `rpc` | [`hand/srv/GetHandInfo.srv`](idl.md#hand-srv-gethandinfo-srv) | `primitive/hand/info.v1.toml` |
+| `robonix/primitive/hand/move_finger` | - | primitive | `rpc` | [`hand/srv/MoveFinger.srv`](idl.md#hand-srv-movefinger-srv) | `primitive/hand/move_finger.v1.toml` |
+| `robonix/primitive/hand/move_joint` | - | primitive | `rpc` | [`hand/srv/MoveJoint.srv`](idl.md#hand-srv-movejoint-srv) | `primitive/hand/move_joint.v1.toml` |
+| `robonix/primitive/hand/set_finger_speed_limits` | - | primitive | `rpc` | [`hand/srv/SetFingerSpeedLimits.srv`](idl.md#hand-srv-setfingerspeedlimits-srv) | `primitive/hand/set_finger_speed_limits.v1.toml` |
+| `robonix/primitive/hand/set_finger_torque_limits` | - | primitive | `rpc` | [`hand/srv/SetFingerTorqueLimits.srv`](idl.md#hand-srv-setfingertorquelimits-srv) | `primitive/hand/set_finger_torque_limits.v1.toml` |
+| `robonix/primitive/hand/set_joint_speed_limits` | - | primitive | `rpc` | [`hand/srv/SetJointSpeedLimits.srv`](idl.md#hand-srv-setjointspeedlimits-srv) | `primitive/hand/set_joint_speed_limits.v1.toml` |
+| `robonix/primitive/hand/set_joint_torque_limits` | - | primitive | `rpc` | [`hand/srv/SetJointTorqueLimits.srv`](idl.md#hand-srv-setjointtorquelimits-srv) | `primitive/hand/set_joint_torque_limits.v1.toml` |
+| `robonix/primitive/hand/state_finger` | - | primitive | `topic_out` | [`hand/msg/FingerState.msg`](idl.md#hand-msg-fingerstate-msg) | `primitive/hand/state_finger.v1.toml` |
+| `robonix/primitive/hand/state_joint` | - | primitive | `topic_out` | [`hand/msg/JointState.msg`](idl.md#hand-msg-jointstate-msg) | `primitive/hand/state_joint.v1.toml` |
 | `robonix/primitive/health/state` | - | primitive | `rpc` | [`health/srv/GetHealthState.srv`](idl.md#health-srv-gethealthstate-srv) | `primitive/health/state.v1.toml` |
 | `robonix/primitive/health/stream` | - | primitive | `rpc_server_stream` | [`health/srv/StreamHealthState.srv`](idl.md#health-srv-streamhealthstate-srv) | `primitive/health/stream.v1.toml` |
 | `robonix/primitive/imu/imu` | Continuous inertial measurement stream from an IMU primitive. | primitive | `topic_out` | [`common_interfaces/sensor_msgs/msg/Imu.msg`](idl.md#common-interfaces-sensor-msgs-msg-imu-msg) | `primitive/imu/imu.v1.toml` |
 | `robonix/primitive/lidar/lidar` | Continuous 2D laser scan stream from a lidar primitive. | primitive | `topic_out` | [`common_interfaces/sensor_msgs/msg/LaserScan.msg`](idl.md#common-interfaces-sensor-msgs-msg-laserscan-msg) | `primitive/lidar/lidar.v1.toml` |
 | `robonix/primitive/lidar/lidar3d` | Continuous 3D point cloud stream from a lidar primitive. | primitive | `topic_out` | [`common_interfaces/sensor_msgs/msg/PointCloud2.msg`](idl.md#common-interfaces-sensor-msgs-msg-pointcloud2-msg) | `primitive/lidar/lidar3d.v1.toml` |
 | `robonix/primitive/lidar/snapshot` | Capture one 2D laser scan on demand. | primitive | `rpc` | [`lidar/srv/GetLaserScan.srv`](idl.md#lidar-srv-getlaserscan-srv) | `primitive/lidar/lidar_snapshot.v1.toml` |
+| `robonix/primitive/quadruped/move` | Low-level bounded quadruped motion command without global path planning. | primitive | `rpc` | [`chassis/srv/ExecuteMoveCommand.srv`](idl.md#chassis-srv-executemovecommand-srv) | `primitive/quadruped/move.v1.toml` |
+| `robonix/primitive/quadruped/odom` | Raw quadruped odometry in the local odom frame. | primitive | `topic_out` | [`common_interfaces/nav_msgs/msg/Odometry.msg`](idl.md#common-interfaces-nav-msgs-msg-odometry-msg) | `primitive/quadruped/odom.v1.toml` |
+| `robonix/primitive/quadruped/posture` | Set a quadruped to a named body posture. | primitive | `rpc` | [`quadruped/srv/SetPosture.srv`](idl.md#quadruped-srv-setposture-srv) | `primitive/quadruped/posture.v1.toml` |
+| `robonix/primitive/quadruped/twist_in` | Velocity command input consumed by a quadruped controller. | primitive | `topic_in` | [`common_interfaces/geometry_msgs/msg/Twist.msg`](idl.md#common-interfaces-geometry-msgs-msg-twist-msg) | `primitive/quadruped/twist_in.v1.toml` |
 
 ## service
 

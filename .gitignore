@@ -8,6 +8,8 @@ node_modules/
 build/
 .docusaurus/
 .venv-api/
+__pycache__/
+*.py[cod]
 
 # Locally generated API docs (rustdoc/Sphinx). Built fresh by CI for Pages.
 src/api/

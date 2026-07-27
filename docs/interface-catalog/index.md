@@ -11,7 +11,7 @@
 
 | 命名空间 | 含义 | 域 |
 |----------|------|----|
-| `robonix/primitive/*` | 原语：低层设备抽象 | [机械臂](primitive/arm.md) · [音频](primitive/audio.md) · [相机](primitive/camera.md) · [底盘](primitive/chassis.md) · [设备健康](primitive/health.md) · [惯性测量单元](primitive/imu.md) · [激光雷达](primitive/lidar.md) · [机器人描述](primitive/robot-description.md) |
+| `robonix/primitive/*` | 原语：低层设备抽象 | [机械臂](primitive/arm.md) · [灵巧手](primitive/hand.md) · [音频](primitive/audio.md) · [相机](primitive/camera.md) · [底盘](primitive/chassis.md) · [四足底盘](primitive/quadruped.md) · [设备健康](primitive/health.md) · [惯性测量单元](primitive/imu.md) · [激光雷达](primitive/lidar.md) · [机器人描述](primitive/robot-description.md) |
 | `robonix/service/*` | 服务：可替换的通用能力 | [空间地图](service/map.md) · [导航](service/navigation.md) · [语音](service/speech.md) · [声纹](service/voiceprint.md) · [记忆](service/memory.md) |
 | `robonix/system/*` | 系统服务：Robonix 自身组件 | [规划器](system/pilot.md) · [执行器](system/executor.md) · [交互服务](system/liaison.md) · [场景服务](system/scene.md) · [本体服务](system/soma.md) · [健康服务](system/vitals.md) |
 | `robonix/lifecycle/*` | 跨原语、服务和技能复用的生命周期管理接口 | `robonix/lifecycle/driver` |

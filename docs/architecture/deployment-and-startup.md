@@ -10,7 +10,7 @@
 | `<deploy>/robonix_manifest.yaml` | `rbnx build`、`rbnx boot`、Soma | 选择系统组件、原语、服务和技能实例；指定软件包来源、分支、目标清单和实例配置 |
 | `<package>/package_manifest.yaml` | `rbnx build`、`rbnx start` | 定义一个软件包的元数据、构建命令、启动命令、停止命令和能力约定列表 |
 
-原语、服务和技能部署项的 `name` 是运行时提供方 ID；非内置系统软件包使用 `system:` 下的键名。一个软件包可以在同一部署中出现多次，但每个实例必须使用不同的 ID。对于 `url:` 软件包，代码缓存目录按 Git 仓库名创建，而不是按实例名创建；多个实例可以复用同一份代码检出。
+原语、服务和技能部署项的 `name` 是运行时提供方 ID；非内置系统软件包使用 `system:` 下的键名。该 ID 去除首尾空白后不能为空，并且在 `primitive:`、`service:` 和 `skill:` 之间全局唯一。一个软件包可以在同一部署中出现多次，但每个实例必须使用不同的 ID。对于 `url:` 软件包，代码缓存目录按 Git 仓库名创建，而不是按实例名创建；多个实例可以复用同一份代码检出。
 
 ```yaml
 service:
@@ -107,12 +107,13 @@ rbnx logs -d /path/to/deploy/rbnx-boot/logs -t soma --json
 
 不属于内置二进制的 `system:` 项，以及 `service:` 中的包，由 `rbnx` 逐个启动：
 
-1. 记录启动前的 Atlas 提供方集合。
-2. 执行 `rbnx start -p <package>`。
-3. 等待恰好一个新提供方注册。
-4. 校验注册的提供方 ID 与部署项 `name` 一致。
-5. 选择共享 `robonix/lifecycle/driver`，确认提供方只注册这一条 Driver，调用 `Driver(CMD_INIT)`，并把部署项 `config:` 编码为 `config_json`。
-6. 对非技能提供方再调用 `Driver(CMD_ACTIVATE)`，等待其进入 `ACTIVE`。
+1. 校验目标提供方 ID 当前不在 Atlas 中；如果同名实例仍存活则立即失败，不接管旧实例。
+2. 记录启动前的 Atlas 提供方集合。
+3. 执行 `rbnx start -p <package>`，同时把部署项 `name` 通过 `RBNX_INSTANCE_NAME` 传给软件包。
+4. 等待恰好一个本次启动后新注册的提供方。
+5. 校验注册的提供方 ID 与部署项 `name` 完全一致。
+6. 选择共享 `robonix/lifecycle/driver`，确认提供方只注册这一条 Driver，调用 `Driver(CMD_INIT)`，并把部署项 `config:` 编码为 `config_json`。
+7. 对非技能提供方再调用 `Driver(CMD_ACTIVATE)`，等待其进入 `ACTIVE`。
 
 生命周期 Driver 是每个受管提供方的标准管理接口。新软件包不需要声明或编写 Driver TOML；框架自动注册唯一的共享 `robonix/lifecycle/driver`。软件包也可以显式选择这条共享 Driver，运行结果相同。生命周期回调按需实现；缺少某个回调时，框架记录警告并执行空操作，原语或服务仍可在初始化和激活后进入 `ACTIVE`。
 
@@ -145,6 +146,8 @@ rbnx start -p /path/to/package \
 
 `--set` 覆盖 `--config` 中的同名字段；两者最终仍通过 `Driver(CMD_INIT)` 发送。
 
+Python 提供方的 gRPC 与 MCP 服务器默认绑定 `0.0.0.0`。整机只允许本机访问时，同时设置 `ROBONIX_PROVIDER_BIND_HOST=127.0.0.1` 和 `ROBONIX_ADVERTISE_HOST=127.0.0.1`；前者必须是 IPv4 地址字面量并控制监听套接字，后者控制向 Atlas 公告的地址。跨主机部署应保留 `0.0.0.0` 监听，并把 `ROBONIX_ADVERTISE_HOST` 设为消费者可以访问的提供方地址。
+
 Scene 作为非内置系统软件包使用同一条 Driver 配置路径。配置直接写在机器人部署清单中，不需要单独的 Scene 配置文件：
 
 ```yaml
@@ -157,6 +160,8 @@ system:
 ```
 
 `manifest` 选择 Scene 的目标软件包清单；`config` 在 `CMD_INIT` 中送到 Scene。旧的扁平 `system.scene` 字段和 `RBNX_CONFIG_FILE` 只用于既有部署迁移，并会输出弃用提示。
+
+Scene 默认以 `0.0.0.0` 提供 Web 管理界面；只需本机操作时设置 `SCENE_WEB_HOST=127.0.0.1`。每次启动默认建立新的实时对象会话：对象只有在地图界面执行 Save 时随地图快照持久化，并在 Load 对应地图时恢复；只有显式设置 `SCENE_RESTORE_ON_START` 才会在启动时热恢复旧对象。不要把一次进程重启误认为已经清空保存过的地图快照。
 
 ## 日志与状态
 
