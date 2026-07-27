@@ -11,7 +11,7 @@ const config: Config = {
   tagline: '具身智能操作系统的使用、开发与本体接入文档',
   favicon: 'img/robonix-mark.svg',
   clientModules: [require.resolve('./src/prism-rosidl.ts')],
-  url: 'https://robonix.syswonder.org',
+  url: 'https://robonix-book.syswonder.org',
   baseUrl: '/',
   organizationName: 'syswonder',
   projectName: 'robonix-book',

@@ -10,12 +10,12 @@
 
 | Crate | 角色 | 文档 |
 |---|---|---|
-| `robonix-atlas` | 能力目录 / 注册中心 | [API](https://robonix.syswonder.org/api/rust/robonix_atlas/index.html) |
-| `robonix-executor` | 方案编排与能力分发 | [API](https://robonix.syswonder.org/api/rust/robonix_executor/index.html) |
-| `robonix-pilot` | 规划 / 决策 / 记忆 | [API](https://robonix.syswonder.org/api/rust/robonix_pilot/index.html) |
-| `robonix-liaison` | 人机交互入口 | [API](https://robonix.syswonder.org/api/rust/robonix_liaison/index.html) |
-| `robonix-codegen` | 能力约定 / IDL 代码生成 | [API](https://robonix.syswonder.org/api/rust/robonix_codegen/index.html) |
-| `rbnx`（robonix-cli） | 开发 / 部署 CLI | [API](https://robonix.syswonder.org/api/rust/rbnx/index.html) |
+| `robonix-atlas` | 能力目录 / 注册中心 | [API](https://robonix-book.syswonder.org/api/rust/robonix_atlas/index.html) |
+| `robonix-executor` | 方案编排与能力分发 | [API](https://robonix-book.syswonder.org/api/rust/robonix_executor/index.html) |
+| `robonix-pilot` | 规划 / 决策 / 记忆 | [API](https://robonix-book.syswonder.org/api/rust/robonix_pilot/index.html) |
+| `robonix-liaison` | 人机交互入口 | [API](https://robonix-book.syswonder.org/api/rust/robonix_liaison/index.html) |
+| `robonix-codegen` | 能力约定 / IDL 代码生成 | [API](https://robonix-book.syswonder.org/api/rust/robonix_codegen/index.html) |
+| `rbnx`（robonix-cli） | 开发 / 部署 CLI | [API](https://robonix-book.syswonder.org/api/rust/rbnx/index.html) |
 
 本地生成需要一份已包含子模块、当前提交（HEAD）与本书 `ROBONIX_SOURCE_REVISION` 一致的 Robonix 源码检出。从**手册仓库根目录**运行：
 
