@@ -134,6 +134,7 @@ jobs:
             --no-progress
             --exclude-loopback
             --root-dir '${{ github.workspace }}/build'
+            --exclude '^file://.*/build/api/'
             --fallback-extensions html
             --max-retries 3
             --timeout 60
