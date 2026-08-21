@@ -13,7 +13,7 @@ Robonix 将具身智能运行时拆分为 12 项系统职责。它们是架构�
                     |          |
                     |          +-> 技能首次调用前通过 gRPC Driver 激活
                     |
-                    +-> 启动时读取 Soma 的本体描述和 URDF
+                    +-> 启动时读取 Soma 的本体描述 YAML
                     +-> 每轮规划前读取 Soma 的本体状态
                     +-> 每轮规划前经 Executor 读取 Scene 快照
                         （不可用或过期时按未知状态处理）
@@ -27,7 +27,7 @@ Robonix 以能力（Capability）为统一抽象。能力约定（Contract）定
 ### 任务流转
 
 1. **Liaison** 接收文本或语音输入，统一用户身份元数据，根据配置执行用户准入检查，然后将通过的任务提交给 Pilot。Liaison 不自己实现语音识别、语音合成、麦克风、扬声器或声纹识别，而是通过 Atlas 发现对应的原语和服务。
-2. **Pilot** 从 Atlas 读取当前可通过 MCP 调用的能力，构建模型提示，请求模型生成机器人任务描述语言（Robot Task Description Language，RTDL）动作树，再将动作树展开为执行方案并提交给 Executor。Pilot 启动时从 Soma 读取原始本体 YAML 和 URDF；每轮规划前再刷新 Soma 本体运行状态，并通过 Executor 调用 Scene 已声明的完整能力约定 `robonix/system/scene/get_robot_context` 读取空间快照。Soma 或 Scene 状态不可用、过期时，Pilot 将相应事实视为未知。当前版本尚未把 Vitals 的健康判断自动注入规划上下文。
+2. **Pilot** 从 Atlas 读取当前可通过 MCP 调用的能力，构建模型提示，请求模型生成机器人任务描述语言（Robot Task Description Language，RTDL）动作树，再将动作树展开为执行方案并提交给 Executor。Pilot 启动时从 Soma 读取原始本体 YAML——刻意不加载 URDF 进提示上下文，运动学细节由 Soma 的 `get_urdf` 提供给 TF/RViz/运动规划等消费方；每轮规划前再刷新 Soma 本体运行状态，并通过 Executor 调用 Scene 已声明的完整能力约定 `robonix/system/scene/get_robot_context` 读取空间快照。Soma 或 Scene 状态不可用、过期时，Pilot 将相应事实视为未知。当前版本尚未把 Vitals 的健康判断自动注入规划上下文。
 3. **Executor** 验证并执行 RTDL 的 `sequence`、`parallel` 和 `do` 节点。`do` 节点携带 `provider_id` 和 `contract_id`；当前模型可调用路径固定通过 Atlas 连接该提供方的 MCP 能力，并以事件流返回节点状态和结果。Skill 仍为 `INACTIVE` 时，Executor 会在首次调用前通过其 gRPC driver 发送 `CMD_ACTIVATE`。
 4. **Pilot** 根据执行结果决定结束当前任务，还是继续下一轮规划。
 
@@ -69,7 +69,7 @@ Soma 使用的 `soma.yaml` 是一台机器人的**本体描述文件**，不是 
 
 ## 当前实现状态
 
-表中的“已实现”只表示当前源码存在可启动实现，不能单独证明某台机器人已经获得支持。机器人支持必须按下面的顺序验收；任一步失败，都不能把“进程存在”写成“整机已支持”。命令与参数来自源码中的 [`tools/rbnx/src/cmd/mod.rs`](https://github.com/syswonder/robonix/blob/181d3eb974fd495a795ed120a0a4c6e6f342d179/tools/rbnx/src/cmd/mod.rs)，Atlas 检查项来自 [`system/atlas/proto/atlas.proto`](https://github.com/syswonder/robonix/blob/181d3eb974fd495a795ed120a0a4c6e6f342d179/system/atlas/proto/atlas.proto)。
+表中的“已实现”只表示当前源码存在可启动实现，不能单独证明某台机器人已经获得支持。机器人支持必须按下面的顺序验收；任一步失败，都不能把“进程存在”写成“整机已支持”。命令与参数来自源码中的 [`tools/rbnx/src/cmd/mod.rs`](https://github.com/syswonder/robonix/blob/cec06ee874eace27dd622e6ce4685c971f04a9e4/tools/rbnx/src/cmd/mod.rs)，Atlas 检查项来自 [`system/atlas/proto/atlas.proto`](https://github.com/syswonder/robonix/blob/cec06ee874eace27dd622e6ce4685c971f04a9e4/system/atlas/proto/atlas.proto)。
 
 1. **核对源清单。** 逐项检查机器人仓库的 `robonix_manifest.yaml`，以及每个部署项通过 `path` / `url`、`branch` 和 `manifest` 选中的 `package_manifest*.yaml`。实例 `name` 必须与预期 `provider_id` 一致；包清单只能声明运行时真正提供的能力约定。
 2. **验证并构建所选目标。** 对本地包先运行 `rbnx validate ./path/to/package`，再从部署目录运行 `rbnx build -f ./robonix_manifest.yaml`。后者必须成功构建部署清单实际选择的目标变体，而不只是默认包清单。

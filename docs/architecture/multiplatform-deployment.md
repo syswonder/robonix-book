@@ -250,7 +250,9 @@ ROBONIX_ZENOH_MODE
 ROBONIX_ZENOH_LISTEN
 ```
 
-它们不是第二个 RMW 选择器。`RMW_IMPLEMENTATION` 选择 ROS 2 中间件；上述变量只描述 `rmw_zenoh_cpp` 如何连接路由器。软件包入口脚本最终将生成的文件写入 `ZENOH_SESSION_CONFIG_URI`。
+它们不是第二个 RMW 选择器。`RMW_IMPLEMENTATION` 选择 ROS 2 中间件；上述变量只描述 `rmw_zenoh_cpp` 如何连接路由器：`ROBONIX_ZENOH_ROUTER` 是要加入的路由器端点（如 `tcp/192.168.1.10:7447`），`ROBONIX_ZENOH_MODE` 是会话模式（默认 `client`），`ROBONIX_ZENOH_LISTEN` 可选地覆盖本会话的监听端点。软件包入口脚本最终将生成的文件写入 `ZENOH_SESSION_CONFIG_URI`。
+
+仿真以 bridge 网络运行时，路由器只发布在宿主机 loopback 的映射端口上，跨网络命名空间的 Zenoh 发现不可依赖：宿主侧每个 `rbnx boot` shell **必须**显式设置 `ROBONIX_ZENOH_ROUTER` 为映射端点（即使映射端口就是默认的 `7447`，例如 `tcp/127.0.0.1:7447`）。
 
 路由器位于宿主机或另一台固定节点、而 ROS 2 软件包在容器中运行时，可在机器人部署顶层统一提供会话参数：
 

@@ -6,7 +6,7 @@ title: 相机
 
 相机原语覆盖 RGB 与深度图像，两种取图方式并存：**流式**（`rgb` / `depth`）给场景融合、建图等高频消费者使用；**快照**（`snapshot` / `depth_snapshot`，一元 RPC）供大模型智能体按需取一帧。`topic_out` 只描述单向输出流，不绑定具体传输方式；当前 Webots 提供方通过 ROS 2 发布，Scene 当前也只接入 ROS 2 数据面。当前 Scene 首先从 TF2 查询完整的世界帧到相机光学帧变换；只在 TF2 不可用时，才组合 Atlas 发现的地图位姿与 `robonix/primitive/camera/extrinsics`。
 
-能力约定 TOML 在源码树的 [`capabilities/primitive/camera/`](https://github.com/syswonder/robonix/tree/181d3eb974fd495a795ed120a0a4c6e6f342d179/capabilities/primitive/camera)，接口定义语言（Interface Definition Language，IDL）位于 [`capabilities/lib/camera/`](https://github.com/syswonder/robonix/tree/181d3eb974fd495a795ed120a0a4c6e6f342d179/capabilities/lib/camera) 与固定版本的 [`common_interfaces`](https://github.com/enkerewpo/common_interfaces/tree/0ecd0f70791fe200f057b12bfc626beb21bad639) 子模块。下文的帧方向和标定字段以这些源码定义为准。
+能力约定 TOML 在源码树的 [`capabilities/primitive/camera/`](https://github.com/syswonder/robonix/tree/cec06ee874eace27dd622e6ce4685c971f04a9e4/capabilities/primitive/camera)，接口定义语言（Interface Definition Language，IDL）位于 [`capabilities/lib/camera/`](https://github.com/syswonder/robonix/tree/cec06ee874eace27dd622e6ce4685c971f04a9e4/capabilities/lib/camera) 与固定版本的 [`common_interfaces`](https://github.com/enkerewpo/common_interfaces/tree/0ecd0f70791fe200f057b12bfc626beb21bad639) 子模块。下文的帧方向和标定字段以这些源码定义为准。
 
 新软件包省略 Driver 条目，由框架自动注册共享的 `robonix/lifecycle/driver`；显式选择共享 Driver 的行为相同。未实现生命周期回调时，框架记录警告并执行空操作。
 
@@ -37,7 +37,7 @@ title: 相机
 - `child_frame_id` 是子帧，即实际成像使用的相机光学帧，例如 `camera_color_optical_frame`；
 - `transform` 是 `T(parent ← child)`：它给出子帧原点和坐标轴在父帧中的位姿，并把子帧点变换到父帧，`p_parent = T(parent ← child) · p_child`。这里不能取逆矩阵。
 
-当前 Scene 的主路径是直接用 TF2 取 `T(world ← camera_optical)`。只有该查询失败时，兼容路径才计算 `T(world ← camera_optical) = T(world ← base) · T(base ← camera_optical)`；实现见 [`_build_camera_to_map_transform`](https://github.com/syswonder/robonix/blob/181d3eb974fd495a795ed120a0a4c6e6f342d179/system/scene/scene_service/ingest/perception_concept_graphs.py)。Tiago 参考驱动调用 `lookup_transform(base_frame, cam_frame, ...)`，随后明确写入 `header.frame_id = base_frame` 与 `child_frame_id = cam_frame`；实现见 [`camera_driver/driver.py`](https://github.com/syswonder/robonix/blob/181d3eb974fd495a795ed120a0a4c6e6f342d179/examples/webots/primitives/tiago_camera/camera_driver/driver.py)。
+当前 Scene 的主路径是直接用 TF2 取 `T(world ← camera_optical)`。只有该查询失败时，兼容路径才计算 `T(world ← camera_optical) = T(world ← base) · T(base ← camera_optical)`；实现见 [`_build_camera_to_map_transform`](https://github.com/syswonder/robonix/blob/cec06ee874eace27dd622e6ce4685c971f04a9e4/system/scene/scene_service/ingest/perception_concept_graphs.py)。Tiago 参考驱动调用 `lookup_transform(base_frame, cam_frame, ...)`，随后明确写入 `header.frame_id = base_frame` 与 `child_frame_id = cam_frame`；实现见 [`camera_driver/driver.py`](https://github.com/syswonder/robonix/blob/cec06ee874eace27dd622e6ce4685c971f04a9e4/examples/webots/primitives/tiago_camera/camera_driver/driver.py)。
 
 `extrinsics` 使用“瞬态本地（`TRANSIENT_LOCAL`）+ 可靠（`RELIABLE`）”的服务质量（Quality of Service，QoS），在启动和重新标定后发布。它是当前 Scene 的兼容回退，不是权威主路径。新部署应提供连通世界帧、机身帧与相机光学帧的完整 URDF/TF；如果仍声明该契约，其变换必须与 TF 一致。
 
@@ -55,7 +55,7 @@ title: 相机
 | `r`（R） | 3×3 行主序校正旋转；单目相机通常为单位矩阵。 |
 | `p`（P） | 校正图像使用的 3×4 行主序投影矩阵；单目相机通常 `Tx=Ty=0`，左侧 3×3 为校正后的内参。 |
 
-未标定相机应将 D、K、R、P 保持为零；`K[0] == 0` 表示未标定。当前 Scene 的 [`_cam_info_to_intrinsics`](https://github.com/syswonder/robonix/blob/181d3eb974fd495a795ed120a0a4c6e6f342d179/system/scene/scene_service/service.py) 只读取 `width`、`height` 和 K，并拒绝宽高、`fx/fy` 或主点不完整的消息；它尚不使用 `distortion_model`、D、R、P 做去畸变或校正。因此，“Scene 已收到内参”不能替代完整标定检查。
+未标定相机应将 D、K、R、P 保持为零；`K[0] == 0` 表示未标定。当前 Scene 的 [`_cam_info_to_intrinsics`](https://github.com/syswonder/robonix/blob/cec06ee874eace27dd622e6ce4685c971f04a9e4/system/scene/scene_service/service.py) 只读取 `width`、`height` 和 K，并拒绝宽高、`fx/fy` 或主点不完整的消息；它尚不使用 `distortion_model`、D、R、P 做去畸变或校正。因此，“Scene 已收到内参”不能替代完整标定检查。
 
 提供方应使用可靠发布，并保证晚启动消费者能取得最新标定；Tiago 参考驱动使用持久发布并周期性重发最后一条有效消息。它从部署参数构造的仿真回退值是 `plumb_bob`、空 D、单位 R 和单目 P，仅适用于已经确认无需畸变修正的仿真图像；真实相机应转发设备标定产生的完整 `CameraInfo`。
 

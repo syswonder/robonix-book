@@ -19,10 +19,22 @@ title: 记忆
 | 能力约定 ID | 模式 | 默认实现传输 | 载荷（IDL） | 能力约定 TOML |
 |---|---|---|---|---|
 | `robonix/service/memory/search` | `rpc` | 模型上下文协议（Model Context Protocol，MCP） | [`memory/Search`](../../reference/idl.md#memory-srv-search-srv)（`std_msgs/String` → `std_msgs/String`） | `service/memory/search.v1.toml` |
-| `robonix/service/memory/save` | `rpc` | MCP | [`memory/Save`](../../reference/idl.md#memory-srv-save-srv)（`std_msgs/String` → `std_msgs/String`） | `service/memory/save.v1.toml` |
+| `robonix/service/memory/save` | `rpc` | MCP | [`memory/Save`](../../reference/idl.md#memory-srv-save-srv)（`std_msgs/String` → `std_msgs/String`，已废弃） | `service/memory/save.v1.toml` |
 | `robonix/service/memory/compact` | `rpc` | MCP | [`memory/Compact`](../../reference/idl.md#memory-srv-compact-srv)（空请求 → `std_msgs/String`） | `service/memory/compact.v1.toml` |
 
-参考实现：Robonix 源码中的 [`services/memsearch`](https://github.com/syswonder/robonix/tree/181d3eb974fd495a795ed120a0a4c6e6f342d179/services/memsearch)（`memsearch[onnx]` + `milvus-lite`）。三个记忆操作都用 `@memory.mcp(...)` 暴露，不挂载业务 gRPC servicer。MCP 服务内部的工具名默认取 leaf `search`、`save`、`compact`，但 Atlas 发现与 RTDL 路由仍使用完整 `robonix/service/memory/search`、`robonix/service/memory/save` 和 `robonix/service/memory/compact`。Driver 由 Robonix API 以 gRPC 提供。
+参考实现：Robonix 源码中的 [`services/memsearch`](https://github.com/syswonder/robonix/tree/cec06ee874eace27dd622e6ce4685c971f04a9e4/services/memsearch)（`memsearch[onnx]` + `milvus-lite`）。三个记忆操作都用 `@memory.mcp(...)` 暴露，不挂载业务 gRPC servicer。MCP 服务内部的工具名默认取 leaf `search`、`save`、`compact`，但 Atlas 发现与 RTDL 路由仍使用完整 `robonix/service/memory/search`、`robonix/service/memory/save` 和 `robonix/service/memory/compact`。Driver 由 Robonix API 以 gRPC 提供。
+
+## memgraph 提供方（结构化记忆）
+
+除默认参考实现 memsearch 外，源码树还包含第二个提供方 `services/memory`（服务名 `memgraph`，ScribeMem 结构化记忆）：它把记忆写入因果知识图谱（Causal Knowledge Graph，CKG），做 BM25 + 向量混合检索，并在同一 `robonix/service/memory` 命名空间注册三条自己的能力约定：
+
+| 能力约定 ID | 模式 | 传输 | 载荷（IDL） | 能力约定 TOML |
+|---|---|---|---|---|
+| `robonix/service/memory/remember` | `rpc` | MCP | [`memgraph/Remember`](../../reference/idl.md#memgraph-srv-remember-srv)（JSON over `std_msgs/String`） | `service/memory/remember.v1.toml` |
+| `robonix/service/memory/hybrid_search` | `rpc` | MCP | [`memgraph/Search`](../../reference/idl.md#memgraph-srv-search-srv)（JSON over `std_msgs/String`） | `service/memory/hybrid_search.v1.toml` |
+| `robonix/service/memory/promote` | `rpc` | MCP | [`memgraph/Compact`](../../reference/idl.md#memgraph-srv-compact-srv)（`std_msgs/Empty` → `std_msgs/String`） | `service/memory/promote.v1.toml` |
+
+`remember` 写入结构化记忆节点，`hybrid_search` 做三阶段混合检索，`promote` 把超限的短期节点提升为长期记忆。`save.v1.toml` 的 `memory/Save.srv` 已标注废弃（deprecated），由 `remember` 取代，仅为基于 memsearch 的部署保留兼容。Webots 部署清单（`examples/webots/robonix_manifest.yaml`）把 memgraph 与 memsearch 作为两个并行后端一起启动；memsearch 仍是默认参考实现。
 
 ## 生命周期与运行行为
 

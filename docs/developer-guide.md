@@ -358,7 +358,7 @@ Driver 约定的数量和启动行为见第 5.2 节。
 
 ### 6.3 构建与启动脚本
 
-代码生成使用当前 `python3` 生成 gRPC 类型。先在软件包实际使用的 Python 环境中安装并验证依赖：
+代码生成默认使用当前 `python3` 生成 gRPC 类型；解释器可用 `rbnx codegen --python <interpreter>` 或环境变量 `RBNX_CODEGEN_PYTHON` 指定，优先级为命令行标志 → 环境变量 → `python3`。先在软件包实际使用的 Python 环境中安装并验证依赖：
 
 ```bash
 python3 -m pip install grpcio-tools
@@ -1403,7 +1403,7 @@ for event in stub.RecognizeStream(asr_requests(), timeout=60.0):
 | `rbnx init <name>` | 创建机器人部署骨架 |
 | `rbnx package-new <name> --type <type>` | 创建软件包骨架 |
 | `rbnx validate [path]` | 校验软件包清单 |
-| `rbnx codegen -p <package> [--mcp] [--ros2]` | 生成 gRPC、MCP 或 ROS 2 接口代码 |
+| `rbnx codegen -p <package> [--mcp] [--ros2] [--python <interpreter>]` | 生成 gRPC、MCP 或 ROS 2 接口代码；解释器优先级为 `--python` → `RBNX_CODEGEN_PYTHON` → `python3` |
 | `rbnx build [-p <package> \| -f <manifest>]` | 构建软件包或整个部署 |
 | `rbnx start [-p <package>]` | 单独启动软件包；生命周期行为见第 5.2 节 |
 | `rbnx boot [-v] [-f <manifest>]` | 启动整套部署；`-v` 关闭动态启动动画并实时输出 INFO/WARN/ERROR |
@@ -1418,6 +1418,8 @@ for event in stub.RecognizeStream(asr_requests(), timeout=60.0):
 | `rbnx inspect` | 输出完整运行时状态 |
 | `rbnx ask "<prompt>"` | 非交互提交一次任务 |
 | `rbnx chat` | 启动交互界面 |
+| `rbnx docs` | 从 `capabilities/` 重新生成 contracts/idl 参考文档 |
+| `rbnx config` | 查看/设置 rbnx 配置 |
 | `rbnx logs [-d <dir>] [-t <tag>] [-l <level>] [-f] [--json]` | 读取、筛选或跟随 Scribe 结构化日志 |
 
 `rbnx clean -f robonix_manifest.yaml` 默认保留 `rbnx-boot/cache/`；只有加 `--cache` 才删除远程软件包缓存。单独执行 `rbnx start --config <file>` 时仍会先读取软件包清单；启动器确认提供方只注册唯一的共享生命周期 Driver 后，通过 `CMD_INIT` 发送合并配置。配置文件路径不会暴露给提供方进程。

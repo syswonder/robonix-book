@@ -2,7 +2,7 @@
 
 > 由 `rbnx docs` 自动生成，请勿手改。
 
-本页罗列 `capabilities/` 下的所有标准能力约定（共 113 条）。
+本页罗列 `capabilities/` 下的所有标准能力约定（共 120 条）。
 载荷列链到对应的 [ROS IDL](idl.md)。概念与字段含义见 [接口目录](../interface-catalog/index.md)。
 
 :::warning[后向兼容：已有命名空间 Driver]
@@ -88,11 +88,17 @@
 | `robonix/service/map/save_map` | Persist the current map under a stable map id. | service | `rpc` | [`map/srv/SaveMap.srv`](idl.md#map-srv-savemap-srv) | `service/map/save_map.v1.toml` |
 | `robonix/service/map/switch_mode` | Switch the running map service between mapping and localization modes. | service | `rpc` | [`map/srv/SwitchMode.srv`](idl.md#map-srv-switchmode-srv) | `service/map/switch_mode.v1.toml` |
 | `robonix/service/memory/compact` | Compact long-term memory into a shorter summary. | service | `rpc` | [`memory/srv/Compact.srv`](idl.md#memory-srv-compact-srv) | `service/memory/compact.v1.toml` |
+| `robonix/service/memory/hybrid_search` | - | service | `rpc` | [`memgraph/srv/Search.srv`](idl.md#memgraph-srv-search-srv) | `service/memory/hybrid_search.v1.toml` |
+| `robonix/service/memory/promote` | - | service | `rpc` | [`memgraph/srv/Compact.srv`](idl.md#memgraph-srv-compact-srv) | `service/memory/promote.v1.toml` |
+| `robonix/service/memory/remember` | - | service | `rpc` | [`memgraph/srv/Remember.srv`](idl.md#memgraph-srv-remember-srv) | `service/memory/remember.v1.toml` |
 | `robonix/service/memory/save` | Persist a fact, preference, or note into long-term memory. | service | `rpc` | [`memory/srv/Save.srv`](idl.md#memory-srv-save-srv) | `service/memory/save.v1.toml` |
 | `robonix/service/memory/search` | Search long-term memory for entries relevant to a query. | service | `rpc` | [`memory/srv/Search.srv`](idl.md#memory-srv-search-srv) | `service/memory/search.v1.toml` |
+| `robonix/service/navigation/adjust_speed` | Adjust an active navigation run by the deployment-configured speed step. | service | `rpc` | [`navigation/srv/AdjustNavigationSpeed.srv`](idl.md#navigation-srv-adjustnavigationspeed-srv) | `service/navigation/adjust_speed.v1.toml` |
+| `robonix/service/navigation/get_speed_limit` | Read the configured and effective navigation speed limits. | service | `rpc` | [`navigation/srv/GetNavigationSpeedLimit.srv`](idl.md#navigation-srv-getnavigationspeedlimit-srv) | `service/navigation/get_speed_limit.v1.toml` |
 | `robonix/service/navigation/navigate` | Navigate the robot to a target pose using planning and obstacle avoidance. | service | `rpc` | [`navigation/srv/Navigate.srv`](idl.md#navigation-srv-navigate-srv) | `service/navigation/navigate.v1.toml` |
 | `robonix/service/navigation/navigate/cancel` | Cancel a previously accepted navigation run. | service | `rpc` | [`navigation/srv/CancelNavigation.srv`](idl.md#navigation-srv-cancelnavigation-srv) | `service/navigation/navigate/cancel.v1.toml` |
 | `robonix/service/navigation/navigate/status` | Read status for a previously accepted navigation run. | service | `rpc` | [`navigation/srv/GetNavigationStatus.srv`](idl.md#navigation-srv-getnavigationstatus-srv) | `service/navigation/navigate/status.v1.toml` |
+| `robonix/service/navigation/set_speed_limit` | Set an explicit bounded navigation speed percentage. | service | `rpc` | [`navigation/srv/SetNavigationSpeedLimit.srv`](idl.md#navigation-srv-setnavigationspeedlimit-srv) | `service/navigation/set_speed_limit.v1.toml` |
 | `robonix/service/speech/asr` | Recognize speech from one audio buffer. | service | `rpc` | [`asr/srv/Recognize.srv`](idl.md#asr-srv-recognize-srv) | `service/speech/asr.v1.toml` |
 | `robonix/service/speech/asr_stream` | Streaming speech recognition over an audio chunk stream. | service | `rpc_bidirectional_stream` | [`asr/srv/RecognizeStream.srv`](idl.md#asr-srv-recognizestream-srv) | `service/speech/asr_stream.v1.toml` |
 | `robonix/service/speech/dialog` | Run a voice dialog session that coordinates speech input and output. | service | `rpc_server_stream` | [`speech/srv/StartDialog.srv`](idl.md#speech-srv-startdialog-srv) | `service/speech/dialog.v1.toml` |
@@ -127,7 +133,8 @@
 | `robonix/system/scene/get_scene_graph` | Return the current scene graph snapshot. | service | `rpc` | [`semantic_map/srv/GetSceneGraph.srv`](idl.md#semantic-map-srv-getscenegraph-srv) | `system/scene/get_scene_graph.v1.toml` |
 | `robonix/system/scene/goal_near` | Compute a navigation-safe approach pose near a known physical scene object. Room annotations are not accepted; use robonix/system/scene/goal_room for rooms or named regions. | service | `rpc` | [`semantic_map/srv/GoalNear.srv`](idl.md#semantic-map-srv-goalnear-srv) | `system/scene/goal_near.v1.toml` |
 | `robonix/system/scene/goal_room` | Resolve a room annotation to a navigation-safe pose inside its polygon. Use this for named rooms or regions before navigation/navigate. | service | `rpc` | [`semantic_map/srv/GoalRoom.srv`](idl.md#semantic-map-srv-goalroom-srv) | `system/scene/goal_room.v1.toml` |
-| `robonix/system/scene/list_objects` | List all objects currently known to the scene registry. | service | `rpc` | [`semantic_map/srv/ListObjects.srv`](idl.md#semantic-map-srv-listobjects-srv) | `system/scene/list_objects.v1.toml` |
+| `robonix/system/scene/list_objects` | List objects currently known to Scene, including compatibility room entries. Use list_regions for room geometry and staleness. | service | `rpc` | [`semantic_map/srv/ListObjects.srv`](idl.md#semantic-map-srv-listobjects-srv) | `system/scene/list_objects.v1.toml` |
+| `robonix/system/scene/list_regions` | List all registered room regions with stable IDs and polygon metadata. Use this before goal_room; use list_objects only for perceived physical objects. | service | `rpc` | [`semantic_map/srv/ListRegions.srv`](idl.md#semantic-map-srv-listregions-srv) | `system/scene/list_regions.v1.toml` |
 | `robonix/system/scene/list_relations` | List scene graph relations, optionally filtered by relation type. | service | `rpc` | [`semantic_map/srv/ListRelations.srv`](idl.md#semantic-map-srv-listrelations-srv) | `system/scene/list_relations.v1.toml` |
 | `robonix/system/soma/description` | Return the robot body description, including URDF and high-level metadata. | service | `rpc` | [`soma/srv/GetDescription.srv`](idl.md#soma-srv-getdescription-srv) | `system/soma/description.v1.toml` |
 | `robonix/system/soma/footprint` | Return the robot 2D collision footprint in the base frame. | service | `rpc` | [`soma/srv/GetFootprint.srv`](idl.md#soma-srv-getfootprint-srv) | `system/soma/footprint.v1.toml` |

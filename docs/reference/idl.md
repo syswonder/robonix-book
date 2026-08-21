@@ -6,12 +6,12 @@ hide_table_of_contents: true
 
 > 由 `rbnx docs` 自动生成，请勿手改。
 
-本页收录从 IDL 包含根（`rbnx docs --include`，默认 `capabilities/lib/`）收集的全部 ROS IDL（`.msg` / `.srv`）原文，按 ROS 包分组（共 315 个文件）。[能力约定参考](contracts.md) 的载荷列链到这里对应的锚点。
+本页收录从 IDL 包含根（`rbnx docs --include`，默认 `capabilities/lib/`）收集的全部 ROS IDL（`.msg` / `.srv`）原文，按 ROS 包分组（共 325 个文件）。[能力约定参考](contracts.md) 的载荷列链到这里对应的锚点。
 
 <details className="idl-package-index">
 <summary>展开 ROS package 索引</summary>
 
-[action_msgs](#action_msgs) · [actionlib_msgs](#actionlib_msgs) · [asr](#asr) · [audio](#audio) · [builtin_interfaces](#builtin_interfaces) · [camera](#camera) · [chassis](#chassis) · [composition_interfaces](#composition_interfaces) · [diagnostic_msgs](#diagnostic_msgs) · [executor](#executor) · [geometry_msgs](#geometry_msgs) · [hand](#hand) · [health](#health) · [liaison](#liaison) · [lidar](#lidar) · [lifecycle](#lifecycle) · [lifecycle_msgs](#lifecycle_msgs) · [map](#map) · [memory](#memory) · [module_health](#module_health) · [nav_msgs](#nav_msgs) · [navigation](#navigation) · [perception](#perception) · [pilot](#pilot) · [quadruped](#quadruped) · [rcl_interfaces](#rcl_interfaces) · [rosgraph_msgs](#rosgraph_msgs) · [semantic_map](#semantic_map) · [sensor_msgs](#sensor_msgs) · [shape_msgs](#shape_msgs) · [soma](#soma) · [speech](#speech) · [statistics_msgs](#statistics_msgs) · [std_msgs](#std_msgs) · [std_srvs](#std_srvs) · [stereo_msgs](#stereo_msgs) · [test_msgs](#test_msgs) · [trajectory_msgs](#trajectory_msgs) · [tts](#tts) · [unique_identifier_msgs](#unique_identifier_msgs) · [visualization_msgs](#visualization_msgs) · [vitals](#vitals) · [voiceprint](#voiceprint)
+[action_msgs](#action_msgs) · [actionlib_msgs](#actionlib_msgs) · [asr](#asr) · [audio](#audio) · [builtin_interfaces](#builtin_interfaces) · [camera](#camera) · [chassis](#chassis) · [composition_interfaces](#composition_interfaces) · [diagnostic_msgs](#diagnostic_msgs) · [executor](#executor) · [geometry_msgs](#geometry_msgs) · [hand](#hand) · [health](#health) · [liaison](#liaison) · [lidar](#lidar) · [lifecycle](#lifecycle) · [lifecycle_msgs](#lifecycle_msgs) · [map](#map) · [memgraph](#memgraph) · [memory](#memory) · [module_health](#module_health) · [nav_msgs](#nav_msgs) · [navigation](#navigation) · [perception](#perception) · [pilot](#pilot) · [quadruped](#quadruped) · [rcl_interfaces](#rcl_interfaces) · [rosgraph_msgs](#rosgraph_msgs) · [semantic_map](#semantic_map) · [sensor_msgs](#sensor_msgs) · [shape_msgs](#shape_msgs) · [soma](#soma) · [speech](#speech) · [statistics_msgs](#statistics_msgs) · [std_msgs](#std_msgs) · [std_srvs](#std_srvs) · [stereo_msgs](#stereo_msgs) · [test_msgs](#test_msgs) · [trajectory_msgs](#trajectory_msgs) · [tts](#tts) · [unique_identifier_msgs](#unique_identifier_msgs) · [visualization_msgs](#visualization_msgs) · [vitals](#vitals) · [voiceprint](#voiceprint)
 
 </details>
 
@@ -471,8 +471,8 @@ std_msgs/String status
 #                        Driver picks angular speed; positive = CCW.
 #   3. velocity mode  → use linear_*/angular_* fields directly (cmd_vel-
 #                        style twist). `duration_sec > 0` overrides the
-#                        driver default (TIAGO_CHASSIS_CMD_DURATION_SEC);
-#                        `duration_sec == 0` keeps the default.
+#                        deployment-owned driver default;
+#                        `duration_sec == 0` keeps that default.
 #
 # Modes are exclusive: forward_m takes priority over rotate_deg over the
 # velocity fields. Distance / angle modes are the recommended shortcuts
@@ -1985,6 +1985,80 @@ bool ok
 string detail
 ```
 
+## memgraph
+
+### Compact `srv` {/* #memgraph-srv-compact-srv */}
+
+`memgraph/srv/Compact.srv`
+
+```rosidl
+# robonix/service/memory/promote — promote ShortTerm → LongTerm memory (unary RPC).
+# Phase1 JSON encoding over std_msgs/String; Phase2: structured IDL.
+#
+# Request: Empty trigger (std_msgs/Empty)
+#   No parameters needed — compact scans all ShortTerm nodes and promotes overflow
+#   (oldest first) to LongTerm when count exceeds the internal threshold (default 50).
+#
+# Response JSON: {
+#   "summary":          "Compacted 7 short-term nodes → long-term (50 remaining, 65 total).",
+#   "nodes_compacted":  7
+# }
+std_msgs/Empty trigger
+---
+std_msgs/String response_json
+```
+
+### Remember `srv` {/* #memgraph-srv-remember-srv */}
+
+`memgraph/srv/Remember.srv`
+
+```rosidl
+# robonix/service/memory/remember — persist a structured memory node into the CKG (unary RPC).
+# Phase1 JSON encoding over std_msgs/String.
+#
+# Request: JSON-serialized RememberRequest
+#   {session_id, plan_id, log_record: {ts, level, tag, msg}, spatial?, parent_node_id?, kv?}
+std_msgs/String request_json
+---
+# Response: JSON-serialized RememberResponse {node_id, message}
+std_msgs/String response_json
+```
+
+### Search `srv` {/* #memgraph-srv-search-srv */}
+
+`memgraph/srv/Search.srv`
+
+```rosidl
+# robonix/service/memory/hybrid_search — 3-stage hybrid search over CKG memory (unary RPC).
+# Phase1 JSON encoding over std_msgs/String; Phase2: structured IDL.
+#
+# Request JSON: {
+#   "query":             "<semantic query text>",
+#   "tags":              {                            // optional — TagFilter (AND semantics)
+#     "scene_type":      "kitchen",                   // optional
+#     "objects":         ["cup"],                     // optional
+#     "action_type":     "grasp",                     // optional
+#     "success":         true,                        // optional
+#     "task_type":       "fetch",                     // optional
+#     "difficulty_max":  "medium"                     // optional
+#   },
+#   "top_k":             5,                           // default 5
+#   "alpha":             0.3,                         // optional — BM25 weight
+#   "time_range":        {"start_ts": 0, "end_ts": 0},// optional — ns timestamps
+#   "require_executable": false                       // default false (Phase2)
+# }
+#
+# Response JSON: {
+#   "nodes": [
+#     {"node_id": 42, "summary": "...", "tags": {...}, "spatial_data": {...},
+#      "weight": 0.5, "timestamp": ..., "raw_log": {...}, "causal_chain": [...], "embedding": [...]}
+#   ]
+# }
+std_msgs/String request_json
+---
+std_msgs/String response_json
+```
+
 ## memory
 
 ### Compact `srv` {/* #memory-srv-compact-srv */}
@@ -1992,10 +2066,28 @@ string detail
 `memory/srv/Compact.srv`
 
 ```rosidl
-# robonix/service/memory/compact — summarize long-term memory (unary RPC).
-# Request: no fields (empty trigger, maps to google.protobuf.Empty on the facade when appropriate).
+# robonix/service/memory/compact — summarize / compact long-term memory (unary RPC).
+# Used by memsearch (LLM summarization). The memgraph backend uses
+# robonix/service/memory/promote with structured JSON-over-String.
+std_msgs/Empty trigger
 ---
 std_msgs/String summary
+```
+
+### Remember `srv` {/* #memory-srv-remember-srv */}
+
+`memory/srv/Remember.srv`
+
+```rosidl
+# robonix/service/memory/remember — persist a structured memory node (unary RPC).
+# Phase1 JSON encoding over std_msgs/String.
+
+# Request: JSON-serialized RememberRequest
+#   {session_id, plan_id, log_record: {ts, level, tag, msg}, spatial?, parent_node_id?, kv?}
+std_msgs/String request_json
+---
+# Response: JSON-serialized RememberResponse {node_id, message}
+std_msgs/String response_json
 ```
 
 ### Save `srv` {/* #memory-srv-save-srv */}
@@ -2004,6 +2096,8 @@ std_msgs/String summary
 
 ```rosidl
 # robonix/service/memory/save — persist a fact or preference (unary RPC).
+# DEPRECATED in favour of `remember` (ScribeMem structured memory).
+# Kept for backward-compat with memsearch-based deployments.
 std_msgs/String content
 ---
 std_msgs/String confirmation
@@ -2015,6 +2109,8 @@ std_msgs/String confirmation
 
 ```rosidl
 # robonix/service/memory/search — semantic search over long-term memory (unary RPC).
+# Used by memsearch (milvus-lite). The memgraph backend uses
+# robonix/service/memory/hybrid_search with structured JSON-over-String.
 std_msgs/String query
 ---
 std_msgs/String results
@@ -2289,6 +2385,39 @@ bool success
 
 ## navigation
 
+### AdjustNavigationSpeed `srv` {/* #navigation-srv-adjustnavigationspeed-srv */}
+
+`navigation/srv/AdjustNavigationSpeed.srv`
+
+```rosidl
+# robonix/service/navigation/adjust_speed — change the speed limit of an
+# active navigation run without replacing its goal.
+#
+# direction:
+#   "faster" — increase by the provider's configured percentage step
+#   "slower" — decrease by the configured percentage step
+#   "normal" — restore the configured default percentage
+#
+# Empty run_id targets the most recent active navigation run. By default the
+# adjustment belongs to that run and is restored when the run terminates.
+# persist=true applies the adjustment to the provider session instead; run_id
+# is then ignored.
+string direction
+string run_id
+bool persist
+---
+bool accepted
+bool changed
+# Percentage of the deployment-configured linear-speed ceiling.
+float64 effective_percentage
+# Planar linear-speed ceiling in metres per second (m/s).
+float64 effective_linear_speed_mps
+# "goal" for an automatically restored override, or "session" if persistent.
+string scope
+string run_id
+string detail
+```
+
 ### CancelNavigation `srv` {/* #navigation-srv-cancelnavigation-srv */}
 
 `navigation/srv/CancelNavigation.srv`
@@ -2300,6 +2429,31 @@ bool success
 string run_id
 ---
 bool accepted
+string detail
+```
+
+### GetNavigationSpeedLimit `srv` {/* #navigation-srv-getnavigationspeedlimit-srv */}
+
+`navigation/srv/GetNavigationSpeedLimit.srv`
+
+```rosidl
+# robonix/service/navigation/get_speed_limit — read the configured and current
+# navigation speed limits without changing them.
+---
+bool available
+# Deployment hard ceiling for planar linear speed, in metres per second (m/s).
+float64 max_linear_speed_mps
+# All percentage fields use percent in the range (0, 100].
+float64 default_percentage
+float64 min_percentage
+# Additive change in percentage points, not a multiplicative ratio.
+float64 step_percentage
+float64 effective_percentage
+# Current planar linear-speed ceiling in metres per second (m/s).
+float64 effective_linear_speed_mps
+# "goal" or "session".
+string scope
+string run_id
 string detail
 ```
 
@@ -2342,6 +2496,34 @@ string detail
 # status values: success, failed, navigating, timeout, cancelled
 string goal_id
 string status
+```
+
+### SetNavigationSpeedLimit `srv` {/* #navigation-srv-setnavigationspeedlimit-srv */}
+
+`navigation/srv/SetNavigationSpeedLimit.srv`
+
+```rosidl
+# robonix/service/navigation/set_speed_limit — set an explicit percentage of
+# the deployment-configured maximum navigation speed.
+#
+# Empty run_id targets the most recent active navigation run. By default the
+# limit belongs to that run and is restored when the run terminates.
+# persist=true applies the limit to the provider session instead; run_id is
+# then ignored.
+float64 percentage
+string run_id
+bool persist
+---
+bool accepted
+bool changed
+# Percentage of the deployment-configured linear-speed ceiling.
+float64 effective_percentage
+# Planar linear-speed ceiling in metres per second (m/s).
+float64 effective_linear_speed_mps
+# "goal" for an automatically restored override, or "session" if persistent.
+string scope
+string run_id
+string detail
 ```
 
 ## perception
@@ -3135,12 +3317,23 @@ string reason
 
 ```rosidl
 # robonix/system/scene/list_objects — return every object the scene
-# registry currently believes exists. No filters, no scoping; the LLM
-# calls this every round to ground its world model and filters
-# client-side by label / distance / etc. (cheaper than baking those
-# knobs into the schema).
+# registry currently believes exists. Room entries remain for v1
+# compatibility; new callers should use ListRegions for full room geometry.
 ---
 Object[] objects
+float64 stamp_unix
+```
+
+### ListRegions `srv` {/* #semantic-map-srv-listregions-srv */}
+
+`semantic_map/srv/ListRegions.srv`
+
+```rosidl
+# robonix/system/scene/list_regions — return user-authored room regions.
+# Physical objects are deliberately excluded; use list_objects for them.
+---
+Region[] regions
+string map_id
 float64 stamp_unix
 ```
 
@@ -3176,6 +3369,24 @@ float64 y
 float64 z
 float64 yaw
 float64 last_seen_unix
+```
+
+### Region `msg` {/* #semantic-map-msg-region-msg */}
+
+`semantic_map/msg/Region.msg`
+
+```rosidl
+# User-authored room region anchored to the active SLAM map.
+# `id` is the stable Scene identifier accepted directly by goal_room.
+
+string id
+string kind
+string name
+float64[] points_xy
+float64 theta
+bool stale
+string stale_reason
+float64 updated_at_unix
 ```
 
 ### SceneAnnotation `msg` {/* #semantic-map-msg-sceneannotation-msg */}
@@ -4330,9 +4541,9 @@ string vendor_raw_json
 # don't hammer this — it doesn't change at runtime.
 ---
 string urdf_xml          # full URDF contents (utf-8)
-string model_name        # e.g. "ranger_mini_v2", "tiago"
+string model_name        # deployment-defined robot model identifier
 float64 mass_kg          # sum of all link masses; -1 if unknown
-string base_frame        # convention frame for kinematic root, e.g. "base_link"
+string base_frame        # deployment-defined kinematic root frame
 ```
 
 ### GetFootprint `srv` {/* #soma-srv-getfootprint-srv */}
@@ -4346,14 +4557,13 @@ string base_frame        # convention frame for kinematic root, e.g. "base_link"
 # polygon — first point is NOT repeated as last; consumers close it
 # themselves.
 #
-# Polygon is computed once at soma startup from the URDF (axis-aligned
-# convex hull of every link mesh's projection onto the base plane).
-# Override path: deploy manifest's `config.footprint_xy_pts` lets you
-# hand-supply a polygon when the URDF mesh hull is too generous (e.g.
-# Tiago's torso overhang is way wider than its base).
+# The deployment declares the collision polygon in `soma.yaml`. Soma
+# validates it at startup and derives the inscribed/circumscribed radii
+# from the same points, so every consumer observes one authoritative
+# navigation envelope.
 ---
-geometry_msgs/Point[] points    # CCW-ordered vertices in `base_frame`, z=0
-string base_frame               # e.g. "base_link"
+geometry_msgs/Point[] points    # boundary-ordered vertices in `base_frame`, z=0
+string base_frame               # kinematic frame in which `points` are expressed
 float64 inscribed_radius_m      # largest disc fitting inside the polygon
 float64 circumscribed_radius_m  # smallest disc enclosing the polygon
 ```
@@ -4374,9 +4584,11 @@ SomaHealthSnapshot snapshot
 ```rosidl
 # Return the URDF text referenced by one loaded robot's Soma YAML.
 string robot_id  # empty = default robot
+bool include_assets
 ---
 string robot_id
 string urdf_xml
+UrdfAsset[] assets
 ```
 
 ### GetYaml `srv` {/* #soma-srv-getyaml-srv */}
@@ -4502,6 +4714,18 @@ Metric[] metrics
 ```rosidl
 ---
 SomaHealthSnapshot snapshot
+```
+
+### UrdfAsset `msg` {/* #soma-msg-urdfasset-msg */}
+
+`soma/msg/UrdfAsset.msg`
+
+```rosidl
+# SPDX-License-Identifier: MulanPSL-2.0
+
+# One file referenced by a relative URI in the returned URDF.
+string path
+uint8[] data
 ```
 
 ## speech

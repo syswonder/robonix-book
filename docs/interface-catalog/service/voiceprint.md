@@ -29,7 +29,7 @@ title: 声纹
 
 若声纹提供方不可用，交互服务可把客户端提示作为身份回退值，但它不能绕过已启用的访问控制。访问控制启用时，只有已注册、置信度达到阈值且位于允许列表中的声纹可以通过；其他语音请求都会被拒绝。
 
-参考实现：Robonix 源码中的 [`services/voiceprint`](https://github.com/syswonder/robonix/tree/181d3eb974fd495a795ed120a0a4c6e6f342d179/services/voiceprint)，使用 SpeechBrain ECAPA-TDNN embedding 与余弦相似度，模型来自 ModelScope 的 `speechbrain/spkrec-ecapa-voxceleb`。注册数据持久化到 `<data_dir>/enrolled.json`，写入通过临时文件和原子替换完成。
+参考实现：Robonix 源码中的 [`services/voiceprint`](https://github.com/syswonder/robonix/tree/cec06ee874eace27dd622e6ce4685c971f04a9e4/services/voiceprint)，使用 SpeechBrain ECAPA-TDNN embedding 与余弦相似度，模型来自 ModelScope 的 `speechbrain/spkrec-ecapa-voxceleb`。注册数据持久化到 `<data_dir>/enrolled.json`，写入通过临时文件和原子替换完成。
 
 ## 生命周期与配置
 
