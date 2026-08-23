@@ -121,9 +121,9 @@ jobs:
       - name: Report source drift
         run: |
           pinned=$(tr -d '[:space:]' < ROBONIX_SOURCE_REVISION)
-          current=$(git ls-remote https://github.com/syswonder/robonix.git refs/heads/dev-next | cut -f1)
+          current=$(git ls-remote https://github.com/syswonder/robonix.git refs/heads/dev | cut -f1)
           if [ "$pinned" != "$current" ]; then
-            echo "::warning::Robonix dev-next moved from $pinned to $current; re-audit runnable documentation before updating ROBONIX_SOURCE_REVISION."
+            echo "::warning::Robonix dev moved from $pinned to $current; re-audit runnable documentation before updating ROBONIX_SOURCE_REVISION."
           fi
       - name: Check external links
         uses: lycheeverse/lychee-action@v2
