@@ -13,10 +13,12 @@
 |----------|------|----|
 | `robonix/primitive/*` | 原语：低层设备抽象 | [机械臂](primitive/arm.md) · [灵巧手](primitive/hand.md) · [音频](primitive/audio.md) · [相机](primitive/camera.md) · [底盘](primitive/chassis.md) · [四足底盘](primitive/quadruped.md) · [设备健康](primitive/health.md) · [惯性测量单元](primitive/imu.md) · [激光雷达](primitive/lidar.md) · [机器人描述](primitive/robot-description.md) |
 | `robonix/service/*` | 服务：可替换的通用能力 | [空间地图](service/map.md) · [导航](service/navigation.md) · [语音](service/speech.md) · [声纹](service/voiceprint.md) · [记忆](service/memory.md) |
-| `robonix/system/*` | 系统服务：Robonix 自身组件 | [规划器](system/pilot.md) · [执行器](system/executor.md) · [交互服务](system/liaison.md) · [场景服务](system/scene.md) · [本体服务](system/soma.md) · [健康服务](system/vitals.md) |
+| `robonix/system/*` | Robonix 自身组件对外暴露的接口 | [规划器](system/pilot.md) · [执行器](system/executor.md) · [交互服务](system/liaison.md) · [场景服务](system/scene.md) · [本体服务](system/soma.md) · [健康服务](system/vitals.md) |
 | `robonix/lifecycle/*` | 跨原语、服务和技能复用的生命周期管理接口 | `robonix/lifecycle/driver` |
 
 完整的 12 个系统组件（含不对外暴露能力约定的）见 [系统组件](../architecture/components.md)。
+
+`robonix/system/*` 是命名空间，不表示层次：系统组件分核心系统组件和系统级服务两层，而这个前缀下同时有两层的成员（例如 Vitals 属核心，Pilot 属系统级服务）。上表只列当前已合并的能力约定；Keystone 与 Sentinel 的能力约定尚在评审中，合并后同样落在 `robonix/system/*` 下。
 
 ## 怎么读每张表
 

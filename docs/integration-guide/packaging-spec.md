@@ -575,7 +575,7 @@ rbnx caps -v | rg -A 8 -B 2 'base_chassis|robonix/.+/driver'
 - 同一软件包的目标清单必须保持一致的 `package.name`、`version` 和公开能力约定；存在身份漂移时阻止发布。
 - 敏感信息由操作者环境提供，不把真实值提交到清单或 `.env.example`。
 
-机器人支持不能由“包已编译”或“进程还在运行”单独判定。下面的命令均来自当前 [`rbnx` 子命令定义](https://github.com/syswonder/robonix/blob/181d3eb974fd495a795ed120a0a4c6e6f342d179/tools/rbnx/src/cmd/mod.rs)；从机器人部署目录按顺序保存清单、构建、启动、Atlas 和日志证据。
+机器人支持不能由“包已编译”或“进程还在运行”单独判定。下面的命令均来自当前 [`rbnx` 子命令定义](https://github.com/syswonder/robonix/blob/cec06ee874eace27dd622e6ce4685c971f04a9e4/tools/rbnx/src/cmd/mod.rs)；从机器人部署目录按顺序保存清单、构建、启动、Atlas 和日志证据。
 
 ### 5.1 清单与构建
 

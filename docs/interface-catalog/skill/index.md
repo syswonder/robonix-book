@@ -10,4 +10,4 @@
 已有技能可以暂时继续使用自己维护的唯一命名空间 Driver 和 Driver TOML，但计划迁移到共享 Driver，且不能同时注册两种 Driver。详见[生命周期兼容流程](../../integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
 :::
 
-已经发布的技能软件包可在 [Robonix 软件包目录](https://syswonder.github.io/robonix-package-catalog/) 中按 `skill` 类型筛选。
+已经发布的技能软件包可在 [Robonix 软件包目录](https://packages.robonix.ai/) 中按 `skill` 类型筛选。

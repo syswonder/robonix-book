@@ -17,4 +17,4 @@ title: 规划器
 
 `SubmitTask(task: pilot/Task)` 返回一条 `PilotEvent` 流。事件类型包括自然语言增量、方案、批次结果、状态、最终回复、节点状态和任务状态；该接口不暴露模型的内部思维链。用户身份放在 `Task.context_json.user_id` 中。
 
-内置规划器将上表 2 条约定以 gRPC 注册。运行时必须配置 OpenAI 兼容视觉语言模型（Vision-Language Model，VLM）的 `upstream`、`api_key` 和 `model`；`api_format` 当前只支持 `openai`。启动时可选加载 Soma YAML/URDF；每轮规划前刷新 Soma `get_health`，并尝试经 Executor 调用 Scene `get_robot_context`。当前不会自动查询 Vitals。这些上下文和长期记忆均可降级；Executor 则是执行生成方案所需的运行依赖。
+内置规划器将上表 2 条约定以 gRPC 注册。运行时必须配置 OpenAI 兼容视觉语言模型（Vision-Language Model，VLM）的 `upstream`、`api_key` 和 `model`；`api_format` 当前只支持 `openai`。启动时可选加载 Soma YAML；规划器刻意不把 URDF 注入提示——模型不需要推理链节几何，URDF 仍由 Soma 的 `get_urdf` 提供给 TF/RViz/运动规划等消费方。每轮规划前刷新 Soma `get_health`，并尝试经 Executor 调用 Scene `get_robot_context`。当前不会自动查询 Vitals。这些上下文和长期记忆均可降级；Executor 则是执行生成方案所需的运行依赖。

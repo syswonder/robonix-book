@@ -40,7 +40,7 @@ Soma 在原语全部进入 `ACTIVE` 后，通过 Atlas 发现两类**精确能�
 ## 各接口的边界
 
 - `get_yaml` 返回启动时读取的原始 Soma YAML。请求中的 `robot_id` 可以为空或等于已加载 ID；其他 ID 返回 `NOT_FOUND`。一个 Soma 进程不会在多个机器人之间路由。
-- `get_urdf` 返回 `urdf.path` 指向文件的原始文本。Soma 只保证文件可读，不解析 URDF XML，也不校验 link、joint、root 或 TF 完整性。
+- `get_urdf` 返回 `urdf.path` 指向文件的原始文本。请求设置 `include_assets` 时，还会读取并随响应返回 URDF 引用的 mesh 资源文件（`UrdfAsset[] assets`，含路径和数据）。Soma 只保证文件可读，不解析 URDF XML，也不校验 link、joint、root 或 TF 完整性。
 - `footprint` 返回 YAML 中声明的多边形，以及 Soma 计算的内切、外接半径。缺少 `robot.footprint` 不影响 Soma 启动，但该 RPC 返回 `FAILED_PRECONDITION`。
 - `get_health` 返回最近快照，`health` 持续推送快照。两者反映当前有限的 joint-state/odometry 聚合，不是完整设备健康或安全证明。
 - `description` 只有源码约定，没有当前服务实现；`sensor_extrinsics` 不存在。传感器几何关系应由完整 URDF/TF 表达，相机兼容外参由 `robonix/primitive/camera/extrinsics` 提供。

@@ -146,42 +146,42 @@ service:
 
 软件包目录主页和页面：
 
-- 主页：[Robonix Package Catalog](https://syswonder.github.io/robonix-package-catalog/)
-- 普通软件包列表：[软件包](https://syswonder.github.io/robonix-package-catalog/packages/)
-- 机器人部署列表：[机器人](https://syswonder.github.io/robonix-package-catalog/robots/)
+- 主页：[Robonix Package Catalog](https://packages.robonix.ai/)
+- 普通软件包列表：[软件包](https://packages.robonix.ai/packages/)
+- 机器人部署列表：[机器人](https://packages.robonix.ai/robots/)
 
-软件包目录 API 是 GitHub Pages 上的静态 JSON API。全部接口使用 `GET`，不需要 API 密钥。由于 Pages 是静态站，不支持服务端查询参数；搜索以及按标签、类型、能力过滤都在客户端取得 JSON 后完成。
+软件包目录 API 是静态 JSON API。全部接口使用 `GET`，不需要 API 密钥。由于目录是静态站，不支持服务端查询参数；搜索以及按标签、类型、能力过滤都在客户端取得 JSON 后完成。
 
 | 方法 | 路径 | 参数 | 返回 |
 |---|---|---|---|
-| `GET` | `/api/v1/packages.json` | 无 | 普通原语、服务和技能软件包，返回 `packages[]` |
-| `GET` | `/api/v1/robots.json` | 无 | 整机部署配置，返回 `robots[]` |
-| `GET` | `/api/v1/catalog.json` | 无 | 全量目录，返回 `packages[]`，包含普通软件包和机器人部署仓库 |
-| `GET` | `/api/v1/search.json` | 无 | 全量目录数组，用于客户端搜索和过滤 |
-| `GET` | `/api/v1/package/<name>.json` | `name` 是经过 URL 编码的完整目录名称 | 单个普通软件包或机器人部署仓库；不存在时由 GitHub Pages 返回 `404` |
+| `GET` | `/api/v1/packages` | 无 | 普通原语、服务和技能软件包，返回 `packages[]` |
+| `GET` | `/api/v1/robots` | 无 | 整机部署配置，返回 `robots[]` |
+| `GET` | `/api/v1/catalog` | 无 | 全量目录，返回 `packages[]`，包含普通软件包和机器人部署仓库 |
+| `GET` | `/api/v1/search` | 无 | 全量目录数组，用于客户端搜索和过滤 |
+| `GET` | `/api/v1/package/<name>` | `name` 是经过 URL 编码的完整目录名称 | 单个普通软件包或机器人部署仓库；不存在时返回 `404` |
 
 完整 URL 示例：
 
 ```text
-GET https://syswonder.github.io/robonix-package-catalog/api/v1/packages.json
-GET https://syswonder.github.io/robonix-package-catalog/api/v1/robots.json
-GET https://syswonder.github.io/robonix-package-catalog/api/v1/catalog.json
-GET https://syswonder.github.io/robonix-package-catalog/api/v1/package/robonix.service.mapping.json
-GET https://syswonder.github.io/robonix-package-catalog/api/v1/package/robonix.robot.agilex.ranger_mini_v3.json
+GET https://packages.robonix.ai/api/v1/packages
+GET https://packages.robonix.ai/api/v1/robots
+GET https://packages.robonix.ai/api/v1/catalog
+GET https://packages.robonix.ai/api/v1/package/robonix.service.mapping
+GET https://packages.robonix.ai/api/v1/package/robonix.robot.agilex.ranger_mini_v3
 ```
 
 JavaScript 使用示例：
 
 ```js
-const base = 'https://syswonder.github.io/robonix-package-catalog/api/v1';
+const base = 'https://packages.robonix.ai/api/v1';
 
-const packageCatalog = await fetch(`${base}/packages.json`).then(r => r.json());
+const packageCatalog = await fetch(`${base}/packages`).then(r => r.json());
 const mapping = packageCatalog.packages.find(p => p.name === 'robonix.service.mapping');
 
-const robots = await fetch(`${base}/robots.json`).then(r => r.json());
+const robots = await fetch(`${base}/robots`).then(r => r.json());
 const ranger = robots.robots.find(r => r.name === 'robonix.robot.agilex.ranger_mini_v3');
 
-const detail = await fetch(`${base}/package/${encodeURIComponent(ranger.name)}.json`)
+const detail = await fetch(`${base}/package/${encodeURIComponent(ranger.name)}`)
   .then(r => r.json());
 ```
 

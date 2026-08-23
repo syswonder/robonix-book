@@ -7,7 +7,7 @@
 
 <div class="procedure-meta">
   <div><strong>源码仓库</strong><code>syswonder/robonix</code></div>
-  <div><strong>参考部署</strong><a href="https://syswonder.github.io/robonix-package-catalog/robots/robonix.robot.agilex.ranger_mini_v3/">AgileX Ranger Mini v3</a></div>
+  <div><strong>参考部署</strong><a href="https://packages.robonix.ai/robots/robonix.robot.agilex.ranger_mini_v3/">AgileX Ranger Mini v3</a></div>
   <div><strong>交付目标</strong>从空目录到可验收部署</div>
 </div>
 
@@ -33,7 +33,7 @@ robot-<vendor>-<model>/
 
 `assets/robot.jpg` 只供 Robonix 软件包目录的机器人列表展示，不参与构建、启动或模型推理。准备把机器人仓库提交到目录时再添加并压缩该图片；不发布目录条目时可以省略。
 
-硬件驱动通常放在独立原语仓库中，由 `robonix_manifest.yaml` 的 `url` 引用；只有暂不复用的部署私有代码才放在本体仓库。先查看目录中的 [AgileX Ranger Mini v3 本体页面](https://syswonder.github.io/robonix-package-catalog/robots/robonix.robot.agilex.ranger_mini_v3/)了解已发布的硬件组成和软件包，再进入 [`robot-agilex-ranger_mini_v3`](https://github.com/syswonder/robot-agilex-ranger_mini_v3) 查看实际部署清单、配置和包装脚本。学习单个软件包结构时使用 [`template-rbnx`](https://github.com/syswonder/template-rbnx/tree/60dc85834c2714022b1821e6fce6c629c0314699)。采用任何参考部署前，都要核对其整机 URDF 是否包含当前机器人实际安装的全部部件；缺少的坐标关系必须先补齐，不能依赖另一份分离 URDF。
+硬件驱动通常放在独立原语仓库中，由 `robonix_manifest.yaml` 的 `url` 引用；只有暂不复用的部署私有代码才放在本体仓库。先查看目录中的 [AgileX Ranger Mini v3 本体页面](https://packages.robonix.ai/robots/robonix.robot.agilex.ranger_mini_v3/)了解已发布的硬件组成和软件包，再进入 [`robot-agilex-ranger_mini_v3`](https://github.com/syswonder/robot-agilex-ranger_mini_v3) 查看实际部署清单、配置和包装脚本。学习单个软件包结构时使用 [`template-rbnx`](https://github.com/syswonder/template-rbnx/tree/60dc85834c2714022b1821e6fce6c629c0314699)。采用任何参考部署前，都要核对其整机 URDF 是否包含当前机器人实际安装的全部部件；缺少的坐标关系必须先补齐，不能依赖另一份分离 URDF。
 
 如果构建或启动前需要设置部署目录、环境变量、设备权限、CAN / 串口、RMW router 或容器参数，把这些准备步骤统一收敛到部署仓库的 `build.sh` 和 `start.sh`。这样使用者只需要执行固定入口，脚本内部再调用 `rbnx build` 或 `rbnx boot`。
 
@@ -53,7 +53,7 @@ bash start.sh
 ```bash
 git clone --recurse-submodules https://github.com/syswonder/robonix.git
 cd robonix
-git checkout --detach 181d3eb974fd495a795ed120a0a4c6e6f342d179
+git checkout --detach cec06ee874eace27dd622e6ce4685c971f04a9e4
 git submodule update --init --recursive
 make install
 rbnx setup "$PWD"
@@ -114,7 +114,7 @@ AgileX Ranger Mini v3 仓库当前只能作为部署连线的部分参考，不�
 
 ### 3.2 创建 `soma.yaml`
 
-Soma 描述机器人本体与部件，不负责环境物体，也不替 Vitals 做健康阈值判断。`soma.yaml` 是本体描述文件；部署清单里的 `system.soma` 和可选的 Soma `config` 文件是进程配置。不要把监听地址、Atlas 地址等进程参数写进本体文件，也不要把 `robot.components` 写进进程配置。Soma 的进程参数见主仓库的 [`system/soma/README.md`](https://github.com/syswonder/robonix/blob/181d3eb974fd495a795ed120a0a4c6e6f342d179/system/soma/README.md)；本节的本体字段以实际读取它们的 [`store.rs`](https://github.com/syswonder/robonix/blob/181d3eb974fd495a795ed120a0a4c6e6f342d179/system/soma/src/store.rs) 为准。
+Soma 描述机器人本体与部件，不负责环境物体，也不替 Vitals 做健康阈值判断。`soma.yaml` 是本体描述文件；部署清单里的 `system.soma` 和可选的 Soma `config` 文件是进程配置。不要把监听地址、Atlas 地址等进程参数写进本体文件，也不要把 `robot.components` 写进进程配置。Soma 的进程参数见主仓库的 [`system/soma/README.md`](https://github.com/syswonder/robonix/blob/cec06ee874eace27dd622e6ce4685c971f04a9e4/system/soma/README.md)；本节的本体字段以实际读取它们的 [`store.rs`](https://github.com/syswonder/robonix/blob/cec06ee874eace27dd622e6ce4685c971f04a9e4/system/soma/src/store.rs) 为准。
 
 编写前先准备三份事实，而不是从示例里猜值：
 

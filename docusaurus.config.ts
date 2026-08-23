@@ -11,7 +11,7 @@ const config: Config = {
   tagline: '具身智能操作系统的使用、开发与本体接入文档',
   favicon: 'img/robonix-mark.svg',
   clientModules: [require.resolve('./src/prism-rosidl.ts')],
-  url: 'https://robonix-book.syswonder.org',
+  url: 'https://book.robonix.ai',
   baseUrl: '/',
   organizationName: 'syswonder',
   projectName: 'robonix-book',
@@ -89,7 +89,7 @@ const config: Config = {
           label: '手册',
         },
         {
-          href: 'https://syswonder.github.io/robonix-package-catalog/',
+          href: 'https://packages.robonix.ai/',
           label: '软件包目录',
           position: 'right',
         },
@@ -120,7 +120,7 @@ const config: Config = {
           title: '社区',
           items: [
             {label: 'GitHub', href: 'https://github.com/syswonder/robonix'},
-            {label: '软件包目录', href: 'https://syswonder.github.io/robonix-package-catalog/'},
+            {label: '软件包目录', href: 'https://packages.robonix.ai/'},
             {label: '文档贡献', to: '/contributing/documentation'},
           ],
         },

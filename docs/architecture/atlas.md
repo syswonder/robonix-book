@@ -119,7 +119,7 @@ Python 提供方框架默认每 30 秒发送一次心跳；Executor、Pilot、So
 
 ## 主要 RPC
 
-下表仅列出最常用的 Atlas RPC **接口摘录**。请求/响应字段、枚举和完整服务定义以 [`system/atlas/proto/atlas.proto`](https://github.com/syswonder/robonix/blob/181d3eb974fd495a795ed120a0a4c6e6f342d179/system/atlas/proto/atlas.proto) 为准。
+下表仅列出最常用的 Atlas RPC **接口摘录**。请求/响应字段、枚举和完整服务定义以 [`system/atlas/proto/atlas.proto`](https://github.com/syswonder/robonix/blob/cec06ee874eace27dd622e6ce4685c971f04a9e4/system/atlas/proto/atlas.proto) 为准。
 
 | RPC | 作用 |
 |---|---|

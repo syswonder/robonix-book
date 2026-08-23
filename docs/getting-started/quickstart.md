@@ -63,7 +63,7 @@ python3 -c 'import grpc_tools.protoc; print("grpc_tools: ok")'
 ```bash
 git clone --recurse-submodules https://github.com/syswonder/robonix.git
 cd robonix
-git checkout --detach 181d3eb974fd495a795ed120a0a4c6e6f342d179
+git checkout --detach cec06ee874eace27dd622e6ce4685c971f04a9e4
 git submodule update --init --recursive
 
 git rev-parse HEAD
@@ -79,7 +79,7 @@ rbnx --version
 rbnx path root
 ```
 
-**预期结果：** `git rev-parse HEAD` 输出 `181d3eb974fd495a795ed120a0a4c6e6f342d179`；`rbnx path root` 输出刚克隆的 Robonix 仓库绝对路径。
+**预期结果：** `git rev-parse HEAD` 输出 `cec06ee874eace27dd622e6ce4685c971f04a9e4`；`rbnx path root` 输出刚克隆的 Robonix 仓库绝对路径。
 
 ## 3. 配置视觉语言模型
 
@@ -162,8 +162,8 @@ rbnx boot
 Webots 部署清单配置以下系统组件和软件包：
 
 - 系统：Atlas、Soma、Vitals、Scene、Executor、Pilot、Liaison
-- 原语：Tiago 底盘、RGB-D 相机、二维激光雷达，以及通过独立仓库取得的 ALSA 音频和客户端音频桥
-- 服务：记忆、语音、声纹、建图、导航
+- 原语：Tiago 底盘、RGB-D 相机、二维激光雷达、`tiago_health`（模拟本体遥测，供 Soma/Vitals 消费），以及通过独立仓库取得的 ALSA 音频和客户端音频桥
+- 服务：记忆（memsearch 与 `memgraph` 结构化记忆并行）、语音、声纹、建图、导航
 - 技能：探索；启动后保持 `INACTIVE`，第一次被调用时由 Executor 激活
 
 **预期结果：** 启动摘要中没有 `failures`，系统组件显示监听地址，原语与服务为 `ACTIVE`，Explore 为 `INACTIVE`。终端最后显示组件已启动以及 `rbnx-boot/logs` 路径。

@@ -111,7 +111,7 @@ def normalize(text: str) -> str:
     text = '\n'.join(line.rstrip() for line in text.splitlines()) + '\n'
     text = re.sub(r'^\[toc\]\n+', '', text, flags=re.MULTILINE)
     text = re.sub(
-        r'\(\{([A-Za-z0-9_, ]+)\}\)',
+        r'\(\\?\{([A-Za-z0-9_, ]+)\\?\}\)',
         lambda match: '('
         + ', '.join(f'`{name.strip()}`' for name in match.group(1).split(','))
         + ')',

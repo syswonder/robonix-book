@@ -21,6 +21,11 @@ title: 导航
 | `robonix/service/navigation/navigate` | `rpc` | gRPC + MCP | [`navigation/Navigate`](../../reference/idl.md#navigation-srv-navigate-srv) | `service/navigation/navigate.v1.toml` |
 | `robonix/service/navigation/navigate/status` | `rpc` | gRPC + MCP | [`navigation/GetNavigationStatus`](../../reference/idl.md#navigation-srv-getnavigationstatus-srv) | `service/navigation/navigate/status.v1.toml` |
 | `robonix/service/navigation/navigate/cancel` | `rpc` | gRPC + MCP | [`navigation/CancelNavigation`](../../reference/idl.md#navigation-srv-cancelnavigation-srv) | `service/navigation/navigate/cancel.v1.toml` |
+| `robonix/service/navigation/adjust_speed` | `rpc` | gRPC + MCP | [`navigation/AdjustNavigationSpeed`](../../reference/idl.md#navigation-srv-adjustnavigationspeed-srv) | `service/navigation/adjust_speed.v1.toml` |
+| `robonix/service/navigation/set_speed_limit` | `rpc` | gRPC + MCP | [`navigation/SetNavigationSpeedLimit`](../../reference/idl.md#navigation-srv-setnavigationspeedlimit-srv) | `service/navigation/set_speed_limit.v1.toml` |
+| `robonix/service/navigation/get_speed_limit` | `rpc` | gRPC + MCP | [`navigation/GetNavigationSpeedLimit`](../../reference/idl.md#navigation-srv-getnavigationspeedlimit-srv) | `service/navigation/get_speed_limit.v1.toml` |
+
+三条速度接口构成动态速度策略：`adjust_speed` 按部署配置的百分比步长把当前导航调快、调慢或恢复默认；`set_speed_limit` 直接设置部署最大速度的显式百分比；`get_speed_limit` 只读地返回配置上限与当前生效限速。前两者默认作用于当前导航目标、目标结束后自动恢复，`persist=true` 时改为作用于提供方会话。
 
 `navigate(goal: geometry_msgs/PoseStamped)` 返回提供方分配的 `run_id`，消费方用它通过 `navigate/status` / `navigate/cancel` 寻址同一个目标。`detail` 只是一句人类可读的说明（接受或拒绝的原因），不是结构化数据，消费方不应解析其内容。
 
