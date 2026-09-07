@@ -664,7 +664,7 @@ service:
 
 自定义行为树保存在部署仓库，并通过 `bt_xml_file` 引用。Nav2 参数文件中对应的行为树路径必须写为 `__ROBONIX_BT_XML__`，Navigation 才会把占位符替换成部署文件的绝对路径。只设置 `bt_xml_file` 不会切换行为树。
 
-全部字段、默认值和弃用项以 Navigation 仓库根目录的 [`config.spec`](https://github.com/syswonder/service-navigation-rbnx/blob/main/config.spec) 为准；Nav2 参数语义参考 [Nav2 配置指南](https://docs.nav2.org/configuration/index.html)。
+全部字段、默认值和弃用项以 Navigation 仓库根目录的 [`config.spec`](https://github.com/syswonder/service-navigation-rbnx/blob/main/config.spec) 为准；Nav2 参数语义参考 [Nav2 配置指南](https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/)。
 
 旧 `params_profile` 仍可用于迁移并产生警告；新部署不得依赖它。
 
@@ -790,7 +790,7 @@ ${EDITOR:-vi} robonix_manifest.chassis-test.yaml
 
 ### 7.4 使用 RViz2 验证地图、定位与导航
 
-RViz2 是本体接入验收工具，不是机器人无头运行时必须常驻的进程。验收时用它同时检查地图、定位、TF、传感器、代价地图、规划路径和机器人 footprint。基础操作参考 [RViz 用户指南](https://docs.ros.org/en/humble/Tutorials/Intermediate/RViz/RViz-User-Guide/RViz-User-Guide.html)，Nav2 的坐标树与导航流程参考 [坐标变换配置](https://docs.nav2.org/setup_guides/transformation/setup_transforms.html)和 [Nav2 入门](https://docs.nav2.org/getting_started/index.html)。
+RViz2 是本体接入验收工具，不是机器人无头运行时必须常驻的进程。验收时用它同时检查地图、定位、TF、传感器、代价地图、规划路径和机器人 footprint。基础操作参考 [RViz 用户指南](https://docs.ros.org/en/humble/Tutorials/Intermediate/RViz/RViz-User-Guide/RViz-User-Guide.html)，Nav2 的坐标树与导航流程参考 [坐标变换配置](https://docs.nav2.org/rolling/configuration_and_development/first_time_robot_setup_guide/transformation/setup_transforms/)和 [Nav2 入门](https://docs.nav2.org/rolling/getting_started/)。
 
 AgileX Ranger Mini v3 在部署仓库中保存 `rviz/ranger_mapping.rviz`，Stack 启动后从仓库根目录运行：
 
