@@ -74,7 +74,7 @@ jobs:
       - name: Build Python API documentation
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install sphinx furo numpy grpcio grpcio-tools protobuf pyyaml
+          python3 -m pip install sphinx furo numpy grpcio grpcio-tools protobuf pyyaml httpx
           python3 -m pip install ./robonix/pylib/robonix-api
           make api-python ROBONIX_SOURCE="$PWD/robonix" API_PYTHON=python3
 
