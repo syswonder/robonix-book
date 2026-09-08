@@ -8,6 +8,11 @@
     <span class="task-card__title">接入一台完整机器人</span>
     <span class="task-card__description">组织完整的机器人描述文件（URDF）、Soma 本体树、本体原语、系统配置和本地建图与导航参数。</span>
   </a>
+  <a class="task-card" href="/integration-guide/mujoco-simulation-onboarding">
+    <span class="task-card__eyebrow">MuJoCo 仿真</span>
+    <span class="task-card__title">接入厂家提供的仿真本体</span>
+    <span class="task-card__description">复用厂家 MuJoCo 工程，或基于 URDF/Xacro 与 ROS 2 驱动建立仿真本体包。</span>
+  </a>
   <a class="task-card" href="/developer-guide">
     <span class="task-card__eyebrow">软件包</span>
     <span class="task-card__title">开发原语、服务或技能</span>
