@@ -48,7 +48,7 @@ x86 (192.168.100.1)
 
 3A6000 实机：板载 AMD GPU，本地跑 Ollama 推理。
 
-![3A6000 开发板与板载 AMD GPU](/img/x86-ubuntu-la-arch/1.jpg)
+![3A6000 开发板与板载 AMD GPU](./images/1.jpg)
 
 ---
 
@@ -285,7 +285,7 @@ rbnx boot --no-update-check
 
 启动效果（Atlas / Executor / Pilot / Liaison 全部拉起）：
 
-![3A6000 上 rbnx boot 的启动效果](/img/x86-ubuntu-la-arch/3.png)
+![3A6000 上 rbnx boot 的启动效果](./images/3.png)
 
 ---
 
@@ -350,7 +350,7 @@ docker ps | grep robonix_tiago_sim
 
 x86 Ubuntu 22.04 上的 Webots 仿真效果：
 
-![x86 Ubuntu 22.04 上 Webots 仿真的运行效果](/img/x86-ubuntu-la-arch/2.png)
+![x86 Ubuntu 22.04 上 Webots 仿真的运行效果](./images/2.png)
 
 ---
 
@@ -547,7 +547,7 @@ rbnx chat
 
 `rbnx chat` 的交互效果：
 
-![rbnx chat 的对话与能力调用效果](/img/x86-ubuntu-la-arch/4.png)
+![rbnx chat 的对话与能力调用效果](./images/4.png)
 
 ---
 
