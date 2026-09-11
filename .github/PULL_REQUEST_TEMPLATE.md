@@ -4,7 +4,7 @@
 
 ## Source baseline
 
-- Robonix source branch: <!-- dev-next / dev / main / not applicable -->
+- Robonix source branch: <!-- dev / main / not applicable -->
 - Robonix source commit: <!-- full commit SHA, or explain why not applicable -->
 - Affected platform or robot: <!-- OS, architecture, robot model, or not applicable -->
 
@@ -27,7 +27,7 @@ Paste concise commands and results here. Do not include credentials or personal 
 
 ## Compatibility and backport
 
-<!-- State dev-next/dev/main differences, deprecated behavior, and whether another documentation version needs a backport. -->
+<!-- State dev/main differences, deprecated behavior, and whether another documentation version needs a backport. -->
 
 ## Visual changes
 

@@ -2,7 +2,7 @@
 
 Robonix documentation is maintained in the open. Before changing a page, read the Chinese [documentation contribution guide](docs/contributing/documentation.md) and [writing standard](STYLE.md).
 
-The published book currently documents the experimental `dev-next` branch of `syswonder/robonix`. The `dev` branch is the recommended, more stable development baseline; the Robonix source `main` branch is reserved for milestone releases. Always state and verify the source branch and commit described by a pull request.
+The published book documents the `dev` branch of `syswonder/robonix`, which is the recommended development baseline; the Robonix source `main` branch is reserved for milestone releases. The experimental `dev-next` branch was folded into `dev` and retired. Always state and verify the source branch and commit described by a pull request.
 
 ## Contribution path
 

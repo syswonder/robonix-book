@@ -20,6 +20,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'integration-guide/index',
         'integration-guide/vendor-onboarding',
+        {type: 'doc', id: 'integration-guide/mujoco-simulation-onboarding', label: '接入 MuJoCo 仿真本体'},
         {type: 'doc', id: 'tutorials/mapping-and-odometry', label: '建图与里程计'},
         'integration-guide/packaging-spec',
         'integration-guide/build-and-codegen',
