@@ -6,6 +6,8 @@ title: 空间地图
 
 `map` 服务是算法无关的同步定位与建图（Simultaneous Localization and Mapping，SLAM）及定位输出面：把占据栅格、地图坐标系位姿、全局点云、融合里程和地图生命周期统一成 `robonix/service/map/*` 能力约定。导航、Scene 和可视化按能力约定消费这些结果，不依赖具体 SLAM 引擎。
 
+部署配置、参数体系与排障步骤见[建图与定位服务使用指南](../../components/mapping.md)，本页只描述接口。
+
 能力约定 TOML 在 `capabilities/service/map/`；直接使用的接口定义语言（Interface Definition Language，IDL）文件位于 `capabilities/lib/{map,lifecycle,common_interfaces}/`。
 
 新软件包省略 Driver 条目，由框架自动注册共享的 `robonix/lifecycle/driver`；显式选择共享 Driver 的行为相同。未实现生命周期回调时，框架记录警告并执行空操作。
