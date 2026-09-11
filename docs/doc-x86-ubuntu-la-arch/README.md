@@ -2,7 +2,6 @@
 title: x86 Ubuntu 仿真 + LoongArch Arch Linux 本地推理完整部署流程
 slug: /doc-x86-ubuntu-la-arch
 ---
-
 # x86 Ubuntu 仿真 + LoongArch Arch Linux 本地推理完整部署流程
 
 <div class="procedure-meta">
@@ -47,13 +46,10 @@ x86 (192.168.100.1)
 └── simple_nav
 ```
 
-<<<<<<< HEAD
-=======
 3A6000 实机：板载 AMD GPU，本地跑 Ollama 推理。
 
 ![3A6000 开发板与板载 AMD GPU](/img/x86-ubuntu-la-arch/1.jpg)
 
->>>>>>> 217b887 (docs: add the x86 simulation + LoongArch deployment guide)
 ---
 
 ## 二、3A6000 上：编译 + 安装 Robonix
@@ -287,13 +283,10 @@ rbnx boot --no-update-check
 
 保持这个终端开着。
 
-<<<<<<< HEAD
-=======
 启动效果（Atlas / Executor / Pilot / Liaison 全部拉起）：
 
 ![3A6000 上 rbnx boot 的启动效果](/img/x86-ubuntu-la-arch/3.png)
 
->>>>>>> 217b887 (docs: add the x86 simulation + LoongArch deployment guide)
 ---
 
 ## 五、x86 Ubuntu 上：安装与启动 Webots
@@ -355,13 +348,10 @@ bash examples/webots/sim/start.sh --tiago-variant lite
 docker ps | grep robonix_tiago_sim
 ```
 
-<<<<<<< HEAD
-=======
 x86 Ubuntu 22.04 上的 Webots 仿真效果：
 
 ![x86 Ubuntu 22.04 上 Webots 仿真的运行效果](/img/x86-ubuntu-la-arch/2.png)
 
->>>>>>> 217b887 (docs: add the x86 simulation + LoongArch deployment guide)
 ---
 
 ## 六、x86 上：构建并启动驱动
@@ -555,13 +545,10 @@ rbnx chat
 向后移动0.2米
 ```
 
-<<<<<<< HEAD
-=======
 `rbnx chat` 的交互效果：
 
 ![rbnx chat 的对话与能力调用效果](/img/x86-ubuntu-la-arch/4.png)
 
->>>>>>> 217b887 (docs: add the x86 simulation + LoongArch deployment guide)
 ---
 
 ## 十、可选：Scene
