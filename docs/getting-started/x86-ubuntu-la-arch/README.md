@@ -1,6 +1,6 @@
 ---
 title: x86 Ubuntu 仿真 + LoongArch Arch Linux 本地推理完整部署流程
-slug: /doc-x86-ubuntu-la-arch
+slug: /getting-started/x86-ubuntu-la-arch
 ---
 # x86 Ubuntu 仿真 + LoongArch Arch Linux 本地推理完整部署流程
 

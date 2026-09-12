@@ -9,7 +9,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'getting-started/quickstart',
         'getting-started/client',
-        {type: 'doc', id: 'doc-x86-ubuntu-la-arch/README', label: 'x86 仿真 + LoongArch 部署'},
+        {type: 'doc', id: 'getting-started/x86-ubuntu-la-arch/README', label: 'x86 仿真 + LoongArch 部署'},
         'architecture/deployment-and-startup',
         'architecture/multiplatform-deployment',
       ],
