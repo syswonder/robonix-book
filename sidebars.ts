@@ -16,6 +16,16 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: '组件使用指南',
+      items: [
+        {type: 'doc', id: 'components/rbnx', label: 'rbnx 命令行'},
+        {type: 'doc', id: 'components/mapping', label: '建图与定位'},
+        {type: 'doc', id: 'components/navigation', label: '导航'},
+        {type: 'doc', id: 'components/scene', label: '场景服务'},
+      ],
+    },
+    {
+      type: 'category',
       label: '接入与发布',
       items: [
         'integration-guide/index',
