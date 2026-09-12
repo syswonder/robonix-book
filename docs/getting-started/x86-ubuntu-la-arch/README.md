@@ -67,6 +67,67 @@ protoc --version
 
 要求 Rust 至少 1.85，能支持 `edition 2024`。
 
+上面是最少需要的一组包；下面是本流程参考机器（Loongson 3A6000）上 `pacman -Qqe` 的完整显式安装列表，包含 ROCm、ONNX Runtime 等编译与本地推理相关包，可按需取用：
+
+```text
+base
+base-devel
+clang
+cython
+dosfstools
+efibootmgr
+gcc-fortran
+git
+grub
+libblake3
+linux
+linux-firmware
+llvm
+lsof
+meson
+neovim
+networkmanager
+ninja
+nlohmann-json
+ollama-rocm
+onnxruntime-opt-rocm
+openblas
+openssh
+python
+python-aiohttp
+python-cachetools
+python-cbor2
+python-cloudpickle
+python-dill
+python-django-ninja
+python-fastapi
+python-grpcio
+python-huggingface-hub
+python-msgspec
+python-onnxruntime-opt-rocm
+python-openai
+python-opencv
+python-orjson
+python-pip
+python-pkg_resources
+python-prometheus_client
+python-pydantic
+python-pytorch-opt-rocm
+python-regex
+python-seaborn
+python-setuptools
+python-setuptools-scm
+python-torchvision
+python-tqdm
+python-uvloop
+rocm-hip-runtime
+rocm-hip-sdk
+rocm-opencl-runtime
+rocm-opencl-sdk
+rsync
+rust
+```
+
 ### 2. 获取代码 + 子模块
 
 ```bash
