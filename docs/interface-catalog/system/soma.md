@@ -4,11 +4,11 @@ title: 本体服务
 <span id="soma-robonixsystemsoma"></span>
 # 本体服务（Soma）
 
-本体服务是已实现的本体数据与部署启动层：它原样读取一台机器人的 Soma YAML 和 URDF，并从 YAML 中解析底盘轮廓和夹爪状态配置；当前不会解释或维护通用部件拓扑。运行时监视器从 Atlas 发现 ROS 2 `arm/joint_states` 与 `chassis/odom`，据此生成关节、夹爪和底盘运行状态快照；健康服务订阅本体服务的健康流并做阈值判断。
+本体服务是本体数据与部署启动层。它原样读取一台机器人的 Soma YAML 和 URDF，并从 YAML 中解析底盘轮廓和夹爪状态配置；当前不会解释或维护通用部件拓扑。运行时监视器从 Atlas 发现 ROS 2 `arm/joint_states` 与 `chassis/odom`，据此生成关节、夹爪和底盘运行状态快照；健康服务订阅本体服务的健康流并做阈值判断。
 
-在 `rbnx boot` 中，本体服务负责两阶段软件包生命周期：先启动所有原语并执行 `Driver(CMD_INIT)`、`Driver(CMD_ACTIVATE)`；原语全部进入 `ACTIVE` 后，本体服务才注册自身能力并进入 `ACTIVE`。等 `rbnx` 通过私有管道发出 `stage2` 触发后，本体服务再启动技能并只执行 `Driver(CMD_INIT)`；技能的首次 `CMD_ACTIVATE` 由执行器在第一次模型上下文协议（Model Context Protocol，MCP）调用前完成。
+在 `rbnx boot` 中，本体服务负责两阶段软件包生命周期：先启动所有原语并执行 `Driver(CMD_INIT)`、`Driver(CMD_ACTIVATE)`；原语全部进入 `ACTIVE` 后，本体服务才注册自身能力并进入 `ACTIVE`。等 `rbnx` 通过私有管道发出 `stage2` 触发后，本体服务再启动技能并只执行 `Driver(CMD_INIT)`；技能的首次 `CMD_ACTIVATE` 由执行器在第一次MCP调用前完成。
 
-能力约定 TOML 在 `capabilities/system/soma/`，接口定义语言（Interface Definition Language，IDL）文件在 `capabilities/lib/soma/`。
+能力约定 TOML 在 `capabilities/system/soma/`，IDL 文件在 `capabilities/lib/soma/`。
 
 ## 接口
 
@@ -24,18 +24,18 @@ title: 本体服务
 
 ## 运行状态如何聚合
 
-Soma 在原语全部进入 `ACTIVE` 后，通过 Atlas 发现两类**精确能力约定 ID 且传输为 ROS 2** 的提供方，并为每条已连接通道启动运行状态订阅：
+原语全部进入 `ACTIVE` 后，Soma 通过 Atlas 发现两类提供方，条件是**能力约定 ID 精确匹配且传输为 ROS 2**。Soma 为每条已连接通道启动运行状态订阅：
 
 | 输入能力 | 聚合结果 | 当前判定 |
 |---|---|---|
 | `robonix/primitive/chassis/odom` | 底盘组件、线速度、角速度和 `moving` 指标 | 样本年龄不超过 2 秒才新鲜；线速度模长大于 `0.02 m/s` 或角速度模长大于 `0.03 rad/s` 时为移动 |
 | `robonix/primitive/arm/joint_states` | 机械臂、关节位置、夹爪组件和 actuator 状态 | 样本年龄不超过 2 秒才新鲜；关节名和位置按数组索引对应 |
 
-发现只以 Atlas 中实际注册的能力为准；仅在 `soma.yaml` 的 `exports` 写出路径不会创建提供方。反过来，Soma 也不会核对 YAML 声明与 Atlas 结果是否一致。没有发现任何 ROS 2 joint-state 或 odometry 源时，本体 YAML/URDF 接口仍可工作，但日志和健康快照会明确记录缺少运行状态源。
+发现只以 Atlas 中实际注册的能力为准；仅在 `soma.yaml` 的 `exports` 写出路径不会创建提供方。反过来，Soma 也不会核对 YAML 声明与 Atlas 结果是否一致。没有发现任何 ROS 2 joint-state 或 odometry 源时，本体 YAML 与 URDF 接口仍可工作。日志和健康快照会明确记录缺少运行状态源。
 
 夹爪需要额外结合 `soma.yaml`：部件 `type` 必须是 `parallel_jaw_gripper` 或 `end_effector`，自身或祖先部件必须将 `robonix/primitive/arm/joint_states` 绑定到同一 `provider_id`，并提供数值 `state.open_position_m`。`joint_name` 默认是 `gripper`，`open_tolerance_m` 默认是 `0.002` 米。新鲜位置落在标定容差内时报告 `open`，否则报告 `holding_or_partially_closed`；过期或缺少 joint 时报告未知。`likely_holding` 只是未处于标定开启位置的启发式指标，不能作为抓取成功证明。
 
-健康快照的 TTL 为 2 秒，当前包含 body、arm、joint、gripper、chassis、actuator、速度与夹爪指标，以及新鲜度和运行状态 reader 警告。它不会从这些运动样本推断安全：`power_sources`、`safety`、`safety_endpoints` 和 `faults` 当前为空或未知。需要电源、急停、保护停止和设备故障时，应由设备健康原语提供真实样本，再由 [Vitals](vitals.md) 做规范化和阈值评估。
+健康快照的 TTL 为 2 秒。快照当前包含 body、arm、joint、gripper、chassis、actuator 六类状态，速度与夹爪指标，以及新鲜度和运行状态 reader 警告。它不会从这些运动样本推断安全：`power_sources`、`safety`、`safety_endpoints` 和 `faults` 当前为空或未知。需要电源、急停、保护停止和设备故障时，应由设备健康原语提供真实样本，再由 [Vitals](vitals.md) 做规范化和阈值评估。
 
 ## 各接口的边界
 

@@ -6,7 +6,7 @@ title: 记忆
 
 记忆服务是长期记忆层：语义检索、写入和压缩归纳。`search` / `save` 的请求和响应使用 `std_msgs/String`；`compact` 接收空请求，返回 `std_msgs/String`。embedding、向量库和检索数量属于实现细节，不进能力约定。
 
-能力约定 TOML 在 `capabilities/service/memory/`；直接使用的接口定义语言（Interface Definition Language，IDL）文件位于 `capabilities/lib/memory/`，字符串载荷复用 `std_msgs/String`。
+能力约定 TOML 在 `capabilities/service/memory/`；直接使用的IDL 文件位于 `capabilities/lib/memory/`，字符串载荷复用 `std_msgs/String`。
 
 新软件包省略 Driver 条目，由框架自动注册共享的 `robonix/lifecycle/driver`；显式选择共享 Driver 的行为相同。未实现生命周期回调时，框架记录警告并执行空操作。
 
@@ -18,15 +18,15 @@ title: 记忆
 
 | 能力约定 ID | 模式 | 默认实现传输 | 载荷（IDL） | 能力约定 TOML |
 |---|---|---|---|---|
-| `robonix/service/memory/search` | `rpc` | 模型上下文协议（Model Context Protocol，MCP） | [`memory/Search`](../../reference/idl.md#memory-srv-search-srv)（`std_msgs/String` → `std_msgs/String`） | `service/memory/search.v1.toml` |
+| `robonix/service/memory/search` | `rpc` | MCP | [`memory/Search`](../../reference/idl.md#memory-srv-search-srv)（`std_msgs/String` → `std_msgs/String`） | `service/memory/search.v1.toml` |
 | `robonix/service/memory/save` | `rpc` | MCP | [`memory/Save`](../../reference/idl.md#memory-srv-save-srv)（`std_msgs/String` → `std_msgs/String`，已废弃） | `service/memory/save.v1.toml` |
 | `robonix/service/memory/compact` | `rpc` | MCP | [`memory/Compact`](../../reference/idl.md#memory-srv-compact-srv)（空请求 → `std_msgs/String`） | `service/memory/compact.v1.toml` |
 
-参考实现：Robonix 源码中的 [`services/memsearch`](https://github.com/syswonder/robonix/tree/cec06ee874eace27dd622e6ce4685c971f04a9e4/services/memsearch)（`memsearch[onnx]` + `milvus-lite`）。三个记忆操作都用 `@memory.mcp(...)` 暴露，不挂载业务 gRPC servicer。MCP 服务内部的工具名默认取 leaf `search`、`save`、`compact`，但 Atlas 发现与 RTDL 路由仍使用完整 `robonix/service/memory/search`、`robonix/service/memory/save` 和 `robonix/service/memory/compact`。Driver 由 Robonix API 以 gRPC 提供。
+参考实现：Robonix 源码中的 [`services/memsearch`](https://github.com/syswonder/robonix/tree/223675d9a5000e70debae4f2512404cec5c9c442/services/memsearch)（`memsearch[onnx]` + `milvus-lite`）。三个记忆操作都用 `@memory.mcp(...)` 暴露，不挂载业务 gRPC servicer。MCP 服务内部的工具名默认取 leaf `search`、`save`、`compact`，但 Atlas 发现与 RTDL 路由仍使用完整 `robonix/service/memory/search`、`robonix/service/memory/save` 和 `robonix/service/memory/compact`。Driver 由 Robonix API 以 gRPC 提供。
 
 ## memgraph 提供方（结构化记忆）
 
-除默认参考实现 memsearch 外，源码树还包含第二个提供方 `services/memory`（服务名 `memgraph`，ScribeMem 结构化记忆）：它把记忆写入因果知识图谱（Causal Knowledge Graph，CKG），做 BM25 + 向量混合检索，并在同一 `robonix/service/memory` 命名空间注册三条自己的能力约定：
+源码树还有第二个提供方 `services/memory`，服务名 `memgraph`，实现 ScribeMem 结构化记忆。它把记忆写入因果知识图谱（Causal Knowledge Graph，CKG），检索方式是 BM25 与向量混合。它在同一个 `robonix/service/memory` 命名空间下注册三条自己的能力约定：
 
 | 能力约定 ID | 模式 | 传输 | 载荷（IDL） | 能力约定 TOML |
 |---|---|---|---|---|
@@ -38,7 +38,7 @@ title: 记忆
 
 ## 生命周期与运行行为
 
-提供方注册后等待 `Driver(CMD_INIT)`。参考实现在 `on_init` 中解析实例配置、创建存储目录、配置 ONNX Runtime、构造 MemSearch 后端，并为 Markdown 语料建立初始索引。后端构造或首次索引失败时，`CMD_INIT` 返回错误，提供方进入 `ERROR`，不会继续进入 `ACTIVE`。相同配置的重复初始化是幂等操作；已初始化后再传入不同配置会返回错误。
+提供方注册后等待 `Driver(CMD_INIT)`。参考实现在 `on_init` 中依次做五件事：解析实例配置、创建存储目录、配置 ONNX Runtime、构造 MemSearch 后端、为 Markdown 语料建立初始索引。后端构造或首次索引失败时，`CMD_INIT` 返回错误，提供方进入 `ERROR`，不会继续进入 `ACTIVE`。相同配置的重复初始化是幂等操作；已初始化后再传入不同配置会返回错误。
 
 初始化成功后，启动器发送 `CMD_ACTIVATE` 进入 `ACTIVE`。参考实现没有自定义激活或去激活处理，这两个命令使用框架的默认状态转换；关闭时由框架停止服务端。业务工具不会在后台补做初始化：未完成 `CMD_INIT` 时，后端访问会失败。
 

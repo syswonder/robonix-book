@@ -5,9 +5,9 @@ title: 底盘
 # 底盘
 
 
-底盘原语覆盖移动机器人的**低层**运动控制和反馈。能力约定定义在 Robonix 源码树下：IDL 在 `capabilities/lib/chassis/`，能力约定 TOML 在 `capabilities/primitive/chassis/`（绝对路径见 `rbnx path capabilities`）。
+底盘原语覆盖移动机器人的<strong>低层</strong>运动控制和反馈。能力约定定义在 Robonix 源码树下：IDL 在 `capabilities/lib/chassis/`，能力约定 TOML 在 `capabilities/primitive/chassis/`（绝对路径见 `rbnx path capabilities`）。
 
-> **注意**：目标式导航不属于底盘原语，由 `robonix/service/navigation/navigate`、`robonix/service/navigation/navigate/status` 和 `robonix/service/navigation/navigate/cancel` 承担（通常 Nav2）——详见 [导航服务](../service/navigation.md)。map 帧位姿查询也不在这里，而是 `robonix/service/map/pose` 的职责。底盘原语只负责下发 `robonix/primitive/chassis/move` / `robonix/primitive/chassis/twist_in` 瞬时运动输入，以及通过 `robonix/primitive/chassis/odom` 反馈底盘自身的运动事实。
+> **注意**：目标式导航不属于底盘原语，由 `robonix/service/navigation/navigate`、`robonix/service/navigation/navigate/status` 和 `robonix/service/navigation/navigate/cancel` 承担（通常 Nav2）。详见 [导航服务](../service/navigation.md)。map 帧位姿查询也不在这里，而是 `robonix/service/map/pose` 的职责。底盘原语只负责下发 `robonix/primitive/chassis/move` / `robonix/primitive/chassis/twist_in` 瞬时运动输入，以及通过 `robonix/primitive/chassis/odom` 反馈底盘自身的运动事实。
 
 新软件包省略 Driver 条目，由框架自动注册共享的 `robonix/lifecycle/driver`；显式选择共享 Driver 的行为相同。未实现生命周期回调时，框架记录警告并执行空操作。
 

@@ -1,0 +1,286 @@
+---
+title: 建图与定位服务使用指南
+---
+
+# 建图与定位服务使用指南
+
+本页面向要在一台机器人上建出第一张地图、并让后续任务在这张地图上稳定运行的工程师。阅读前需要机器人已经有可用的雷达或 RGB-D 相机和底盘里程计，并且能用 `rbnx boot` 启动部署。读完本页可以独立完成：选对传感器绑定与引擎、建图并保存、以定位模式启动、在运行中切换地图，以及判断地图未按预期加载时如何定位原因。
+
+接口清单与载荷定义在[空间地图接口页](../interface-catalog/service/map.md)，本页不重复。
+
+本页依据 [`service-map-rbnx`](https://github.com/syswonder/service-map-rbnx) 的 [`898432ef`](https://github.com/syswonder/service-map-rbnx/tree/898432ef) 编写。该仓库独立于 Robonix 主仓库演进，参数模板见 [`config/rtabmap_params.template.yaml`](https://github.com/syswonder/service-map-rbnx/blob/898432ef/config/rtabmap_params.template.yaml)。
+
+## 服务负责什么
+
+建图服务把传感器数据变成两样东西：一张二维占据栅格（occupancy grid），和一个可以反复回到的坐标系。前者交给导航服务规划路径，后者是[场景服务](./scene.md)里所有对象位姿的参照。
+
+它同时负责地图的生命周期：保存、加载、删除，以及向全系统广播“当前是哪张地图、第几代”。场景服务据此判断自己的对象该不该失效。
+
+**当前的建图与定位按室内场景设计。** 输出是二维占据栅格，`Grid/3D` 取 `false`，位姿配准用 `Reg/Force3DoF` 限制在平面内。输入只接雷达、RGB-D 与底盘里程计，不融合 GNSS。室外开阔环境缺少可回环的结构特征，且地面不满足平面假设，现有参数不适用。
+
+## 三个数据库，必须分清
+
+RTAB-Map 从不直接写入已保存的地图。下面所有规则都源于这一点。
+
+| 数据库 | 路径 | 谁写它 |
+|---|---|---|
+| 已保存地图 | `{MAPPING_MAPS_DIR}/{map_id}/rtabmap.db` | 只有 `save_map` 写一次，此后不可变 |
+| 运行时数据库 | `{MAPPING_RUNTIME_DB_DIR}/…`（默认 `/tmp/robonix-mapping-runtime`） | RTAB-Map 持续写。建图会话拿到一个全新的空库，加载则拿到已保存地图的副本 |
+| 遗留默认库 | `~/.ros/rtabmap.db` | 正常部署里没人写，只作为 `save_map` 的最后兜底 |
+
+一个已保存地图目录里除数据库外还有配套产物：
+
+```text
+maps/lab_3f/rtabmap.db  occupancy.pgm  occupancy.yaml  occupancy.png  cloud.pcd  meta.yaml
+```
+
+## 传感器绑定
+
+`sensor_providers` 是唯一必填项。它把传感器角色映射到 Atlas 上的提供方 ID，写了哪个角色就启用哪个输入。
+
+```yaml
+service:
+  mapping:
+    config:
+      sensor_providers:
+        lidar3d: roof_lidar
+        rgb: front_camera
+        depth: front_camera
+        odom: base_chassis
+```
+
+支持的角色是 `lidar2d`、`lidar3d`、`rgb`、`depth`、`imu`、`odom`。用 RGB-D 时 `rgb` 和 `depth` 必须同时给出。
+
+## 启动配置
+
+| 字段 | 默认值 | 含义 |
+|---|---|---|
+| `algo` | `rtabmap` | 建图引擎。**只用 `rtabmap`**，在跑的机器人部署全是它。`config.spec` 里另外列出的取值没有部署在用，不要选 |
+| `occupancy_sources` | 所有可用输入 | 参与构建二维占据栅格的输入，取 `lidar`、`depth`。它与 `Grid/Sensor`、`Grid/FromDepth` 是两种互斥写法，同时配置会在启动时直接抛 `RuntimeError`，二选一 |
+| `params_file` | 无 | 部署自己拥有的 RTAB-Map 参数 YAML，相对路径从 `robonix_manifest.yaml` 所在目录解析。从上游 `config/rtabmap_params.template.yaml` 复制一份到部署仓库作为起点，上游模板运行时不会被加载 |
+| `rtabmap_params` | 无 | 在 `params_file` 之上的最终覆盖，键用 RTAB-Map 的名字例如 `Grid/FootprintLength`，值必须是标量 |
+| `base_frame` | `base_link` | 机器人本体坐标系，必须与完整 URDF/TF 树以及导航服务用的一致 |
+| `odom_frame` | `odom` | 连续运动坐标系，选定的里程计提供方必须在这个坐标系里发布 |
+| `deskew_lidar` | `false` | 对 `lidar3d` 点云做运动畸变校正，需要逐点时间戳 |
+| `use_sim_time` | `false` | 用 ROS `/clock`。只有当所有传感器、TF 发布者和消费者都用同一个仿真时钟时才打开 |
+| `map_mode` | `mapping` | 启动模式，见下一节 |
+| `map_id` | 无 | 定位模式下要加载的地图标识，定位模式必填 |
+| `webui_port` | `8091` | 建图 Web 界面端口，设为 `0` 或空字符串关闭 |
+| `webui_host` | `127.0.0.1` | Web 界面绑定地址。**该界面没有鉴权**，除非有带认证的部署覆盖层保护，否则保持回环地址 |
+
+![建图 Web 界面。显示当前地图、运行模式和会话状态，并提供保存、加载与模式切换。](/img/ui/mapping-webui.webp)
+
+### 分离定位与导航里程计
+
+有些机器人用于建图的高精度里程计延迟太高，直接给导航用会导致控制震荡。这时打开 `navigation_odom_bridge`：RTAB-Map 内部里程计变成只发消息的私有轨迹，另有一座桥用底盘位姿发布 map 到导航 odom 的变换。
+
+```yaml
+config:
+  odom_frame: odom_icp             # RTAB-Map 私有轨迹改名，不能再叫 odom
+  navigation_odom_bridge: true
+  navigation_odom_topic: /odom
+  navigation_odom_frame: odom      # 底盘里程计拥有的坐标系，必须与上面不同
+```
+
+默认关闭，保持原有 TF 行为。
+
+## RTAB-Map 参数系统
+
+这是建图服务配置里真正花时间的地方。下面讲 RTAB-Map 自己的参数体系，以及现有机器人部署从中总结出来的经验。
+
+### 两类参数，两套规则
+
+RTAB-Map 的 ROS 包装层里有两类参数，行为不同，混淆它们会让节点起不来：
+
+- <strong>斜杠命名的 RTAB-Map 参数</strong>，例如 `Grid/CellSize`、`Reg/Strategy`。包装层把它们统一声明为<strong>字符串</strong>。
+- **原生 ROS 参数**，例如 `deskewing`、`publish_null_when_lost`。它们有各自的声明类型，必须保持布尔或数值。
+
+服务已经按这个区分处理：`params_file` 与 `rtabmap_params` 里斜杠命名的键会被转成字符串，其余保持原类型。这条规则的存在是因为曾经全部字符串化，导致一个声明为布尔的原生参数被换成字符串，节点直接拒绝启动。
+
+### 两层覆盖
+
+`params_file` 是部署自有的完整参数文件，`rtabmap_params` 是在它之上的最终覆盖。后者适合放几条与机器人硬件强相关、且希望在清单里一眼看见的值：
+
+```yaml
+config:
+  params_file: config/rtabmap_params.yaml
+  rtabmap_params:
+    Grid/FootprintLength: 0.84
+    Grid/FootprintWidth: 0.60
+```
+
+### 实际需要调的几组
+
+**`Grid/*`：占据栅格的生成方式。** 这一组直接决定导航看到的那张图。
+
+| 参数 | 现有部署的取值 | 说明 |
+|---|---|---|
+| `Grid/CellSize` | `0.05` | 栅格分辨率，与 Nav2 代价地图的 `resolution` 保持一致 |
+| `Grid/RangeMax` | `6.0` | 参与建栅格的最大距离。给得比雷达量程小是有意的，远处回波角分辨率差，写进栅格会让边界模糊 |
+| `Grid/RangeMin` | `0.25`（Lite3） | 近场截止。四足机器人靠它同时挡掉行走时的腿部回波 |
+| `Grid/RayTracing` | `true` | 用射线清空走过的自由空间，否则地图上全是没被清掉的旧障碍 |
+| `Grid/3D` | `false` | 二维导航用二维栅格 |
+| `Grid/MaxObstacleHeight` | `1.0` 到 `1.5` | 高于此高度的回波不算障碍。按机器人真实高度定 |
+| `Grid/MaxGroundHeight` | `0.1` | 低于此高度算地面 |
+| `Grid/FootprintLength` / `Width` | 直接写在参数文件里 | 写进栅格之前先去掉机身自身的回波。Lite3 在 `config/rtabmap_params.yaml` 里填 `0.68 × 0.46`，比 `soma.yaml` 声明的 `0.610 × 0.370` 大一圈，留给步态摆动。这两个值不会自动同步，改机身尺寸时要一起改 |
+| `Grid/Sensor` / `Grid/FromDepth` | Lite3 设 `0` / `false` | 只用雷达建栅格。RGB-D 仍供 RTAB-Map 和场景服务使用，但不会把同一堵墙用受外参误差影响的方式再写一遍 |
+
+**`Reg/*` 与 `Optimizer/*`：位姿配准。** `Reg/Strategy: 1` 选 ICP，`Reg/Force3DoF: true` 把配准限制在平面内。后者在四足机器人上是必需的：不加的话步态带来的横滚和俯仰会让地图产生形变。
+
+**`Icp/*`：匹配阈值。** `Icp/MaxCorrespondenceDistance`、`Icp/MaxTranslation`、`Icp/MaxRotation` 三者共同决定一次匹配能接受多大的偏差。**调得太紧的表现不是报错，而是静默放弃修正**：Benben 的注释记录了这个现象：二维激光特征少，阈值过紧导致定位匹配不上，给了 initialpose 之后修正量恒为 0，旋转持续漂移。
+
+**`Vis/*`：视觉特征阈值。** `Vis/MinInliers` 默认 20，两台用二维激光的机器人都放宽到 12，理由同样是特征少。
+
+**`RGBD/*`：更新频率与回环。** `RGBD/LinearUpdate` 和 `RGBD/AngularUpdate` 决定移动多少才生成新节点（现有取值 `0.05` 到 `0.1`）。`RGBD/ProximityBySpace` 打开空间邻近检测。`RGBD/ProximityPathMaxNeighbors` 是每条路径上参与比对的邻居节点数上限，上游默认 `0` 表示关闭这种一对多的邻近检测；Lite3 设成 `1`，在保留走廊回环的同时减少平行墙造成的错误连接。
+
+**`Rtabmap/DetectionRate`** 是每秒处理几帧。Lite3 取 `1.0` 并写明了依据：手动建图推荐速度 0.10 到 0.15 m/s，1 Hz 意味着每次更新间隔 10 到 15 厘米，同时给 Jetson 留下足够算力做 RGB-D 与点云同步和 ICP 里程计。该参数应当从建图时的移动速度倒推。
+
+### 三条踩过的坑
+
+
+
+**`RGBD/MaxOdomCacheSize: 0`。** 默认值大于 0 时，定位的回环修正要等第二次确认匹配才生效。机器人静止时这次确认永远不会来，于是 map 到 odom 的修正一直挂起，`/map` 显示的是一个局部窗口而不是加载进来的整张图。
+
+**`Mem/InitWMWithAllNodes: true`。** 不设它的话，运行时加载地图后工作内存不会载入全部已保存节点，`/map` 只从实时传感器数据重建，表现为大约 6 米的局部窗口。对全新的临时建图库没有影响。
+
+**`RGBD/ProximityGlobalScanMap` 必须保持 `false`。** 设为 `true` 会触发 RTAB-Map 0.22 的断言崩溃（`Rtabmap.cpp:2953`，`Pose of N not found in global scan poses`），定位和建图的邻近检测直接中止。
+
+### 一个不要覆盖的参数
+
+`Mem/IncrementalMemory` 由服务按模式接管：建图时为真，定位时为假。**不要在共享参数文件里覆盖它**，否则模式切换的语义会被破坏。
+
+## 两种启动模式
+
+`map_mode` 只有两种有意义的组合。
+
+建新图是默认形态，两个键都不写就是它：
+
+```yaml
+service:
+  mapping:
+    config: {}
+```
+
+以定位模式起来，是跑任务时用的稳定坐标系形态：
+
+```yaml
+service:
+  mapping:
+    config:
+      map_mode: localization
+      map_id: lab_3f
+```
+
+`mapping` 模式<strong>总是打开一个全新的空运行时库</strong>。同时写了 `map_id` 也会被忽略：它指向的是一个已保存产物，不是一个正在运行的会话。<strong>没有“启动后继续扩展地图 X”这种配置。</strong>
+
+`localization` 模式必须给 `map_id`，地图不存在就启动失败。这是有意的约束，避免在用户以为正在定位时，服务从开机位姿重新建图。它把已保存的数据库复制一份并在副本上定位，因此**地图坐标系跨重启稳定**，场景服务才能为同一个 ID 恢复语义状态。
+
+## 运行时操作
+
+| 操作 | 改数据库 | 改模式 | 改坐标系 |
+|---|---|---|---|
+| `save_map(map_id)` | 否，把当前活动库快照成一张新的已保存地图 | 否 | 否 |
+| `load_map(map_id)` | 是，复制已保存地图并切到副本上 | 是，切到定位 | 是，切到该地图的坐标系 |
+| `switch_mode(mode)` | 否 | 是 | 否 |
+| `reset_map` | 否，只清工作内存，文件还在 | 回到建图 | **是**，原点变成机器人当前位姿 |
+| `pose_estimate(x, y, θ)` | 否 | 否 | 否 |
+| `delete_map(map_id)` | 从磁盘删除一张已保存地图 | 否 | 否 |
+
+现场需要记住的四条：
+
+- **`save_map` 只发布一次。** 用已存在的 `map_id` 保存会被拒绝，修正后的地图存成新 ID。
+- **`load_map` 一定进入定位模式。** 传 `mapping` 参数会被接受并强制改写，因为 RTAB-Map 只有在以定位模式打开数据库时才会恢复已保存的占据栅格。
+- **`reset_map` 会让坐标失效。** 重建出来的地图不和旧的共享坐标系，之前记录的位置全部作废。生命周期广播会提升 generation 来说明这一点。
+- **加载会替换当前会话。** 上次保存之后建的部分全部丢失，先保存再加载。
+
+## 常用流程
+
+1. **建第一张图**：不写 `map_id` 和 `map_mode` 启动，把空间走一遍，`save_map("lab_3f")`。
+2. <strong>再建一张图</strong>：重启服务，然后走图并存成新 ID。<strong>不要</strong>先加载一张已有地图。
+3. **在已保存地图上执行任务**：用 `map_mode: localization` 加 `map_id` 启动，或者对运行中的服务调 `load_map(id)`。
+4. **修正一张已保存地图**：重新建一个会话并存成新 ID。已发布的地图是不可变的。
+
+## 运行中切换模式，以及“地图不见了”
+
+配置里的 `map_mode` 只是启动默认值。`switch_mode` 能在不动数据库和坐标系的前提下翻转运行中的 RTAB-Map。
+
+**优先重启，不要在运行时切换。** 从定位切回建图是危险方向，而且切过去之后加载的那张地图通常会从实时视图里消失。Web 界面在定位状态下会一直显示警告，并在这次切换前要求确认。要建新图，请用 `map_mode: mapping` 重启服务。
+
+地图消失时没有任何东西被删除。它变成了一个图的连通分量，而当前发布的地图不是从这个分量组装的。RTAB-Map 0.23.x 里分四步发生：
+
+1. 进入定位会调用 `Memory::incrementMapId()`，开启新的会话 ID 并清空短期记忆。每次加载都会这样，因为加载总是进入定位。
+2. 定位期间每个新节点都被丢弃而不是保留，会话 ID 保持不变。
+3. 切回建图只是把 `Mem/IncrementalMemory` 翻成真。`Memory::addSignatureToStm` <strong>只在会话 ID 相同时</strong>才把新节点连到上一个节点，所以切换后建的第一个节点没有回到旧地图的里程计连接。图从此有两个互不相连的分量。
+4. 发布的地图来自 `Rtabmap::optimizeCurrentMap`，它优化的是当前节点所在的连通分量。旧地图在另一个分量里，因此不在 `/map` 中。
+
+当 RTAB-Map 在两个会话之间检测到一次回环时地图会回来：那条连接把两个分量合并。所以这次切换只在重定位确实能成功的场合才安全。磁盘上的数据库两种情况下都不受影响。
+
+## 接入新传感器后的验证顺序
+
+### 1. 先验证里程计和 TF
+
+启动底盘原语后，先不启动自主探索。确认 Atlas 能找到里程计能力，再检查 ROS 2 数据。以下示例使用 `/odom`；如果 Atlas 显示的实际话题不同，将命令中的话题替换为该值。
+
+```bash
+rbnx caps -v | rg -A 12 -B 2 'base_chassis|robonix/primitive/chassis/odom'
+ros2 topic info /odom --verbose
+ros2 topic hz /odom
+ros2 run tf2_ros tf2_echo odom base_link
+```
+
+机器人静止时位姿不应连续跳变；缓慢直行时平移方向应与实际运动一致；原地旋转时 yaw 方向应正确，位置不应产生大幅圆周运动。任一项失败时，先修正轮径、轮距、坐标系、时间戳或 TF 唯一性，不要用 RTAB-Map 参数掩盖底盘里程计错误。
+
+### 2. 检查传感器坐标和时间
+
+```bash
+ros2 run tf2_ros tf2_echo base_link front_lidar_link
+ros2 run tf2_ros tf2_echo base_link camera_color_optical_frame
+ros2 topic hz /scan
+ros2 topic hz /camera/color/image_raw
+ros2 topic hz /camera/aligned_depth_to_color/image_raw
+```
+
+框架名和话题名必须替换为当前部署的实际值。转动机器人时如果墙面立即形成扇形、斜墙或多重边界，优先检查里程计旋转量、传感器外参和时间同步。
+
+### 3. 启动 Mapping 并检查唯一发布方
+
+```bash
+ros2 run tf2_ros tf2_echo map odom
+ros2 topic hz /map
+ros2 node info /rtabmap
+rbnx logs -t mapping -l info
+```
+
+外部里程计模式下，`/rtabmap` 不直接订阅 `/odom` 是预期行为：它从 TF 查询 `odom → base_link`。检查 TF 树时应只有一个 `odom → base_link` 发布方和一个 `map → odom` 发布方。
+
+### 4. 再做建图调参
+
+使用一段包含慢速直行、原地旋转和回到已知区域的固定路线。每次只改一组参数，并比较墙体重影、闭环后全图变形、障碍保留情况和处理频率。
+
+- 地图细节不足时，先检查 `Grid/CellSize` 和输入分辨率。
+- 节点过稀时，逐步降低 `RGBD/LinearUpdate` 和 `RGBD/AngularUpdate`；节点过密导致计算堆积时则提高。
+- 处理跟不上输入时，降低 `Rtabmap/DetectionRate`，不要仅增大队列。
+- 旋转时配准失败时，先检查 TF/时间/里程计，再调整 ICP 门限。
+- `Grid/RayTracing` 取值取决于雷达输出的形态。Webots 与 Lite3 都设 `true`，靠射线清出走过的自由空间，否则地图上会留下没被清掉的旧障碍。Go2 设 `false`，因为它的 UniLiDAR 发的是稀疏非重复的点包而不是完整平面扫描，逐包做射线追踪会在回波之间拉出放射状的假自由空间，而地面回波本身已经提供了可通行区域。换雷达时这一项要重新判断，并用“障碍移走”和“雷达从障碍下方穿过”两类场景验证。
+
+地图稳定后再运行 Explore、保存空间地图、标注房间并测试导航。保存、加载和位姿重定位接口见[空间地图](../interface-catalog/service/map.md)。
+
+## 定位常见问题
+
+**定位模式启动失败。** 这是设计行为：`map_id` 指向的地图不存在时服务拒绝启动，而不是从开机位姿开始建图。先确认地图目录存在且包含 `rtabmap.db`。
+
+**加载后机器人在地图上的位置不对。** 用 `pose_estimate` 给一个初值。它不改数据库也不改模式。
+
+**建的图漂移或者尺度不对。** 先确认 `base_frame` 和 `odom_frame` 与 URDF/TF 树一致，再确认里程计提供方确实在声明的坐标系里发布。这两项不一致时地图看起来仍然像地图，但所有坐标都是错的。
+
+**Web 界面打不开。** 默认只绑回环地址。要从别的机器访问必须先有带认证的覆盖层，不要直接把 `webui_host` 改成 `0.0.0.0`。
+
+
+## 参考
+
+本页涉及的上游系统与参数出处：
+
+- RTAB-Map 论文：Labbé M, Michaud F。[RTAB-Map as an open-source lidar and visual simultaneous localization and mapping library for large-scale and long-term online operation](https://doi.org/10.1002/rob.21831)。*Journal of Field Robotics*, 2018。
+- RTAB-Map 代码与参数手册：[introlab/rtabmap](https://github.com/introlab/rtabmap)，参数含义见 [Tutorials·Advanced Parameter Tuning](https://github.com/introlab/rtabmap/wiki/Advanced-Parameter-Tuning)。
+- ROS 2 封装：[introlab/rtabmap_ros](https://github.com/introlab/rtabmap_ros)。
+- 本页的 Lite3 取值出自 [syswonder/robot-deep_robotics-lite3](https://github.com/syswonder/robot-deep_robotics-lite3) 的 `config/rtabmap_params.yaml` 与 `soma.yaml`；Go2 取值出自 [syswonder/robot-unitree-go2](https://github.com/syswonder/robot-unitree-go2)；Webots 取值出自 Robonix 仓库的 `examples/webots/config/rtabmap_params.yaml`。

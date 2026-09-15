@@ -2,9 +2,9 @@
 toc_max_heading_level: 2
 ---
 
-# Robonix 开发者指南
+# 开发者指南
 
-本指南介绍如何开发 Robonix 软件包（Package）。一个软件包可以实现原语（Primitive）、服务（Service）或技能（Skill），依据标准能力约定实现接口，在运行时向 Atlas 注册能力，再由机器人部署清单选择和配置。
+本指南介绍如何开发 Robonix 软件包（Package）。一个软件包可以实现原语（Primitive）、服务（Service）或技能（Skill）。它依据标准能力约定实现接口，在运行时向 Atlas 注册能力，再由机器人部署清单选择和配置。
 
 首次开发先完成第 1 节，再阅读第 2—7 节；随后按软件包类型选择第 8、9 或 10 节，最后按第 11—13 节部署。第 14—16 节供查阅。
 
@@ -22,7 +22,7 @@ git switch --detach 60dc85834c2714022b1821e6fce6c629c0314699
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install grpcio-tools 'mcp>=1.0' 'fastmcp>=3' PyYAML
+python -m pip install 'grpcio-tools==1.76.0' 'mcp>=1.27,<2' 'fastmcp>=3,<5' PyYAML
 
 cp .env.example .env
 # 编辑 .env，填写可用的 VLM_BASE_URL、VLM_API_KEY 和 VLM_MODEL。
@@ -63,7 +63,9 @@ rbnx shutdown
 
 Robonix 为具身智能模型提供统一的运行时。硬件驱动以原语暴露设备能力；建图、导航、语音等算法以服务暴露可复用功能；技能封装具有任务语义的行为。Atlas 维护能力目录，Pilot 把用户意图转换为执行方案，Executor 调用方案中的能力。
 
-系统组件分两层，判据是能不能换掉。**核心系统组件**（Atlas、Chronos、Keystone、Nexus、Scribe、Vitals）不可更换，只被上层依赖，自身不依赖任何系统级服务。**系统级服务**（Executor、Liaison、Pilot、Scene、Sentinel、Soma）可以替换，彼此之间存在依赖，与你要开发的导航、建图等服务处于同一层级，只是由 Robonix 自带。完整清单见[系统组件](architecture/components.md)。
+系统组件分两层，判据是能不能换掉。<strong>核心系统组件</strong>不可更换，只被上层依赖，启动不依赖任何系统级服务，包括 Atlas、Chronos、Keystone、Nexus、Scribe 和 Vitals。Vitals 运行时会消费 Soma 的健康流，但那是后台重试的数据订阅，Soma 不在时它照常启动并提供服务，只是健康数据降级。<strong>系统级服务</strong>可以替换，彼此之间存在依赖，包括 Executor、Liaison、Pilot、Scene、Sentinel 和 Soma。系统级服务与你要开发的导航、建图等服务处于同一层级，只是由 Robonix 自带。
+
+这 12 个名字里有 4 个目前没有运行时实现：Chronos、Keystone 和 Sentinel 只有设计说明，Nexus 是通信库的统称而非独立进程。开发软件包时不能依赖它们，也不能写进部署清单。各组件的实现状态见[系统组件](architecture/components.md)。
 
 开发软件包时会遇到以下系统组件：
 
@@ -71,7 +73,7 @@ Robonix 为具身智能模型提供统一的运行时。硬件驱动以原语暴
 |---|---|---|---|
 | Atlas | 核心 | 保存能力约定、提供方、能力和连接信息 | 每个软件包都要连接；通常只配置地址 |
 | Vitals | 核心 | 汇总组件与设备健康状态 | 提供健康能力或接入健康仪表盘时 |
-| Executor | 系统级服务 | 执行 Pilot 生成的实时任务描述语言（RTDL）方案 | 技能或长任务需要验证执行、状态与取消时 |
+| Executor | 系统级服务 | 执行 Pilot 生成的机器人任务描述语言（RTDL）方案 | 技能或长任务需要验证执行、状态与取消时 |
 | Liaison | 系统级服务 | 承接客户端、文本和语音交互 | 接入外部客户端或语音链路时 |
 | Pilot | 系统级服务 | 把用户意图规划为 RTDL | 需要让模型发现和调用能力时 |
 | Scene | 系统级服务 | 维护环境对象、区域和空间关系 | 技能需要查询环境或语义目标时 |
@@ -88,7 +90,7 @@ Robonix 为具身智能模型提供统一的运行时。硬件驱动以原语暴
 
 能力约定可以在没有提供方运行时由 Atlas 从 TOML 和 IDL 加载。能力只在提供方注册并声明后存在，记录 `provider_id`、`contract_id`、传输及传输参数；调用方连接后再从通道取得端点。
 
-能力目录属于控制面。真实图像、点云、RPC 请求或工具调用通过 ROS 2、gRPC 或模型上下文协议（Model Context Protocol，MCP）直接传输，不经过 Atlas 转发。
+能力目录属于控制面。真实图像、点云、RPC 请求或工具调用通过 ROS 2、gRPC 或 MCP 直接传输，不经过 Atlas 转发。
 
 当前由 Pilot 规划、Executor 代表模型调用的业务能力使用 MCP 传输。gRPC 和 ROS 2 服务适合确定性客户端或组件间调用；能力约定中的 `rpc` 只表示请求—响应语义，不指定某一种通信库。
 
@@ -104,11 +106,11 @@ Robonix 为具身智能模型提供统一的运行时。硬件驱动以原语暴
 
 Python 中分别使用 `Primitive`、`Service` 和 `Skill`。三者共享能力声明、生命周期和连接接口；区别主要体现在向 Atlas 注册的类型，以及 Executor 对技能的延迟激活策略。
 
-原语命名空间不是封闭枚举。Robonix 当前提供机械臂、音频、相机、底盘、设备健康、IMU、激光雷达和机器人描述等标准能力约定；新硬件类型可以提交新的标准约定。
+原语命名空间不是封闭枚举。Robonix 当前提供机械臂、音频、相机、底盘、灵巧手、设备健康、IMU、激光雷达、四足姿态和机器人描述十类标准能力约定；新硬件类型可以提交新的标准约定。
 
 ### 3.2 运行时身份
 
-部署清单中实例的 `name` 必须等于代码创建运行实例时的 `id`：
+部署清单中实例的 `name` 覆盖代码创建运行实例时的 `id`：
 
 ```python
 camera = Primitive(
@@ -187,13 +189,13 @@ string message
 | `rpc_bidirectional_stream` | 支持 | 不支持 | 不支持 |
 | `topic_out` / `topic_in` | 以 gRPC stream 映射 | 支持 | 不支持 |
 
-`rpc` 不等于 gRPC，也不要求使用 gRPC 装饰器。它只说明“一次请求、一次响应”：选择 gRPC 时使用 `@provider.grpc(...)`，选择 MCP 时使用 `@provider.mcp(...)`，选择 ROS 2 service 时由 `rclpy` 创建服务，再用 `provider.declare_ros2_service(...)` 向 Atlas 声明端点。提供方应根据现有实现、调用方和部署拓扑选择传输。
+`rpc` 不等于 gRPC，也不要求使用 gRPC 装饰器。它只说明“一次请求、一次响应”。选择 gRPC 时使用 `@provider.grpc(...)`，选择 MCP 时使用 `@provider.mcp(...)`。选择 ROS 2 service 时由 `rclpy` 创建服务，再用 `provider.declare_ros2_service(...)` 向 Atlas 声明端点。提供方应根据现有实现、调用方和部署拓扑选择传输。
 
-`rpc` 的一次响应也不表示业务动作必须已经结束。通过 MCP 启动导航、抓取等长时间任务时，提供方可以同时注册主能力及其 `/status`、`/cancel` 子能力，由 Executor 持续查询状态并响应方案取消。该约定见 [14.5 MCP 与 gRPC](#145-mcp-与-grpc)。
+`rpc` 的一次响应也不表示业务动作必须已经结束。通过 MCP 启动导航、抓取等长时间任务时，提供方可以同时注册主能力及其 `/status` 和 `/cancel` 子能力。Executor 据此持续查询状态并响应方案取消。该约定见 [14.5 MCP 与 gRPC](#145-mcp-与-grpc)。
 
 模型需要发现并离散调用的工具通常使用 MCP；确定性的进程间控制、生命周期和流式请求通常使用 gRPC；机器人内部已有的高频传感与控制图通常保留 ROS 2。能力约定只定义语义，不会替开发者自动选择传输。提供方声明的传输、Atlas 返回的端点和消费者建立的客户端必须一致。
 
-当前 Python 运行时不会在装饰器注册阶段完整校验“模式—传输”矩阵，因此还要通过端到端测试确认生成类型、提供方和消费者选择了同一传输。
+当前 Python 运行时不会在装饰器注册阶段完整校验“模式—传输”矩阵。生成类型、提供方和消费者是否选了同一传输，要靠端到端测试确认。
 
 ### 4.3 全局与软件包内能力约定
 
@@ -421,7 +423,7 @@ service.run()
 
 ## 8. 开发服务
 
-下面的教学服务复用标准导航能力约定，因此不复制全局 TOML。软件包清单列出生命周期、提交目标、查询状态和取消目标四条能力约定；运行时再把每条约定绑定为该服务提供的能力。示例中的状态表只是可运行骨架，接入真正规划器时必须由规划器回调更新状态。
+下面的教学服务复用标准导航能力约定，因此不复制全局 TOML。软件包清单列出提交目标、查询状态和取消目标三条能力约定，生命周期 Driver 由框架自动补上；运行时再把每条约定绑定为该服务提供的能力。示例中的状态表只是可运行骨架，接入真正规划器时必须由规划器回调更新状态。
 
 ```bash
 rbnx package-new my_navigate --type service
@@ -509,7 +511,7 @@ service:
     config: {}
 ```
 
-`name` 必须与 `Service(id="my_navigate", ...)` 一致。该新清单省略 Driver 条目，框架会选择共享 `robonix/lifecycle/driver`；`provider.run()` 根据生成代码声明同一条 Driver 能力，启动流程连接它并发送 `CMD_INIT`，服务随后进入激活阶段。服务若需要底盘，应在 `on_activate` 中发现并连接目标运行实例：
+清单里的 `name` 会在启动时覆盖 `Service(id="my_navigate", ...)` 里的 `id`，按约定写成一致便于对照。该新清单省略 Driver 条目，框架会选择共享 `robonix/lifecycle/driver`；`provider.run()` 根据生成代码声明同一条 Driver 能力，启动流程连接它并发送 `CMD_INIT`，服务随后进入激活阶段。服务若需要底盘，应在 `on_activate` 中发现并连接目标运行实例：
 
 ```python
 from robonix_api import ATLAS, Deferred, Ok
@@ -777,6 +779,7 @@ robot-acme-rover/
 ├── urdf/
 │   └── acme_rover.urdf
 ├── config/
+├── assets/
 ├── primitives/
 ├── services/
 └── skills/
@@ -847,7 +850,7 @@ skill:
     config: {}
 ```
 
-这个完整系统块包含本体状态（Soma）、健康状态（Vitals）、环境状态（Scene）、任务执行（Executor）、模型规划（Pilot）和交互入口（Liaison）。`scene.manifest` 选择 Scene 软件包的运行目标，`scene.config` 通过 Scene 的 Driver 传入；未指定 `camera_provider_id` 时，Scene 按能力约定自动发现可用观测源。
+这个完整系统块包含七项：能力目录（Atlas）、本体状态（Soma）、健康状态（Vitals）、环境状态（Scene）、任务执行（Executor）、模型规划（Pilot）、交互入口（Liaison）。`scene.manifest` 选择 Scene 软件包的运行目标，`scene.config` 通过 Scene 的 Driver 传入；未指定 `camera_provider_id` 时，Scene 按能力约定自动发现可用观测源。
 
 实例 `config` 在初始化时通过 Driver 发送。软件包应在 `on_init(cfg)` 中校验字段并返回清楚的错误，公开字段同时写入 `config.spec`。
 
@@ -922,7 +925,7 @@ Skill(id, namespace, *, pkg_root=None, md_path=None)
 
 | 参数 | 含义 |
 |---|---|
-| `id` | Atlas 中的提供方 ID。整机启动时必须等于部署实例的 `name`。构造函数不会自动读取环境变量；可复用软件包可把 `RBNX_INSTANCE_NAME` 显式传入。 |
+| `id` | Atlas 中的提供方 ID。整机启动时必须等于部署实例的 `name`。构造函数会自动读取 `RBNX_INSTANCE_NAME`，其值覆盖这里写的 `id`，因此无需显式传入。代码里的 `id` 只是 `rbnx start` 裸跑时的默认值。 |
 | `namespace` | 提供方的主要能力命名空间。运行时会去掉首尾 `/`，空值直接报错；普通能力约定落在该命名空间之外时只记录警告。 |
 | `pkg_root` | 软件包根目录。省略时先从调用文件向上寻找 `package_manifest.yaml`，找不到再使用当前工作目录；代码生成产物和默认 `CAPABILITY.md` 都从这里解析。 |
 | `md_path` | 显式指定 `CAPABILITY.md`。省略时使用软件包根目录中实际存在的同名文件；传空字符串表示不注册能力说明。 |
@@ -1394,7 +1397,7 @@ for event in stub.RecognizeStream(asr_requests(), timeout=60.0):
 旧软件包若在清单中精确声明 `<provider-namespace>/driver`，则继续按[兼容流程](integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)绑定完整的旧生成服务，或在满足单向迁移条件时使用共享运行时 Driver。该方式计划迁移；新软件包不要照此创建 Driver TOML。
 :::
 
-`provider.run()` 先执行同一套 bootstrap，再阻塞等待退出信号。Driver 的 `CMD_SHUTDOWN` 会先完成业务关闭回调和响应，再停止提供方；进程信号路径也会调用 `on_shutdown`。框架会关闭通过 `connect_capability` 建立的通道、受管子进程和 gRPC server，但软件包自行创建的线程、设备句柄和后台任务仍必须在生命周期回调中释放。
+`provider.run()` 先执行同一套 bootstrap，再阻塞等待退出信号。Driver 的 `CMD_SHUTDOWN` 会先完成业务关闭回调和响应，再停止提供方；进程信号路径也会调用 `on_shutdown`。框架会关闭通过 `connect_capability` 建立的通道、受管子进程和 gRPC server。软件包自行创建的线程、设备句柄和后台任务，仍必须在生命周期回调中释放。
 
 ## 15. 常用命令行接口
 
@@ -1427,7 +1430,7 @@ for event in stub.RecognizeStream(asr_requests(), timeout=60.0):
 `rbnx clean -f robonix_manifest.yaml` 默认保留 `rbnx-boot/cache/`；只有加 `--cache` 才删除远程软件包缓存。单独执行 `rbnx start --config <file>` 时仍会先读取软件包清单；启动器确认提供方只注册唯一的共享生命周期 Driver 后，通过 `CMD_INIT` 发送合并配置。配置文件路径不会暴露给提供方进程。
 
 :::warning[后向兼容：`rbnx start` 启动旧软件包]
-精确声明 `<provider-namespace>/driver` 和本地 Driver TOML 的旧软件包仍可使用 `rbnx start`，也可在旧生成服务完全不存在时按受管兼容标记单向使用共享运行时 Driver。该方式计划迁移，不能与共享 Driver 条目同时使用。完整规则见[软件包与部署清单规范](integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+精确声明 `<provider-namespace>/driver` 和本地 Driver TOML 的旧软件包仍可使用 `rbnx start`。旧生成服务完全不存在时，这类软件包可按受管兼容标记单向使用共享运行时 Driver。该方式计划迁移，不能与共享 Driver 条目同时使用。完整规则见[软件包与部署清单规范](integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
 :::
 
 ## 16. 配置字段
@@ -1480,6 +1483,8 @@ for event in stub.RecognizeStream(asr_requests(), timeout=60.0):
 | `contract.kind` | 文档和代码生成使用的分类元数据 |
 | `contract.idl` | 相对 IDL 根目录的数据类型路径 |
 | `contract.cross_namespace` | 允许共享接口跨提供方命名空间而不提示 |
+| `contract.description` | 能力约定的通用说明，消费时与实例说明合并 |
+| `contract.llm_callable` | 是否向 Pilot 的工具目录暴露该约定 |
 | `mode.type` | RPC 或话题方向 |
 
 同一 ID 在有效合并目录中只保留一个描述；后加载根可能覆盖先加载描述。软件包应复用标准能力约定，只有明确需要时才新增自定义 ID，并通过 `rbnx contracts -v` 检查最终来源。

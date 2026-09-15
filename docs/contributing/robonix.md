@@ -86,7 +86,7 @@ cargo test --workspace --all-targets
 git status --short
 ```
 
-修改 Python 软件包、能力约定、代码生成、Webots 示例或跨进程通信时，还要运行对应目录 README、构建脚本或 CI workflow 中规定的专项测试。跨 Atlas、Driver 生命周期或 Python API 单例等进程边界的改动，需要提供端到端验证，不能只以“编译通过”作为完成依据。
+修改 Python 软件包、能力约定、代码生成、Webots 示例或跨进程通信时，还要运行专项测试。测试范围由对应目录的 README、构建脚本或 CI workflow 规定。跨进程边界的改动需要提供端到端验证，不能只以“编译通过”作为完成依据。这类改动包括 Atlas、Driver 生命周期和 Python API 单例。
 
 ## 5. 提交标题
 
@@ -151,7 +151,7 @@ Assisted-by: Codex:gpt-5.6 clang-tidy
 
 `Assisted-by` 不使用邮箱。冒号前是工具或代理名称，冒号后是具体模型版本，后面只列可选的专项分析工具；无需记录 Git、编译器、编辑器等普通开发工具。
 
-这是 Robonix 自己的贡献政策。`Assisted-by` 的语法参考了 Linux kernel 社区公开的[人工智能编码助手规范](https://docs.kernel.org/process/coding-assistants.html)和[补丁提交指南](https://docs.kernel.org/process/submitting-patches.html#using-assisted-by)，用于借鉴其“人类承担责任、工具只记录辅助”的表达方式；这些链接只是格式参考，不定义 Robonix 的项目治理。
+这是 Robonix 自己的贡献政策。`Assisted-by` 的语法参考了 Linux kernel 社区公开的[人工智能编码助手规范](https://docs.kernel.org/process/coding-assistants.html)和[补丁提交指南](https://docs.kernel.org/process/submitting-patches.html#using-assisted-by)。借鉴的是其中“人类承担责任、工具只记录辅助”的表达方式；这些链接只是格式参考，不定义 Robonix 的项目治理。
 
 主仓库 CI 会检查拉取请求新增 commit 的 author、committer 和相关 trailer。检查只能识别提交记录中的违规身份，不能判断未披露的工具使用；如实披露仍是人类提交者的责任。可在本地检查准备提交的范围：
 

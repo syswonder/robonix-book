@@ -6,12 +6,12 @@ hide_table_of_contents: true
 
 > 由 `rbnx docs` 自动生成，请勿手改。
 
-本页收录从 IDL 包含根（`rbnx docs --include`，默认 `capabilities/lib/`）收集的全部 ROS IDL（`.msg` / `.srv`）原文，按 ROS 包分组（共 325 个文件）。[能力约定参考](contracts.md) 的载荷列链到这里对应的锚点。
+本页收录从 IDL 包含根（`rbnx docs --include`，默认 `capabilities/lib/`）收集的全部 ROS IDL（`.msg` / `.srv`）原文，按 ROS 包分组（共 331 个文件）。[能力约定参考](contracts.md) 的载荷列链到这里对应的锚点。
 
 <details className="idl-package-index">
 <summary>展开 ROS package 索引</summary>
 
-[action_msgs](#action_msgs) · [actionlib_msgs](#actionlib_msgs) · [asr](#asr) · [audio](#audio) · [builtin_interfaces](#builtin_interfaces) · [camera](#camera) · [chassis](#chassis) · [composition_interfaces](#composition_interfaces) · [diagnostic_msgs](#diagnostic_msgs) · [executor](#executor) · [geometry_msgs](#geometry_msgs) · [hand](#hand) · [health](#health) · [liaison](#liaison) · [lidar](#lidar) · [lifecycle](#lifecycle) · [lifecycle_msgs](#lifecycle_msgs) · [map](#map) · [memgraph](#memgraph) · [memory](#memory) · [module_health](#module_health) · [nav_msgs](#nav_msgs) · [navigation](#navigation) · [perception](#perception) · [pilot](#pilot) · [quadruped](#quadruped) · [rcl_interfaces](#rcl_interfaces) · [rosgraph_msgs](#rosgraph_msgs) · [semantic_map](#semantic_map) · [sensor_msgs](#sensor_msgs) · [shape_msgs](#shape_msgs) · [soma](#soma) · [speech](#speech) · [statistics_msgs](#statistics_msgs) · [std_msgs](#std_msgs) · [std_srvs](#std_srvs) · [stereo_msgs](#stereo_msgs) · [test_msgs](#test_msgs) · [trajectory_msgs](#trajectory_msgs) · [tts](#tts) · [unique_identifier_msgs](#unique_identifier_msgs) · [visualization_msgs](#visualization_msgs) · [vitals](#vitals) · [voiceprint](#voiceprint)
+[action_msgs](#action_msgs) · [actionlib_msgs](#actionlib_msgs) · [asr](#asr) · [audio](#audio) · [builtin_interfaces](#builtin_interfaces) · [camera](#camera) · [chassis](#chassis) · [composition_interfaces](#composition_interfaces) · [diagnostic_msgs](#diagnostic_msgs) · [executor](#executor) · [geometry_msgs](#geometry_msgs) · [hand](#hand) · [health](#health) · [liaison](#liaison) · [lidar](#lidar) · [lifecycle](#lifecycle) · [lifecycle_msgs](#lifecycle_msgs) · [map](#map) · [memgraph](#memgraph) · [memory](#memory) · [module_health](#module_health) · [nav_msgs](#nav_msgs) · [navigation](#navigation) · [perception](#perception) · [pilot](#pilot) · [quadruped](#quadruped) · [rcl_interfaces](#rcl_interfaces) · [rosgraph_msgs](#rosgraph_msgs) · [semantic_map](#semantic_map) · [sensor_msgs](#sensor_msgs) · [shape_msgs](#shape_msgs) · [soma](#soma) · [speech](#speech) · [statistics_msgs](#statistics_msgs) · [std_msgs](#std_msgs) · [std_srvs](#std_srvs) · [stereo_msgs](#stereo_msgs) · [test_msgs](#test_msgs) · [trajectory_msgs](#trajectory_msgs) · [tts](#tts) · [unique_identifier_msgs](#unique_identifier_msgs) · [verifier](#verifier) · [visualization_msgs](#visualization_msgs) · [vitals](#vitals) · [voiceprint](#voiceprint)
 
 </details>
 
@@ -1407,6 +1407,38 @@ HealthState state            # server_stream: push 1 frame per cycle
 ```
 
 ## liaison
+
+### FinishVoiceCapture `srv` {/* #liaison-srv-finishvoicecapture-srv */}
+
+`liaison/srv/FinishVoiceCapture.srv`
+
+```rosidl
+# End microphone capture for an in-flight voice session and submit what has
+# already been recognized, instead of discarding the turn.
+#
+# `robonix/system/liaison/voice` normally ends a turn on the ASR backend's
+# own end-of-utterance detection. Under continuous background noise that
+# detection may never fire, leaving the user stuck until the record-seconds
+# ceiling expires. This contract is the manual equivalent of that automatic
+# endpoint: capture stops, the ASR request stream is flushed so the backend
+# emits its final transcript, and the turn proceeds down the normal
+# submission path.
+#
+# This is NOT an abort. To discard a turn or stop a running task, drop the
+# StartVoiceSession stream instead.
+
+# Session to finish, exactly as returned in the VoiceEvent stream.
+string session_id
+---
+# False when no capture is currently running under this session id -- for
+# example the utterance already ended on its own between the user pressing
+# the button and this call arriving. Callers should treat that as benign.
+bool ok
+# Echo of the session the call applied to.
+string session_id
+# Human-readable outcome, for logs and operator-facing UI.
+string detail
+```
 
 ### GetHandsfreeStatus `srv` {/* #liaison-srv-gethandsfreestatus-srv */}
 
@@ -3217,6 +3249,83 @@ builtin_interfaces/Time clock
 
 ## semantic_map
 
+### DeleteObject `srv` {/* #semantic-map-srv-deleteobject-srv */}
+
+`semantic_map/srv/DeleteObject.srv`
+
+```rosidl
+# Delete one derived Scene object by stable id.
+# The robot self-object and user-authored annotations are not accepted.
+
+# Stable Scene object id, exactly as returned by ListObjects. Not a label.
+string object_id
+# Map epoch the caller last observed, from the ListObjects response. Scene
+# rejects the call if the live binding has moved since — the operator would
+# otherwise be deleting from a map they are no longer looking at. Re-read
+# ListObjects and retry. This is a staleness check, not an authorization one.
+string expected_map_id
+# Generation from the same ListObjects response; -1 when the active mapping
+# provider exposes no generation. Must match exactly, including -1.
+int64 expected_generation
+# false: delete from the live runtime only, so a reload restores the object.
+# true: also delete the row from the saved map's semantic snapshot, making it
+# permanent. Requires the map to have been saved; fails otherwise.
+bool persist_to_snapshot
+# Optional free-text record of why this correction was made, stored with the
+# object's provenance. Operator corrections outrank perception and are exempt
+# from expiry, so an unexplained one is hard to review later. Empty is allowed.
+# Leading and trailing whitespace is stripped and the stored text is capped at
+# 512 characters; anything beyond that is dropped rather than rejected.
+string note
+---
+# Echo of the id that was deleted.
+string deleted_id
+# Epoch the delete actually applied under; equals the expected_* inputs.
+string map_id
+int64 generation
+# Whether the snapshot row was removed. Only ever true when the request asked
+# for it; a runtime-only delete reports false rather than failing.
+bool persisted
+```
+
+### FlushObjects `srv` {/* #semantic-map-srv-flushobjects-srv */}
+
+`semantic_map/srv/FlushObjects.srv`
+
+```rosidl
+# Delete every derived Scene object in the current map epoch.
+# The robot self-object and user-authored annotations are preserved.
+# Rooms, POIs, and the occupancy map are annotations and are untouched.
+
+# Map epoch the caller last observed, from the ListObjects response. Scene
+# rejects the call if the live binding has moved since — without this a flush
+# queued against one map could land on another. Re-read ListObjects and retry.
+# This is a staleness check, not an authorization one.
+string expected_map_id
+# Generation from the same ListObjects response; -1 when the active mapping
+# provider exposes no generation. Must match exactly, including -1.
+int64 expected_generation
+# false: clear the live runtime only, so a reload restores the objects.
+# true: also clear the saved map's semantic snapshot, making it permanent.
+# Requires the map to have been saved; fails otherwise.
+bool persist_to_snapshot
+# Optional free-text record of why this correction was made, stored with the
+# object's provenance. Operator corrections outrank perception and are exempt
+# from expiry, so an unexplained one is hard to review later. Empty is allowed.
+# Leading and trailing whitespace is stripped and the stored text is capped at
+# 512 characters; anything beyond that is dropped rather than rejected.
+string note
+---
+# How many derived objects were removed. Zero is a success, not an error.
+uint64 deleted_count
+# Epoch the flush actually applied under; equals the expected_* inputs.
+string map_id
+int64 generation
+# Whether the snapshot rows were cleared. Only ever true when the request
+# asked for it; a runtime-only flush reports false rather than failing.
+bool persisted
+```
+
 ### GetObjectContext `srv` {/* #semantic-map-srv-getobjectcontext-srv */}
 
 `semantic_map/srv/GetObjectContext.srv`
@@ -3320,8 +3429,22 @@ string reason
 # registry currently believes exists. Room entries remain for v1
 # compatibility; new callers should use ListRegions for full room geometry.
 ---
+# Every object Scene currently believes exists, robot self-object included.
 Object[] objects
+# Wall-clock time this snapshot was taken, seconds since the Unix epoch.
 float64 stamp_unix
+# Map epoch this snapshot belongs to. Pass it back verbatim as expected_map_id
+# on any correction call so Scene can reject an edit aimed at a stale map.
+string map_id
+# Generation counter of the same epoch, advanced whenever the map binding
+# changes. Pass it back verbatim as expected_generation.
+# -1 means the active mapping provider does not expose a generation.
+int64 generation
+# Whether `generation` is a real counter. When false the epoch check degrades
+# to comparing map_id alone, so two edits racing inside one map are no longer
+# ordered against each other. Callers that care about that race must read this
+# rather than infer it from generation == -1.
+bool generation_supported
 ```
 
 ### ListRegions `srv` {/* #semantic-map-srv-listregions-srv */}
@@ -3354,13 +3477,12 @@ SceneGraphEdge[] edges
 `semantic_map/msg/Object.msg`
 
 ```rosidl
-# One tracked thing in the world. Seven primitives — no nested types,
-# no enums. Position is map-frame xyz + yaw (radians, CCW around +z).
+# One tracked thing in the world. Flat primitives only — no nested types,
+# no enums. Position is `frame_id` xyz + yaw (radians, CCW around +z).
 # The robot itself appears here with its current map-frame pose;
 # yaw is meaningful for it. For passive objects yaw is the best-effort
 # orientation the registry has (0.0 if unknown). The registry only
-# emits objects it currently believes exist (no missing flag, no
-# observation_count: those are internal telemetry, not API).
+# emits objects it currently believes exist (no missing flag).
 
 string id
 string label
@@ -3368,6 +3490,28 @@ float64 x
 float64 y
 float64 z
 float64 yaw
+# Full extents of the gravity-aligned box along its own axes, metres.
+# Zero on entries the registry holds no box for, such as annotations.
+# UpdateObjectGeometry requires these, so they have to be readable here:
+# an operator nudging one object must be able to resend its current size
+# instead of guessing it.
+float64 size_x
+float64 size_y
+float64 size_z
+# World frame that x/y/z/yaw and the extents are expressed in.
+# UpdateObjectGeometry rejects a frame that differs from the object's own,
+# so the caller has to be able to read it here. Empty means the producer did
+# not record a frame, not that the coordinates are frameless: scene-graph
+# derived entries carry map-frame coordinates but no frame string, so an
+# edit built from one of those is rejected rather than applied blind.
+string frame_id
+# Observations fused into this object so far. It advances on every
+# perception update, so a caller that read an object and then edits it can
+# tell whether perception moved underneath it. Zero for entries the
+# registry did not derive from perception. int32 rather than an unsigned
+# type to match SceneGraphNode.observation_count, which is the same
+# quantity under the same name and is already published.
+int32 observation_count
 float64 last_seen_unix
 ```
 
@@ -3442,6 +3586,106 @@ float64 z
 float64 confidence
 int32 observation_count
 float64 last_seen_unix
+```
+
+### UpdateObjectGeometry `srv` {/* #semantic-map-srv-updateobjectgeometry-srv */}
+
+`semantic_map/srv/UpdateObjectGeometry.srv`
+
+```rosidl
+# Replace one derived Scene object's pose and yaw-only bounding box.
+# Coordinates and dimensions use SI units: metres and radians.
+# The frame must match the object's existing authoritative world frame.
+# Manual geometry is provenance-marked and is not navigation-grade.
+
+# Stable Scene object id, exactly as returned by ListObjects. Not a label.
+string object_id
+# Object centre in `frame_id`, metres.
+float64 x
+float64 y
+float64 z
+# Rotation about the world Z axis, radians. The box is yaw-only: roll and
+# pitch are not representable, because Scene's boxes are gravity-aligned.
+float64 yaw
+# Full extents of the box along its own axes, metres. Must be positive.
+float64 size_x
+float64 size_y
+float64 size_z
+# World frame the coordinates are expressed in. Must equal the object's
+# current frame; Scene rejects a mismatch rather than silently reinterpreting
+# the numbers in another frame.
+string frame_id
+# Map epoch the caller last observed, from the ListObjects response. Scene
+# rejects the call if the live binding has moved since. Re-read ListObjects
+# and retry. This is a staleness check, not an authorization one.
+string expected_map_id
+# Generation from the same ListObjects response; -1 when the active mapping
+# provider exposes no generation. Must match exactly, including -1.
+int64 expected_generation
+# false: apply to the live runtime only, so a reload loses the correction.
+# true: also write it to the saved map's semantic snapshot, making it
+# permanent. Requires the map to have been saved; fails otherwise.
+bool persist_to_snapshot
+# Optional free-text record of why this correction was made, stored with the
+# object's provenance. Operator corrections outrank perception and are exempt
+# from expiry, so an unexplained one is hard to review later. Empty is allowed.
+# Leading and trailing whitespace is stripped and the stored text is capped at
+# 512 characters; anything beyond that is dropped rather than rejected.
+string note
+---
+# The object as it now stands, with the geometry and provenance applied.
+Object object
+# Epoch the update actually applied under; equals the expected_* inputs.
+string map_id
+int64 generation
+# Whether the snapshot row was written. Only ever true when the request asked
+# for it; a runtime-only edit reports false rather than failing.
+bool persisted
+```
+
+### UpdateObjectLabel `srv` {/* #semantic-map-srv-updateobjectlabel-srv */}
+
+`semantic_map/srv/UpdateObjectLabel.srv`
+
+```rosidl
+# Update the operator-owned semantic label of one derived Scene object.
+# An operator label is sticky: it overrides the model's own label and survives
+# further observations, so the perception pipeline stops renaming the object.
+
+# Stable Scene object id, exactly as returned by ListObjects. Not a label.
+string object_id
+# The new label to display. Ignored when clear_override=true.
+string label
+# Restore the model-owned label state saved before the first operator edit,
+# handing the object back to label voting. Use this to undo a wrong
+# correction rather than typing the model's old label back in by hand.
+bool clear_override
+# Map epoch the caller last observed, from the ListObjects response. Scene
+# rejects the call if the live binding has moved since. Re-read ListObjects
+# and retry. This is a staleness check, not an authorization one.
+string expected_map_id
+# Generation from the same ListObjects response; -1 when the active mapping
+# provider exposes no generation. Must match exactly, including -1.
+int64 expected_generation
+# false: apply to the live runtime only, so a reload loses the correction.
+# true: also write it to the saved map's semantic snapshot, making it
+# permanent. Requires the map to have been saved; fails otherwise.
+bool persist_to_snapshot
+# Optional free-text record of why this correction was made, stored with the
+# object's provenance. Operator corrections outrank perception and are exempt
+# from expiry, so an unexplained one is hard to review later. Empty is allowed.
+# Leading and trailing whitespace is stripped and the stored text is capped at
+# 512 characters; anything beyond that is dropped rather than rejected.
+string note
+---
+# The object as it now stands, with the label and provenance applied.
+Object object
+# Epoch the update actually applied under; equals the expected_* inputs.
+string map_id
+int64 generation
+# Whether the snapshot row was written. Only ever true when the request asked
+# for it; a runtime-only edit reports false rather than failing.
+bool persisted
 ```
 
 ## sensor_msgs
@@ -5728,6 +5972,22 @@ tts/SynthesizeAudioChunk chunk
 #  http://tools.ietf.org/html/rfc4122.html
 
 uint8[16] uuid
+```
+
+## verifier
+
+### Verify `srv` {/* #verifier-srv-verify-srv */}
+
+`verifier/srv/Verify.srv`
+
+```rosidl
+# Verify one completed capability call. The verifier-specific payload is JSON
+# so verifier implementations can evolve without changing this common RPC.
+string call_id
+string args_json
+---
+bool passed
+string detail
 ```
 
 ## visualization_msgs

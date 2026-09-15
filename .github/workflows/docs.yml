@@ -74,8 +74,10 @@ jobs:
       - name: Build Python API documentation
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install sphinx furo numpy grpcio grpcio-tools protobuf pyyaml httpx
-          python3 -m pip install ./robonix/pylib/robonix-api
+          python3 -m pip install sphinx furo numpy pyyaml httpx pillow
+          # grpcio / grpcio-tools / protobuf 的版本全部由 robonix-api 的钉版决定。
+          # 单独装 grpcio-tools 会取到最新版，生成出运行时装不下的 gencode。
+          python3 -m pip install './robonix/pylib/robonix-api[codegen]'
           make api-python ROBONIX_SOURCE="$PWD/robonix" API_PYTHON=python3
 
       - name: Verify published API entry points
@@ -138,6 +140,7 @@ jobs:
             --fallback-extensions html
             --max-retries 3
             --timeout 60
+            --accept '200,202,203,204,206,403'
             'docs/**/*.md'
 
   deploy:

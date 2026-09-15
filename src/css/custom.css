@@ -287,3 +287,9 @@ pre {
     transition: none;
   }
 }
+
+/* 图片放大遮罩要盖住顶部导航栏（navbar 的 z-index 是 200），
+   并在放大期间禁止页面滚动，否则图会跟着页面跑。 */
+.medium-zoom-overlay { z-index: 9998; }
+.medium-zoom-image--opened { z-index: 9999; }
+body:has(.medium-zoom-image--opened) { overflow: hidden; }

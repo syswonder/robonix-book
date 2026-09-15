@@ -4,9 +4,11 @@ title: 导航
 <span id="导航-robonixservicenavigation"></span>
 # 导航
 
-导航服务承担**目标式**运动：消费方给出地图坐标系中的目标，服务内部完成路径规划与避障。当前参考实现由 Nav2 产生速度，并经最终速度保护器发布 ROS 2 话题 `/cmd_vel`；底盘如何接收该话题由机器人部署完成。该话题名不是 `robonix/primitive/chassis/twist_in` 能力约定 ID，当前参考实现也不通过 Atlas 解析这条契约。智能体和规划器应调用导航的 MCP 能力，不直接生成瞬时速度命令。
+导航服务承担<strong>目标式</strong>运动：消费方给出地图坐标系中的目标，服务内部完成路径规划与避障。当前参考实现由 Nav2 产生速度，并经最终速度保护器发布 ROS 2 话题 `/cmd_vel`；底盘如何接收该话题由机器人部署完成。该话题名不是 `robonix/primitive/chassis/twist_in` 能力约定 ID，当前参考实现也不通过 Atlas 解析这条契约。智能体和规划器应调用导航的 MCP 能力，不直接生成瞬时速度命令。
 
-能力约定 TOML 在 `capabilities/service/navigation/`；直接使用的接口定义语言（Interface Definition Language，IDL）文件位于 `capabilities/lib/{navigation,lifecycle,common_interfaces}/`。
+部署配置、参数体系与排障步骤见[导航服务使用指南](../../components/navigation.md)，本页只描述接口。
+
+能力约定 TOML 在 `capabilities/service/navigation/`；直接使用的IDL 文件位于 `capabilities/lib/{navigation,lifecycle,common_interfaces}/`。
 
 新软件包省略 Driver 条目，由框架自动注册共享的 `robonix/lifecycle/driver`；显式选择共享 Driver 的行为相同。未实现生命周期回调时，框架记录警告并执行空操作。
 
@@ -35,4 +37,10 @@ title: 导航
 
 > 实现文档：[README（部署目标、`params_file`、3D lidar 与兼容迁移）](https://github.com/syswonder/service-navigation-rbnx/blob/b1a923a25cb3bf75554b861fceb605a190ae641b/README.md) · [`config.spec`（全部 instance 配置、类型、默认值与约束）](https://github.com/syswonder/service-navigation-rbnx/blob/b1a923a25cb3bf75554b861fceb605a190ae641b/config.spec) · [实现注册](https://github.com/syswonder/service-navigation-rbnx/blob/b1a923a25cb3bf75554b861fceb605a190ae641b/nav2_wrapper/atlas_bridge.py)
 
-各 server/plugin 参数见 Nav2 官方 [Configuration Guide](https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/)，本体尺寸、footprint、costmap、planner/controller 等实机调优见 [Tuning Guide](https://docs.nav2.org/rolling/configuration_and_development/tuning_guide/)。
+各 server 与 plugin 的参数见 Nav2 官方 [Configuration Guide](https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/)。本体尺寸、footprint、costmap、planner 和 controller 的实机调优见 [Tuning Guide](https://docs.nav2.org/rolling/configuration_and_development/tuning_guide/)。
+
+
+## 参考
+
+- Nav2 论文：Macenski S, Martín F, White R, Clavero J G。[The Marathon 2: A Navigation System](https://doi.org/10.1109/IROS45743.2020.9341207)。*IEEE/RSJ IROS*, 2020。
+- 导航服务实现：[syswonder/service-navigation-rbnx](https://github.com/syswonder/service-navigation-rbnx)。
