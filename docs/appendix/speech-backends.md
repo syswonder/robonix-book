@@ -80,6 +80,21 @@ rbnx logs -t speech -l info
 
 如果腾讯云返回 `4004` 并提示资源包耗尽，先在控制台确认当前资源包对应的产品和引擎，再核对部署清单中的 `tencent_asr_engine`。基础中文实时识别应使用 `16k_zh`；`16k_zh_en` 的额度不能由基础引擎资源包抵扣。
 
-## Whisper 当前限制
+## `disable_whisper`：默认开启，通常应关掉
 
-Whisper 只用于本地后端的单次语音识别接口，不是 Robonix Client 连续语音交互的默认流式识别路径。当前 Whisper 集成尚不完善，默认模型 `whisper-large-v3` 的权重和构建缓存体积超过 20 GB。Webots 快速上手因此设置 `disable_whisper: true`，使用 FunASR 完成流式识别。当前版本不建议在快速上手或常规部署中启用 Whisper。
+语音服务的 `disable_whisper` 默认是 `false`，也就是**默认会加载 Whisper**。Webots 快速上手显式设为 `true`：
+
+```yaml
+service:
+  - name: speech
+    config:
+      disable_whisper: true
+```
+
+需要关掉的原因有两条。
+
+**它不在流式路径上。** Whisper 只服务单次语音识别接口，Robonix Client 和 `rbnx chat` 的连续语音交互走的是 FunASR 流式识别，不经过它。关掉不影响语音任务。
+
+**它很大。** 默认模型 `whisper-large-v3` 的权重加构建缓存超过 20 GB，而当前集成尚不完善。首次构建时这 20 GB 会实打实地下载和占盘。
+
+自建部署若没有单次识别的需求，建议同样设为 `true`。确实要用时，先确认磁盘余量，并按上面的表核对该路径与流式路径的分工。
