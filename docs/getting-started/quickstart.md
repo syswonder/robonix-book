@@ -26,6 +26,8 @@ sudo apt install -y \
   python3 python3-pip python3-grpc-tools alsa-utils ffmpeg
 ```
 
+`alsa-utils` 和 `ffmpeg` 供语音链路使用。第 6 节会用麦克风和扬声器完成一次语音任务，`arecord` 和 `aplay` 也来自 `alsa-utils`。
+
 安装 Rust stable：
 
 ```bash
@@ -118,7 +120,11 @@ cd examples/webots
 rbnx build
 ```
 
-构建读取 `examples/webots/robonix_manifest.yaml`，准备本地软件包，并把清单中通过 `url:` 引用的音频、建图、导航和自主探索仓库放入 `rbnx-boot/cache/`。语音服务默认使用本地 FunASR 流式识别；第一次构建会安装本地语音依赖并下载 `paraformer-zh-streaming` 模型。腾讯云是可选后端，账号开通、密钥和部署清单配置见[语音后端配置](../appendix/speech-backends.md)。Whisper 当前支持不完善且模型体积过大，本快速上手不启用它。第一次构建时间主要取决于容器镜像、模型下载、网络和 CPU；不要把冷启动时间与复用缓存后的启动时间混为一谈。
+构建读取 `examples/webots/robonix_manifest.yaml`，准备本地软件包，并把清单中通过 `url:` 引用的音频、建图、导航和自主探索仓库放入 `rbnx-boot/cache/`。
+
+第一次构建时间主要取决于容器镜像、模型下载、网络和 CPU。不要把冷启动时间与复用缓存后的启动时间混为一谈。
+
+Webots 部署包含一条完整的语音链路：音频原语、语音识别与合成、声纹。第 6 节会用到它。默认识别后端是本地 FunASR，第一次构建会安装语音依赖并下载 `paraformer-zh-streaming` 模型。要改用腾讯云，或想了解为什么默认不启用 Whisper，见[语音后端配置](../appendix/speech-backends.md)。
 
 **预期结果：** `rbnx build` 以状态码 0 退出。构建脚本的输出直接显示在当前终端，各软件包的构建产物位于各自的 `rbnx-build/`；随后执行 `rbnx boot` 时，运行日志才会写入当前部署目录的 `rbnx-boot/logs/`。
 
@@ -150,16 +156,17 @@ cd /path/to/robonix/examples/webots
 rbnx boot
 ```
 
-:::tip[测试机没有音频设备]
-先按上面的正常流程启动。只有启动摘要明确显示 `audio_driver` 因找不到输入或输出设备而失败、且本次不需要验证真实录放音时，才停止本次启动，在同一终端设置空设备后重新执行 `rbnx boot`：
+:::tip[没有音频设备的机器]
+`audio_driver` 默认自动探测系统的麦克风和扬声器。设备选择在第 6 节的 `Ctrl+A` 页面里做，这里不用配。
+
+机器上确实没有任何声卡时（无声卡服务器或 CI），`audio_driver` 会启动失败。在执行 `rbnx boot` 的同一终端退回空设备：
 
 ```bash
 export AUDIO_MIC_DEVICE='null'
 export AUDIO_SPEAKER_DEVICE='null'
-rbnx boot
 ```
 
-字符串 `null` 选择 ALSA 内置的空 PCM，不需要创建 `.asoundrc`。
+字符串 `null` 选择 ALSA 内置的空 PCM，不需要创建 `.asoundrc`。此时第 6 节的语音步骤无法验证，其余步骤不受影响。
 :::
 
 Webots 部署清单配置以下系统组件和软件包：
@@ -194,9 +201,50 @@ Explore the current room and report what you find.
 What tasks are currently running?
 ```
 
+界面顶部会打印本次可用的按键：
+
+```text
+Enter = send · F2 = voice (auto end on silence) · Ctrl+A = audio settings · Esc = abort turn · Ctrl+C = quit.
+```
+
 `Esc` 中断当前交互回合，`Ctrl+C` 退出文本用户界面（Text User Interface，TUI）。
 
 **预期结果：** 终端界面显示用户输入、规划状态、机器人任务描述语言（Robot Task Description Language，RTDL）能力调用与最终回复；Explore 被调用时会从 `INACTIVE` 转为 `ACTIVE`，其提供方日志是 `rbnx-boot/logs/explore.log`。
+
+### 选择麦克风与扬声器
+
+在 `rbnx chat` 里按 **`Ctrl+A`** 打开音频设置页。它一屏显示四项：麦克风提供方、麦克风设备、扬声器提供方、扬声器设备。
+
+| 按键 | 作用 |
+|---|---|
+| `Tab` / `Shift+Tab` | 在四个区块之间切换 |
+| `↑` `↓` 或 `k` `j` | 在当前区块内移动 |
+| `Enter` 或 `Space` | 选中当前项 |
+| `r` | 重新从 Atlas 拉取提供方与设备列表 |
+| `Esc` 或 `Ctrl+A` | 关闭并保存 |
+
+本机运行仿真时，两个提供方都选 `audio_driver`，它使用这台机器的 ALSA 设备。设备项留空表示用系统默认；默认设备不对时在这里显式选一个。关闭后聊天界面会打印一行 `audio settings updated: mic=… · speaker=…` 确认。
+
+Atlas 里没有麦克风或扬声器提供方时，页面会提示 `no mic provider in atlas — voice input disabled`。这不影响文本任务。
+
+### 用语音提交一条任务
+
+按 **`F2`** 开始说话，**停止说话后录音自动结束**，不需要再按一次。对着麦克风说一句和上面同样的话，例如“你前面有什么”。
+
+Liaison 依次调用麦克风采集、语音识别、声纹、Pilot 规划和语音合成，最后由扬声器播报回复。这条链路用到第 4 节下载的 FunASR 模型和刚才选定的设备。
+
+任务执行期间还可以按 **`Ctrl+V`** 用语音追加一句要求，它作为任务调整指令（steer）交给 Pilot，不会新开一个任务。
+
+**预期结果：** 界面依次显示识别文本、规划状态和回复，扬声器播出回复语音。
+
+识别文本为空或明显不对时，先确认录音设备本身可用：
+
+```bash
+arecord -d 3 -f S16_LE -r 16000 -c 1 /tmp/mic-test.wav
+aplay /tmp/mic-test.wav
+```
+
+这段录放音直接使用 ALSA，不经过 Robonix。听不到声音说明问题在设备或权限，不在语音服务。
 
 ## 7. 选择其他 Webots 场景
 
@@ -271,9 +319,9 @@ ssh -N \
 然后打开 `http://127.0.0.1:18080/?wsPort=11235`。
 :::
 
-### `audio_driver` 在无声卡主机上启动失败
+### `audio_driver` 启动失败
 
-如果本机本应有麦克风或扬声器，先检查 ALSA 是否识别到硬件，再对照 `audio_driver` 日志中的设备名：
+先检查 ALSA 是否识别到硬件，再对照 `audio_driver` 日志中的设备名：
 
 ```bash
 arecord -l
@@ -281,7 +329,7 @@ aplay -l
 rbnx logs -t audio_driver -l warn
 ```
 
-`-l` 只列硬件设备。确认机器确实没有音频设备、且本次只验证非音频链路时，按第 5 节的“测试机没有音频设备”提示卡选择 ALSA 空设备；不要把该配置用于真实语音测试。
+`-l` 只列硬件设备，不列 `null` 之类的 ALSA 插件。有硬件但日志报打不开设备时，按第 5 节“选择音频设备”显式指定 `hw:N,M`，或改用 `plughw:N,M` 让 ALSA 重采样。两条命令都列不出任何设备，才按同一张提示卡退回空设备；此时第 6 节的语音步骤无法验证。
 
 ### 软件包启动失败
 
