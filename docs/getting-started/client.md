@@ -13,7 +13,7 @@ import TabItem from '@theme/TabItem';
 
 本页依据 [`739f8499`](https://github.com/syswonder/robonix-client/tree/739f8499) 编写。
 
-![Chat 页。左侧是四个标签，中间是对话，右侧自上而下是 Current Goal、RTDL Forest、Execution history、Node detail 和 Event Log。](/img/ui/client-chat.webp)
+![Chat 页，一条探索任务正在执行。左侧是四个标签和会话列表，中间是对话，右侧自上而下是 Current Goal、RTDL Forest、Execution history、Node detail 和 Event Log。](/img/ui/cl-chat-live.webp)
 
 右栏是它与 `rbnx chat` 最大的差别，也是排障时真正用得上的部分：
 
@@ -59,7 +59,7 @@ primitive:
       listen_port: 60002
 ```
 
-该软件包提供反向音频桥：客户端主动连接机器人，机器人清单不保存客户端 IP，也不需要在 Client 中猜测固定桥接端口。客户端通过 Atlas 的 `bridge_info` 能力查询 `audio_client_bridge` 公布的 WebSocket 端点，再用同一条连接传输麦克风和扬声器音频。这里的“反向”只改变连接发起方，不会绕过网络；客户端仍须通过可信局域网或 Tailscale 访问机器人 TCP `60002`，并且不应把该端口暴露到公网。修改 `listen_port` 时，网络策略和客户端可达性必须同步调整。
+客户端会自己从 Atlas 找到这个桥并连上去，不用在 Client 里填端口。`listen_port` 和 Atlas 一样，只应在可信局域网或 Tailscale 上可达，不要暴露到公网。
 
 ## 2. 安装
 
@@ -120,40 +120,85 @@ robonix-client --robot-host 192.168.1.50
 
 ## 4. 使用页面
 
+左侧四个标签对应四件事：下达任务、看机器人健康、配音频、改连接参数。
+
 ### 聊天（Chat）
 
-- **Conversation** 显示用户输入、系统状态、能力调用和回复。
-- 输入框在空闲时提交新任务；任务执行中提交的内容作为任务调整指令（steer），交给 Pilot 调整当前任务。
-- **Stop** 请求停止当前会话的任务和正在执行的动作。
-- **Current Goal** 显示当前任务摘要，以及正在调用的提供方和接口。
-- **RTDL Forest** 以 Executor 的状态为准显示正在运行的机器人任务描述语言（Robot Task Description Language，RTDL）方案；点击 **Active RTDL** 查看完整树和节点详情，点击 **Execution history** 查看已结束的执行记录。
-- **Event Log** 显示当前会话收到的状态事件，便于判断任务处于规划、执行、等待还是结束阶段。
+顶栏是连接信息：**Robot Host** 和 **Atlas Port** 指向机器人，**User** 是提交任务时带的身份，右侧三个指示分别是运行状态、**Hands-free** 开关和连接状态。改了地址要重新 **Connect**。
 
-### 音频（Audio）
+**会话管理**在左栏。**New session** 开一条新会话，历史会话列在下面，鼠标悬停出现 **Rename** 和 **Delete**。会话之间互不影响，换一条会话等于换一条任务上下文。**Clear** 清空当前会话的消息，不删除会话本身。
 
-![Audio 页。上半选择输入与输出的提供方和设备，下半是麦克风与扬声器测试。](/img/ui/client-audio.webp)
+中间是对话区。一轮任务会依次出现这些内容：
 
-Client 启动时会自动启动本机音频服务；如果 **Audio Device Server** 仍显示 offline，再点击 **Start Audio**。点击 **Refresh Route** 后，若语音输入和输出都使用客户端电脑的设备：
+```text
+STATUS  SUBMITTED TASK; WAITING FOR PILOT STREAM.
+STATUS  PLANNING THE NEXT STEP
+STATUS  IN_PROGRESS
+STATUS  DONE
+ROBONIX 回复文本
+```
 
-1. Input Primitive 选择 `audio_client_bridge`。
-2. Output Primitive 选择 `audio_client_bridge`。
-3. 选择本机麦克风和扬声器。
-4. 点击 **Apply Route**。
-5. 分别运行 **Test Microphone** 和 **Test Speaker**。
+任务执行期间再输入一句，不会新开任务，而是作为任务调整指令（steer）加进去，消息前面标 `ADDED TO RUNNING TASK`：
 
-路由生效后，按 **F2** 开始一次语音输入；页面上的 **Voice** 按钮作用相同。免按键语音需要再显式开启 **Hands-free**。
+![同一条会话里的三轮对话。第二、三轮标着 ADDED TO RUNNING TASK，说明它们加进了正在执行的任务而不是另起一条。](/img/ui/cl-chat-multi.webp)
+
+底部输入框旁边，空闲时是 **Send**，任务执行时变成红色的 **ABORT ALL TASKS**。**Start recording** 按钮和 `F2` 等价。
+
+右栏是这个客户端比 `rbnx chat` 多出来的部分，排障时真正有用：
+
+| 面板 | 内容 | 什么时候看 |
+|---|---|---|
+| **Current Goal** | 当前目标，以及它被解析到哪个提供方、能力约定和操作。`EXECUTOR VERIFIED` 表示 Executor 已校验这次调用 | 判断 Pilot 有没有选对能力 |
+| **RTDL Forest** | 正在执行的 RTDL 树。标题栏给出 `1 active · plan 10 · round 1 · 1 call(s)` | 看任务被拆成了什么结构 |
+| **Active RTDL** | 展开当前树，执行中的节点是橙色 | 看卡在哪个节点 |
+| **Execution history** | 已结束的执行记录，数字是条数 | 回看上一条任务怎么走的 |
+| **Node detail** | 点选某个节点后显示它的提供方、开始时间、耗时，以及展开的调用参数与结果 | 看某次调用传了什么、返回了什么 |
+| **Event Log** | 本次会话的状态事件，带时间戳 | 判断卡在规划、执行还是等待 |
+
+**任务结束后 RTDL 树会消失**，Forest 显示 `No RTDL tree is currently executing`。要回看已结束的任务，用 **Execution history**。
 
 ### 健康状态（Vitals）
 
-Vitals 页显示本体与各提供方的健康快照，用来在任务失败时分清是硬件、提供方还是规划的问题。
+Vitals 回答“机器人本身怎么样”，与任务是否成功无关。任务失败时先看这一页，能分清是硬件、提供方还是规划的问题。
 
-![Vitals 页。按组件列出健康状态与新鲜度。](/img/ui/client-vitals.webp)
+![Vitals 页。顶栏是整机摘要，左栏是部件树，中间是 URDF 模型，右栏是选中部件的详情，底部是模块与提供方表。](/img/ui/cl-vitals.webp)
+
+顶栏是整机摘要：**HARDWARE** / **BATTERY** / **SOFTWARE** 各自的健康计数、上次更新时间，以及 Soma、Hardware、Modules、Atlas 四个数据源的指示灯。右侧 **Alerts** 带数字，点开是告警中心。机器人有异常时名字后面出现 `WARN` 之类的徽标。
+
+左栏 **Body** 是部件树，来自本体模型（Soma）声明的结构，例如底盘、左右轮、电池、头部相机、雷达、音频。每项后面一个状态点。点某个部件，中间的 URDF 模型会高亮它，右栏切换到它的详情。
+
+右栏分三段：**IDENTITY** 是类型、父部件、由哪些提供方支撑、对应的 URDF link 和 joint；**STATUS** 是聚合健康、直接健康、就绪状态和数据来源；**SIGNALS** 是该部件上报的原始健康信号，没有就显示 `No direct health signals`。
+
+底部两个表切换看：**Modules** 是 Robonix 各模块（executor、pilot、vitals 等）的健康、状态、来源和 TTL；**Providers** 是各能力提供方。`SELF_REPORTED` 表示该状态由模块自己上报，TTL 是这条状态的有效期。
+
+### 音频（Audio）
+
+![Audio 页。上半是音频服务与路由，下半选择输入输出的提供方和具体设备，并提供测试按钮。](/img/ui/cl-audio.webp)
+
+Client 启动时会自动起本机音频服务。**Audio Device Server** 仍显示 offline 时，点 **Start Audio**。
+
+**Robonix Audio Route** 决定语音从哪来、到哪去。点 **Refresh Route** 拉取当前可用的提供方，然后：
+
+1. **Input Primitive** 和 **Output Primitive** 都选 `audio_client_bridge`，表示用这台电脑的设备；选 `audio_driver` 则用机器人本机的设备。
+2. 在 **Input Device** 和 **Output Device** 里选具体的麦克风和扬声器，列表不全时点 **Refresh Devices**。
+3. 点 **Apply Route** 生效。
+4. 分别点 **Test Microphone** 和 **Test Speaker** 验证，前者应当看到输入电平，后者应当听到声音。
+
+路由生效后按 `F2` 开始一次语音输入，页面上的录音按钮作用相同。免按键语音要另外打开顶栏的 **Hands-free**。
+
+**Audio Log** 记录音频服务自己的日志，设备打不开时先看它。**Client Bridge Diagnostics** 检查这台电脑到机器人音频桥的连通性。
+
+**Voiceprint** 区域用于声纹：**Enroll Voice** 录一段音注册当前用户。部署开启访问控制时，语音任务要先通过声纹才会进入 Pilot。
 
 ### 设置（Settings）
 
-![Settings 页。机器人地址、Atlas 端口、用户标识和录音时限，保存后写入 ~/.config/robonix-client/settings.yaml。](/img/ui/client-settings.webp)
+![Settings 页。机器人地址、Atlas 端口、用户标识、录音时限和可选的 Liaison Endpoint。](/img/ui/cl-settings.webp)
 
-Settings 保存机器人地址、Atlas 端口、用户标识、录音时限和可选的 Liaison Endpoint。点击 **Save Settings** 后，设置会写入 `~/.config/robonix-client/settings.yaml`，页面也会在浏览器本地存储中保留当前值。正常部署应留空 **Liaison Endpoint**，让 Client 从 Atlas 发现它。
+Settings 保存机器人地址、Atlas 端口、用户标识（**User ID** 与 **User Name**）、**Record Seconds** 录音时限，以及可选的 **Liaison Endpoint**。
+
+点 **Save Settings** 写入 `~/.config/robonix-client/settings.yaml`，页面同时在浏览器本地存储保留一份。
+
+**Liaison Endpoint 正常留空**，让 Client 从 Atlas 发现它。只有在 Liaison 不通过 Atlas 暴露、或要强制指向某个实例时才填。
 
 ## 5. 最小验收
 

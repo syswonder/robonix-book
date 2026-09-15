@@ -59,10 +59,11 @@ const config: Config = {
   ],
   themeConfig: {
     // 所有正文图片可点击放大；截图里的小字需要放大才看得清。
-    // zIndex 必须高于导航栏（Docusaurus 的 navbar 是 200），否则遮罩盖不住顶栏。
-    imageZoom: {
+    // 字段名以 docusaurus-plugin-image-zoom 为准：themeConfig.zoom，子键是 config。
+    zoom: {
       selector: '.markdown img',
-      options: {margin: 24, background: 'rgba(12,14,18,.94)', scrollOffset: 0},
+      background: {light: 'rgba(248,249,251,.97)', dark: 'rgba(12,14,18,.97)'},
+      config: {margin: 24, scrollOffset: 0},
     },
     announcementBar: {
       id: `source-baseline-${sourceRevision.slice(0, 8)}`,
