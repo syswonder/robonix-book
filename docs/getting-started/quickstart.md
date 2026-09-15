@@ -79,7 +79,7 @@ make install
 `make install` 把 `rbnx`、代码生成器和 Atlas、Executor、Soma、Vitals、Pilot、Liaison 等系统可执行文件安装到 `~/.cargo/bin`。它同时把当前克隆目录登记为 Robonix 源码根目录。确认安装结果：
 
 ```bash
-export PATH="$HOME/.cargo/bin:$PATH"
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 rbnx --version
 rbnx path root
 ```
@@ -146,7 +146,7 @@ bash examples/webots/sim/start.sh --world office.wbt
 ### 终端 2：Robonix 系统
 
 ```bash
-export PATH="$HOME/.cargo/bin:$PATH"
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 export VLM_API_KEY='sk-...'
 export VLM_BASE_URL='https://api.example.com/v1'
 export VLM_MODEL='your-model-name'
@@ -185,7 +185,7 @@ Scene 调试页默认位于 [http://127.0.0.1:50107/](http://127.0.0.1:50107/)�
 保持前两个终端运行，在第三个终端检查注册状态：
 
 ```bash
-export PATH="$HOME/.cargo/bin:$PATH"
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 cd /path/to/robonix/examples/webots
 
 rbnx caps -v
