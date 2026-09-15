@@ -143,5 +143,5 @@ rbnx logs -t mapping -l info
 地图稳定后再运行 Explore、保存空间地图、标注房间并测试导航。保存、加载和位姿重定位接口见[空间地图](../interface-catalog/service/map.md)。
 
 :::note[地图只保存一次，房间标记不会被删除]
-空间地图只保存一次，其空间制品不可变：对同一 `map_id` 再次 Save 会返回 409：要编辑房间和对象，应以定位模式 Load 该地图；要重建空间制品，只能删除后重新保存。地图重建后，已有房间标记不会被删除，只标为过期并显示“map was rebuilt — review stale rooms”横幅。用户可以确认它仍有效，也可以重新绘制。详见[场景服务的界面语义](../interface-catalog/system/scene.md#地图与房间标记的界面语义)。
+一张空间地图只写入一次，此后地图文件本身不可变。对同一 `map_id` 再次 Save 返回 409：要编辑房间和对象，以定位模式 Load 该地图；要重建地图文件，先删除再重新保存。地图重建后，已有房间标记不会被删除，只标为过期并显示“map was rebuilt — review stale rooms”横幅。用户可以确认它仍有效，也可以重新绘制。详见[场景服务的界面语义](../interface-catalog/system/scene.md#地图与房间标记的界面语义)。
 :::

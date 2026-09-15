@@ -37,6 +37,6 @@ Scene 启动时优先读取 Mapping 发布并保持的 `robonix/service/map/life
 
 ### 地图与房间标记的界面语义
 
-空间地图只保存一次，其空间制品（artifact）不可变。对同一 `map_id` 再次 Save 会返回 409 并附带指引：要编辑该地图的房间和对象，以定位模式 Load 它；要重建空间制品，先删除该地图再重新保存。房间标记是用户资产。地图重建（`generation` 提升）不删除它们，只标为过期，界面上以黄色显示并出现“map was rebuilt — review stale rooms”横幅。用户对每个过期标记点击“Still valid”确认仍有效即可清除 stale，也可以重新绘制。
+一张空间地图只写入一次，此后地图文件本身不可变。对同一 `map_id` 再次 Save 会返回 409 并附带指引：要编辑该地图的房间和对象，以定位模式 Load 它；要重建地图文件，先删除该地图再重新保存。房间标记是用户资产。地图重建（`generation` 提升）不删除它们，只标为过期，界面上以黄色显示并出现“map was rebuilt — review stale rooms”横幅。用户对每个过期标记点击“Still valid”确认仍有效即可清除 stale，也可以重新绘制。
 
 Scene Web 管理界面默认绑定 `0.0.0.0`；只允许本机操作时设置 `SCENE_WEB_HOST=127.0.0.1`。
