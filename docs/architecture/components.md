@@ -27,7 +27,7 @@ Robonix 以能力（Capability）为统一抽象。能力约定（Contract）定
 ### 任务流转
 
 1. **Liaison** 接收文本或语音输入，统一用户身份元数据，根据配置执行用户准入检查，然后将通过的任务提交给 Pilot。Liaison 不自己实现语音识别、语音合成、麦克风、扬声器或声纹识别，而是通过 Atlas 发现对应的原语和服务。
-2. **Pilot** 从 Atlas 读取当前可通过 MCP 调用的能力，构建模型提示，请求模型生成机器人任务描述语言（Robot Task Description Language，RTDL）动作树，再将动作树展开为执行方案并提交给 Executor。Pilot 启动时从 Soma 读取原始本体 YAML——刻意不加载 URDF 进提示上下文，运动学细节由 Soma 的 `get_urdf` 提供给 TF/RViz/运动规划等消费方；每轮规划前再刷新 Soma 本体运行状态，并通过 Executor 调用 Scene 已声明的完整能力约定 `robonix/system/scene/get_robot_context` 读取空间快照。Soma 或 Scene 状态不可用、过期时，Pilot 将相应事实视为未知。当前版本尚未把 Vitals 的健康判断自动注入规划上下文。
+2. **Pilot** 从 Atlas 读取当前可通过 MCP 调用的能力，构建模型提示，请求模型生成机器人任务描述语言（Robot Task Description Language，RTDL）动作树，再将动作树展开为执行方案并提交给 Executor。Pilot 启动时从 Soma 读取原始本体 YAML，刻意不加载 URDF 进提示上下文。运动学细节由 Soma 的 `get_urdf` 提供给 TF/RViz/运动规划等消费方；每轮规划前再刷新 Soma 本体运行状态，并通过 Executor 调用 Scene 已声明的完整能力约定 `robonix/system/scene/get_robot_context` 读取空间快照。Soma 或 Scene 状态不可用、过期时，Pilot 将相应事实视为未知。当前版本尚未把 Vitals 的健康判断自动注入规划上下文。
 3. **Executor** 验证并执行 RTDL 的 `sequence`、`parallel` 和 `do` 节点。`do` 节点携带 `provider_id` 和 `contract_id`；当前模型可调用路径固定通过 Atlas 连接该提供方的 MCP 能力，并以事件流返回节点状态和结果。Skill 仍为 `INACTIVE` 时，Executor 会在首次调用前通过其 gRPC driver 发送 `CMD_ACTIVATE`。
 4. **Pilot** 根据执行结果决定结束当前任务，还是继续下一轮规划。
 
