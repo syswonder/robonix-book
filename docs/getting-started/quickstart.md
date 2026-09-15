@@ -200,12 +200,19 @@ What tasks are currently running?
 
 ## 7. 选择其他 Webots 场景
 
-回到 Robonix 仓库根目录选择内置场景：
+示例内置五个场景，每次启动选其中一个。`office.wbt` 是默认场景，第 5 节已经用过。
+
+其余四个在第一次运行前，需要先下载一次 Cyberbotics 官方离线资源包。下载只做一次，之后复用持久化缓存：
 
 ```bash
 cd /path/to/robonix
-bash examples/webots/sim/start.sh --world office.wbt
-bash examples/webots/sim/start.sh --world apartment.wbt
+ROBONIX_WEBOTS_DOWNLOAD_ALL_ASSETS=1 \
+  bash examples/webots/sim/start.sh --world apartment.wbt
+```
+
+资源就绪后，换场景只需改 `--world`。仿真正在运行时直接执行也可以，Compose 会按新的场景重建容器：
+
+```bash
 bash examples/webots/sim/start.sh --world complete_apartment.wbt
 bash examples/webots/sim/start.sh --world break_room.wbt
 bash examples/webots/sim/start.sh --world kitchen.wbt
@@ -218,13 +225,6 @@ bash examples/webots/sim/start.sh --world kitchen.wbt
 | `kitchen.wbt`<br />![Webots 厨房场景预览](/img/webots/kitchen.jpg) |  |
 
 默认的 `office.wbt` 第一次启动时，会通过 `https://ghfast.top/` 下载一次带校验和的 [`webots-office-seed-v3`](https://github.com/syswonder/robonix-assets/releases/tag/webots-office-seed-v3)，随后从持久化 Webots 缓存卷复用。要绕过镜像站直连 GitHub，可把 `ROBONIX_WEBOTS_SEED_MIRROR` 设为空；`ROBONIX_WEBOTS_SEED_URL` 可以覆盖完整下载地址。
-
-第一次运行其他内置场景前，先下载一次 Cyberbotics 官方离线资源包；后续启动同样复用持久化缓存：
-
-```bash
-ROBONIX_WEBOTS_DOWNLOAD_ALL_ASSETS=1 \
-  bash examples/webots/sim/start.sh --world apartment.wbt
-```
 
 ## 8. 停止并清理运行进程
 
