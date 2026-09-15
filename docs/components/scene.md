@@ -201,7 +201,9 @@ system:
 
 ![二维地图页。对象和机器人画在建图服务的占据栅格上。](/img/ui/scene-2d.webp)
 
-![相机页。左右分别是感知流水线实际收到的彩色图与深度图，标题里带编码和时间戳。](/img/ui/scene-cam.webp)
+![三维视图。点云与包围盒，标签里带同类对象的合并计数。](/img/ui/scene-3d.webp)
+
+![相机页。上下分别是感知流水线实际收到的彩色图与深度图，标题里带编码、分辨率和时间戳。](/img/ui/scene-cam.webp)
 
 ![标注与地图页。填入 Map ID 后 Save current 保存；Annotate room 沿房间边界打点画多边形。地图还没保存时，顶部状态显示 unsaved live。](/img/ui/scene-user.webp)
 
