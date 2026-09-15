@@ -1,8 +1,8 @@
 ---
-title: x86 仿真 + LoongArch 推理
+title: 双机部署：x86 跑仿真，龙芯跑大脑
 slug: /getting-started/x86-ubuntu-la-arch
 ---
-# x86 仿真 + LoongArch 推理
+# 双机部署：x86 跑仿真，龙芯跑大脑
 
 <div class="procedure-meta">
   <div><strong>目标平台</strong>x86_64（Ubuntu 22.04）+ LoongArch64（Loong ArchLinux，Loongson 3A6000）</div>

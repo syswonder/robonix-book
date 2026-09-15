@@ -26,7 +26,7 @@ const sidebars: SidebarsConfig = {
         {
           type: 'doc',
           id: 'getting-started/x86-ubuntu-la-arch/README',
-          label: 'x86 仿真 + LoongArch 推理',
+          label: '双机部署（x86 + 龙芯）',
         },
       ],
     },
