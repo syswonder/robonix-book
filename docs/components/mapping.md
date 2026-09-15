@@ -214,6 +214,56 @@ service:
 
 当 RTAB-Map 在两个会话之间检测到一次回环时地图会回来：那条连接把两个分量合并。所以这次切换只在重定位确实能成功的场合才安全。磁盘上的数据库两种情况下都不受影响。
 
+## 接入新传感器后的验证顺序
+
+### 1. 先验证里程计和 TF
+
+启动底盘原语后，先不启动自主探索。确认 Atlas 能找到里程计能力，再检查 ROS 2 数据。以下示例使用 `/odom`；如果 Atlas 显示的实际话题不同，将命令中的话题替换为该值。
+
+```bash
+rbnx caps -v | rg -A 12 -B 2 'base_chassis|robonix/primitive/chassis/odom'
+ros2 topic info /odom --verbose
+ros2 topic hz /odom
+ros2 run tf2_ros tf2_echo odom base_link
+```
+
+机器人静止时位姿不应连续跳变；缓慢直行时平移方向应与实际运动一致；原地旋转时 yaw 方向应正确，位置不应产生大幅圆周运动。任一项失败时，先修正轮径、轮距、坐标系、时间戳或 TF 唯一性，不要用 RTAB-Map 参数掩盖底盘里程计错误。
+
+### 2. 检查传感器坐标和时间
+
+```bash
+ros2 run tf2_ros tf2_echo base_link front_lidar_link
+ros2 run tf2_ros tf2_echo base_link camera_color_optical_frame
+ros2 topic hz /scan
+ros2 topic hz /camera/color/image_raw
+ros2 topic hz /camera/aligned_depth_to_color/image_raw
+```
+
+框架名和话题名必须替换为当前部署的实际值。转动机器人时如果墙面立即形成扇形、斜墙或多重边界，优先检查里程计旋转量、传感器外参和时间同步。
+
+### 3. 启动 Mapping 并检查唯一发布方
+
+```bash
+ros2 run tf2_ros tf2_echo map odom
+ros2 topic hz /map
+ros2 node info /rtabmap
+rbnx logs -t mapping -l info
+```
+
+外部里程计模式下，`/rtabmap` 不直接订阅 `/odom` 是预期行为：它从 TF 查询 `odom → base_link`。检查 TF 树时应只有一个 `odom → base_link` 发布方和一个 `map → odom` 发布方。
+
+### 4. 再做建图调参
+
+使用一段包含慢速直行、原地旋转和回到已知区域的固定路线。每次只改一组参数，并比较墙体重影、闭环后全图变形、障碍保留情况和处理频率。
+
+- 地图细节不足时，先检查 `Grid/CellSize` 和输入分辨率。
+- 节点过稀时，逐步降低 `RGBD/LinearUpdate` 和 `RGBD/AngularUpdate`；节点过密导致计算堆积时则提高。
+- 处理跟不上输入时，降低 `Rtabmap/DetectionRate`，不要仅增大队列。
+- 旋转时配准失败时，先检查 TF/时间/里程计，再调整 ICP 门限。
+- `Grid/RayTracing=false` 会减少自由空间清理，容易留下幽灵障碍；设为 `true` 又可能让低位二维雷达错误清掉 RGB-D 看到的桌面等高处障碍。Webots 混合传感器基线选择 `false`，真实部署必须用“障碍移走”和“雷达从障碍下方穿过”两类场景共同验证。
+
+地图稳定后再运行 Explore、保存空间地图、标注房间并测试导航。保存、加载和位姿重定位接口见[空间地图](../interface-catalog/service/map.md)。
+
 ## 定位常见问题
 
 **定位模式启动失败。** 这是设计行为：`map_id` 指向的地图不存在时服务拒绝启动，而不是从开机位姿开始建图。先确认地图目录存在且包含 `rtabmap.db`。

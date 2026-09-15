@@ -52,7 +52,6 @@ const sidebars: SidebarsConfig = {
           id: 'integration-guide/mujoco-simulation-onboarding',
           label: '接入 MuJoCo 仿真本体',
         },
-        {type: 'doc', id: 'tutorials/mapping-and-odometry', label: '接入传感器与里程计'},
       ],
     },
     {
