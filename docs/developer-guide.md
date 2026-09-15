@@ -4,7 +4,7 @@ toc_max_heading_level: 2
 
 # Robonix 开发者指南
 
-本指南介绍如何开发 Robonix 软件包（Package）。一个软件包可以实现原语（Primitive）、服务（Service）或技能（Skill），依据标准能力约定实现接口，在运行时向 Atlas 注册能力，再由机器人部署清单选择和配置。
+本指南介绍如何开发 Robonix 软件包（Package）。一个软件包可以实现原语（Primitive）、服务（Service）或技能（Skill）。它依据标准能力约定实现接口，在运行时向 Atlas 注册能力，再由机器人部署清单选择和配置。
 
 首次开发先完成第 1 节，再阅读第 2—7 节；随后按软件包类型选择第 8、9 或 10 节，最后按第 11—13 节部署。第 14—16 节供查阅。
 
@@ -63,7 +63,9 @@ rbnx shutdown
 
 Robonix 为具身智能模型提供统一的运行时。硬件驱动以原语暴露设备能力；建图、导航、语音等算法以服务暴露可复用功能；技能封装具有任务语义的行为。Atlas 维护能力目录，Pilot 把用户意图转换为执行方案，Executor 调用方案中的能力。
 
-系统组件分两层，判据是能不能换掉。**核心系统组件**（Atlas、Chronos、Keystone、Nexus、Scribe、Vitals）不可更换，只被上层依赖，自身不依赖任何系统级服务。**系统级服务**（Executor、Liaison、Pilot、Scene、Sentinel、Soma）可以替换，彼此之间存在依赖，与你要开发的导航、建图等服务处于同一层级，只是由 Robonix 自带。完整清单见[系统组件](architecture/components.md)。
+系统组件分两层，判据是能不能换掉。**核心系统组件**不可更换，只被上层依赖，自身不依赖任何系统级服务，包括 Atlas、Chronos、Keystone、Nexus、Scribe 和 Vitals。**系统级服务**可以替换，彼此之间存在依赖，包括 Executor、Liaison、Pilot、Scene、Sentinel 和 Soma。系统级服务与你要开发的导航、建图等服务处于同一层级，只是由 Robonix 自带。
+
+这 12 个名字里有 4 个目前没有运行时实现：Chronos、Keystone 和 Sentinel 只有设计说明，Nexus 是通信库的统称而非独立进程。开发软件包时不能依赖它们，也不能写进部署清单。各组件的实现状态见[系统组件](architecture/components.md)。
 
 开发软件包时会遇到以下系统组件：
 
@@ -71,7 +73,7 @@ Robonix 为具身智能模型提供统一的运行时。硬件驱动以原语暴
 |---|---|---|---|
 | Atlas | 核心 | 保存能力约定、提供方、能力和连接信息 | 每个软件包都要连接；通常只配置地址 |
 | Vitals | 核心 | 汇总组件与设备健康状态 | 提供健康能力或接入健康仪表盘时 |
-| Executor | 系统级服务 | 执行 Pilot 生成的实时任务描述语言（RTDL）方案 | 技能或长任务需要验证执行、状态与取消时 |
+| Executor | 系统级服务 | 执行 Pilot 生成的机器人任务描述语言（RTDL）方案 | 技能或长任务需要验证执行、状态与取消时 |
 | Liaison | 系统级服务 | 承接客户端、文本和语音交互 | 接入外部客户端或语音链路时 |
 | Pilot | 系统级服务 | 把用户意图规划为 RTDL | 需要让模型发现和调用能力时 |
 | Scene | 系统级服务 | 维护环境对象、区域和空间关系 | 技能需要查询环境或语义目标时 |
@@ -88,7 +90,7 @@ Robonix 为具身智能模型提供统一的运行时。硬件驱动以原语暴
 
 能力约定可以在没有提供方运行时由 Atlas 从 TOML 和 IDL 加载。能力只在提供方注册并声明后存在，记录 `provider_id`、`contract_id`、传输及传输参数；调用方连接后再从通道取得端点。
 
-能力目录属于控制面。真实图像、点云、RPC 请求或工具调用通过 ROS 2、gRPC 或模型上下文协议（Model Context Protocol，MCP）直接传输，不经过 Atlas 转发。
+能力目录属于控制面。真实图像、点云、RPC 请求或工具调用通过 ROS 2、gRPC 或 MCP 直接传输，不经过 Atlas 转发。
 
 当前由 Pilot 规划、Executor 代表模型调用的业务能力使用 MCP 传输。gRPC 和 ROS 2 服务适合确定性客户端或组件间调用；能力约定中的 `rpc` 只表示请求—响应语义，不指定某一种通信库。
 
@@ -187,13 +189,13 @@ string message
 | `rpc_bidirectional_stream` | 支持 | 不支持 | 不支持 |
 | `topic_out` / `topic_in` | 以 gRPC stream 映射 | 支持 | 不支持 |
 
-`rpc` 不等于 gRPC，也不要求使用 gRPC 装饰器。它只说明“一次请求、一次响应”：选择 gRPC 时使用 `@provider.grpc(...)`，选择 MCP 时使用 `@provider.mcp(...)`，选择 ROS 2 service 时由 `rclpy` 创建服务，再用 `provider.declare_ros2_service(...)` 向 Atlas 声明端点。提供方应根据现有实现、调用方和部署拓扑选择传输。
+`rpc` 不等于 gRPC，也不要求使用 gRPC 装饰器。它只说明“一次请求、一次响应”。选择 gRPC 时使用 `@provider.grpc(...)`，选择 MCP 时使用 `@provider.mcp(...)`。选择 ROS 2 service 时由 `rclpy` 创建服务，再用 `provider.declare_ros2_service(...)` 向 Atlas 声明端点。提供方应根据现有实现、调用方和部署拓扑选择传输。
 
-`rpc` 的一次响应也不表示业务动作必须已经结束。通过 MCP 启动导航、抓取等长时间任务时，提供方可以同时注册主能力及其 `/status`、`/cancel` 子能力，由 Executor 持续查询状态并响应方案取消。该约定见 [14.5 MCP 与 gRPC](#145-mcp-与-grpc)。
+`rpc` 的一次响应也不表示业务动作必须已经结束。通过 MCP 启动导航、抓取等长时间任务时，提供方可以同时注册主能力及其 `/status` 和 `/cancel` 子能力。Executor 据此持续查询状态并响应方案取消。该约定见 [14.5 MCP 与 gRPC](#145-mcp-与-grpc)。
 
 模型需要发现并离散调用的工具通常使用 MCP；确定性的进程间控制、生命周期和流式请求通常使用 gRPC；机器人内部已有的高频传感与控制图通常保留 ROS 2。能力约定只定义语义，不会替开发者自动选择传输。提供方声明的传输、Atlas 返回的端点和消费者建立的客户端必须一致。
 
-当前 Python 运行时不会在装饰器注册阶段完整校验“模式—传输”矩阵，因此还要通过端到端测试确认生成类型、提供方和消费者选择了同一传输。
+当前 Python 运行时不会在装饰器注册阶段完整校验“模式—传输”矩阵。生成类型、提供方和消费者是否选了同一传输，要靠端到端测试确认。
 
 ### 4.3 全局与软件包内能力约定
 
@@ -847,7 +849,7 @@ skill:
     config: {}
 ```
 
-这个完整系统块包含本体状态（Soma）、健康状态（Vitals）、环境状态（Scene）、任务执行（Executor）、模型规划（Pilot）和交互入口（Liaison）。`scene.manifest` 选择 Scene 软件包的运行目标，`scene.config` 通过 Scene 的 Driver 传入；未指定 `camera_provider_id` 时，Scene 按能力约定自动发现可用观测源。
+这个完整系统块包含六项：本体状态（Soma）、健康状态（Vitals）、环境状态（Scene）、任务执行（Executor）、模型规划（Pilot）、交互入口（Liaison）。`scene.manifest` 选择 Scene 软件包的运行目标，`scene.config` 通过 Scene 的 Driver 传入；未指定 `camera_provider_id` 时，Scene 按能力约定自动发现可用观测源。
 
 实例 `config` 在初始化时通过 Driver 发送。软件包应在 `on_init(cfg)` 中校验字段并返回清楚的错误，公开字段同时写入 `config.spec`。
 
@@ -1394,7 +1396,7 @@ for event in stub.RecognizeStream(asr_requests(), timeout=60.0):
 旧软件包若在清单中精确声明 `<provider-namespace>/driver`，则继续按[兼容流程](integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)绑定完整的旧生成服务，或在满足单向迁移条件时使用共享运行时 Driver。该方式计划迁移；新软件包不要照此创建 Driver TOML。
 :::
 
-`provider.run()` 先执行同一套 bootstrap，再阻塞等待退出信号。Driver 的 `CMD_SHUTDOWN` 会先完成业务关闭回调和响应，再停止提供方；进程信号路径也会调用 `on_shutdown`。框架会关闭通过 `connect_capability` 建立的通道、受管子进程和 gRPC server，但软件包自行创建的线程、设备句柄和后台任务仍必须在生命周期回调中释放。
+`provider.run()` 先执行同一套 bootstrap，再阻塞等待退出信号。Driver 的 `CMD_SHUTDOWN` 会先完成业务关闭回调和响应，再停止提供方；进程信号路径也会调用 `on_shutdown`。框架会关闭通过 `connect_capability` 建立的通道、受管子进程和 gRPC server。软件包自行创建的线程、设备句柄和后台任务，仍必须在生命周期回调中释放。
 
 ## 15. 常用命令行接口
 
@@ -1427,7 +1429,7 @@ for event in stub.RecognizeStream(asr_requests(), timeout=60.0):
 `rbnx clean -f robonix_manifest.yaml` 默认保留 `rbnx-boot/cache/`；只有加 `--cache` 才删除远程软件包缓存。单独执行 `rbnx start --config <file>` 时仍会先读取软件包清单；启动器确认提供方只注册唯一的共享生命周期 Driver 后，通过 `CMD_INIT` 发送合并配置。配置文件路径不会暴露给提供方进程。
 
 :::warning[后向兼容：`rbnx start` 启动旧软件包]
-精确声明 `<provider-namespace>/driver` 和本地 Driver TOML 的旧软件包仍可使用 `rbnx start`，也可在旧生成服务完全不存在时按受管兼容标记单向使用共享运行时 Driver。该方式计划迁移，不能与共享 Driver 条目同时使用。完整规则见[软件包与部署清单规范](integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+精确声明 `<provider-namespace>/driver` 和本地 Driver TOML 的旧软件包仍可使用 `rbnx start`。旧生成服务完全不存在时，这类软件包可按受管兼容标记单向使用共享运行时 Driver。该方式计划迁移，不能与共享 Driver 条目同时使用。完整规则见[软件包与部署清单规范](integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
 :::
 
 ## 16. 配置字段

@@ -6,7 +6,7 @@ title: 规划器
 
 规划器是规划和决策核心：接收任务，结合记忆与大语言模型产出方案，再交给执行器执行。任务入口 `robonix/system/pilot`（`SubmitTask`）通常由[交互服务](liaison.md)转发用户任务；`get_health` 返回规划器模块自身的健康报告。
 
-能力约定 TOML 在 `capabilities/system/pilot.v1.toml` 与 `capabilities/system/pilot/`，接口定义语言（Interface Definition Language，IDL）文件在 `capabilities/lib/pilot/` 与 `capabilities/lib/module_health/`。
+能力约定 TOML 在 `capabilities/system/pilot.v1.toml` 与 `capabilities/system/pilot/`，IDL 文件在 `capabilities/lib/pilot/` 与 `capabilities/lib/module_health/`。
 
 ## 接口
 

@@ -240,7 +240,7 @@ if test -f "$ZENOH_ROUTER_PID_FILE"; then
 fi
 ```
 
-如果 `apt` 仓库没有目标 ROS 发行版的 `rmw_zenoh_cpp`，应按该发行版的[官方构建说明](https://github.com/ros2/rmw_zenoh)构建并安装到独立工作区，再在启动所有 ROS 2 进程前加载该工作区的 `install/setup.bash`。不要混用为另一 ROS 发行版构建的二进制。
+如果 `apt` 仓库没有目标 ROS 发行版的 `rmw_zenoh_cpp`，按该发行版的[官方构建说明](https://github.com/ros2/rmw_zenoh)自行构建并安装到独立工作区。启动所有 ROS 2 进程前，先加载该工作区的 `install/setup.bash`。不要混用为另一 ROS 发行版构建的二进制。
 
 部分软件包支持以下可选变量，用于为容器生成 Zenoh 会话文件：
 

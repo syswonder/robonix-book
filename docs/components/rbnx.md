@@ -4,7 +4,7 @@ title: rbnx 命令行工具
 
 # rbnx 命令行工具
 
-`rbnx` 是 Robonix 的部署命令行工具，包括构建软件包、启动 Robonix、查看 Robonix 运行时状态、与 Robonix 对话交互等功能。
+`rbnx` 是 Robonix 的部署命令行工具，负责构建软件包、启动系统、查看运行时状态和对话交互。
 
 相关文档：
 1. 部署与启动的两层清单和阶段划分见[部署与启动](../architecture/deployment-and-startup.md)
@@ -111,7 +111,7 @@ rbnx shutdown
 
 `rbnx boot` 按依赖顺序启动清单里声明的内置组件：Atlas、Executor、Soma、Pilot、Vitals、Liaison。清单里没有的组件不会启动，只有一个例外：部署包含原语或技能时会自动补上 Soma。
 
-`system.<name>` 的处理分两种情况。`atlas`、`executor`、`pilot`、`liaison`、`soma`、`vitals` 是随 Robonix 发布的二进制，整个 `config` 块序列化成 JSON 由 `--config-json` 传入，其中若干字段另外翻译成独立的命令行参数。其余 `system:` 条目（例如 `scene`、`memory`、`speech`）是 `<robonix 源码>/system/<name>/` 下的软件包，与普通软件包一样通过 `Driver(CMD_INIT)` 收配置，不经过命令行。例如：
+`system.<name>` 的处理分两种情况。`atlas`、`executor`、`pilot`、`liaison`、`soma`、`vitals` 是随 Robonix 发布的二进制。整个 `config` 块序列化成 JSON 由 `--config-json` 传入，其中若干字段另外翻译成独立的命令行参数。其余 `system:` 条目（例如 `scene`、`memory`、`speech`）是 `<robonix 源码>/system/<name>/` 下的软件包，与普通软件包一样通过 `Driver(CMD_INIT)` 收配置，不经过命令行。例如：
 
 ```yaml
 system:

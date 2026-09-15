@@ -7,7 +7,7 @@ Robonix Client 是运行在 Linux 或 macOS 上的客户端网页。它先连接
 
 ## 1. 准备机器人端
 
-客户端所在主机必须能访问机器人 Atlas 的监听地址。需要从外部主机连接时，机器人部署清单至少应让 Atlas、Liaison 和 Executor 监听可信局域网或 Tailscale 接口：
+客户端所在主机必须能访问机器人 Atlas 的监听地址。需要从外部主机连接时，机器人部署清单至少要让 Atlas、Liaison 和 Executor 监听可信局域网或 Tailscale 接口：
 
 ```yaml
 system:

@@ -22,7 +22,7 @@ Soma -> Vitals：本体健康流与阈值评估
 运行组件 <-> Atlas：注册、发现、生命周期与通道记账
 ```
 
-Robonix 以能力（Capability）为统一抽象。能力约定（Contract）定义能力的输入、输出和通信模式；Atlas 记录哪个能力提供方实现了该能力约定，以及应通过 gRPC、模型上下文协议（Model Context Protocol，MCP）还是 ROS 2 访问。原语（Primitive）、服务（Service）和技能（Skill）都通过这个机制注册和发现。能力约定模式、传输方式和实际调用链见[运行时通信](runtime-communication.md)。
+Robonix 以能力（Capability）为统一抽象。能力约定（Contract）定义能力的输入、输出和通信模式；Atlas 记录两件事：哪个能力提供方实现了该能力约定，以及应当通过 gRPC、MCP 还是 ROS 2 访问它。原语（Primitive）、服务（Service）和技能（Skill）都通过这个机制注册和发现。能力约定模式、传输方式和实际调用链见[运行时通信](runtime-communication.md)。
 
 ### 任务流转
 

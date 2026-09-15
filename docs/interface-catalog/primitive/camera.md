@@ -6,7 +6,7 @@ title: 相机
 
 相机原语覆盖 RGB 与深度图像，两种取图方式并存：**流式**（`rgb` / `depth`）给场景融合、建图等高频消费者使用；**快照**（`snapshot` / `depth_snapshot`，一元 RPC）供大模型智能体按需取一帧。`topic_out` 只描述单向输出流，不绑定具体传输方式；当前 Webots 提供方通过 ROS 2 发布，Scene 当前也只接入 ROS 2 数据面。当前 Scene 首先从 TF2 查询完整的世界帧到相机光学帧变换；只在 TF2 不可用时，才组合 Atlas 发现的地图位姿与 `robonix/primitive/camera/extrinsics`。
 
-能力约定 TOML 在源码树的 [`capabilities/primitive/camera/`](https://github.com/syswonder/robonix/tree/cec06ee874eace27dd622e6ce4685c971f04a9e4/capabilities/primitive/camera)，接口定义语言（Interface Definition Language，IDL）位于 [`capabilities/lib/camera/`](https://github.com/syswonder/robonix/tree/cec06ee874eace27dd622e6ce4685c971f04a9e4/capabilities/lib/camera) 与固定版本的 [`common_interfaces`](https://github.com/enkerewpo/common_interfaces/tree/0ecd0f70791fe200f057b12bfc626beb21bad639) 子模块。下文的帧方向和标定字段以这些源码定义为准。
+能力约定 TOML 在源码树的 [`capabilities/primitive/camera/`](https://github.com/syswonder/robonix/tree/cec06ee874eace27dd622e6ce4685c971f04a9e4/capabilities/primitive/camera)，IDL 位于 [`capabilities/lib/camera/`](https://github.com/syswonder/robonix/tree/cec06ee874eace27dd622e6ce4685c971f04a9e4/capabilities/lib/camera) 与固定版本的 [`common_interfaces`](https://github.com/enkerewpo/common_interfaces/tree/0ecd0f70791fe200f057b12bfc626beb21bad639) 子模块。下文的帧方向和标定字段以这些源码定义为准。
 
 新软件包省略 Driver 条目，由框架自动注册共享的 `robonix/lifecycle/driver`；显式选择共享 Driver 的行为相同。未实现生命周期回调时，框架记录警告并执行空操作。
 

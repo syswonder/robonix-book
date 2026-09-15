@@ -83,7 +83,7 @@ rm -f -- rbnx-build/run/acme-chassis.sock
 
 :::note[示例范围]
 
-除代码块标题明确写出“完整文件”或“完整打包结构”外，本页后续 YAML、TOML、Python 和目录树均为**局部片段**，会省略已经讲解过的必填外层字段。不要把省略项理解为可选项。第 3 节的 ACME 部署是结构模板，其中的仓库地址、凭据变量和本体参数是占位值，替换并验证之前不能直接用于真实机器人。
+本页后续的 YAML、TOML、Python 和目录树均为**局部片段**，会省略已经讲解过的必填外层字段。例外是代码块标题明确写出“完整文件”或“完整打包结构”的那些。不要把省略项理解为可选项。第 3 节的 ACME 部署是结构模板，其中的仓库地址、凭据变量和本体参数是占位值，替换并验证之前不能直接用于真实机器人。
 
 :::
 
@@ -162,7 +162,7 @@ package_manifest.jetson-native.yaml
 package_manifest.jetson-docker.yaml
 ```
 
-每个文件都是完整的软件包清单，可以选择不同 `build`、`start`、`stop` 和由 README/build 脚本管理的平台前置条件，但软件包身份与公开能力约定应保持一致。机器人部署清单通过条目的 `manifest:` 选择具体文件；指定文件不存在时直接失败，不会回退到默认清单。
+每个文件都是完整的软件包清单。各文件可以选择不同的 `build`、`start`、`stop`，以及由 README 或 build 脚本管理的平台前置条件。软件包身份与公开能力约定则应保持一致。机器人部署清单通过条目的 `manifest:` 选择具体文件；指定文件不存在时直接失败，不会回退到默认清单。
 
 :::warning[发布多平台变体前先校验一致性]
 
@@ -500,7 +500,7 @@ if __name__ == "__main__":
     chassis.run()
 ```
 
-使用其他语言或自行实现 gRPC 服务时，最直接的兼容方式仍是注册本地 TOML 所引用的 `lifecycle/srv/Driver.srv` 服务，并向 Atlas 声明完全相同的旧 Driver ID。若实现选择共享运行时升级，只能在 `rbnx` 或 Soma 根据精确旧清单启用兼容标记的受管启动中注册唯一的 `robonix/lifecycle/driver`；不能把这个方向反过来，也不能同时声明新旧两条 Driver。
+使用其他语言或自行实现 gRPC 服务时，最直接的兼容方式是注册本地 TOML 所引用的 `lifecycle/srv/Driver.srv` 服务，并向 Atlas 声明完全相同的旧 Driver ID。若实现选择共享运行时升级，只能在 `rbnx` 或 Soma 根据精确旧清单启用兼容标记的受管启动中注册唯一的 `robonix/lifecycle/driver`；不能把这个方向反过来，也不能同时声明新旧两条 Driver。
 
 不使用正向升级时，兼容流程要求以下四处一致：
 

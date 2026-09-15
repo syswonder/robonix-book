@@ -2,7 +2,7 @@
 
 健康原语把具体设备的健康数据统一为按需快照和服务端流。按需调用方使用 `state`，持续监测方使用 `stream`。当前版本尚未把这些原语健康流聚合到 Soma 与 Vitals 的标准运行链；需要健康监控的部署必须分别验证设备健康提供方和 Vitals 实际接收到的数据。
 
-能力约定 TOML 在 `capabilities/primitive/health/`，接口定义语言（Interface Definition Language，IDL）文件在 `capabilities/lib/health/`。
+能力约定 TOML 在 `capabilities/primitive/health/`，IDL 文件在 `capabilities/lib/health/`。
 
 新软件包省略 Driver 条目，由框架自动注册共享的 `robonix/lifecycle/driver`；显式选择共享 Driver 的行为相同。未实现生命周期回调时，框架记录警告并执行空操作。
 

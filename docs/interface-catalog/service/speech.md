@@ -4,9 +4,9 @@ title: 语音
 <span id="语音-robonixservicespeech"></span>
 # 语音
 
-语音服务提供自动语音识别（Automatic Speech Recognition，ASR）、语音合成（Text-to-Speech，TTS）和唤醒词检测。一元与流式都有：`asr` 和 `tts` 是一元 RPC，`asr_stream`、`tts_stream`、`dialog` 和 `wake_word` 是流式。当前版本不支持 `dialog`；连续语音交互与轮次编排使用 [Liaison](../system/liaison.md)。
+语音服务提供三项能力：自动语音识别（ASR）、语音合成（TTS）和唤醒词检测。一元与流式都有：`asr` 和 `tts` 是一元 RPC，`asr_stream`、`tts_stream`、`dialog` 和 `wake_word` 是流式。当前版本不支持 `dialog`；连续语音交互与轮次编排使用 [Liaison](../system/liaison.md)。
 
-能力约定 TOML 在 `capabilities/service/speech/`；直接和嵌套使用的接口定义语言（Interface Definition Language，IDL）文件位于 `capabilities/lib/{speech,asr,tts,audio,lifecycle}/`。
+能力约定 TOML 在 `capabilities/service/speech/`；直接和嵌套使用的IDL 文件位于 `capabilities/lib/{speech,asr,tts,audio,lifecycle}/`。
 
 新软件包省略 Driver 条目，由框架自动注册共享的 `robonix/lifecycle/driver`；显式选择共享 Driver 的行为相同。未实现生命周期回调时，框架记录警告并执行空操作。
 
@@ -23,7 +23,7 @@ title: 语音
 | `robonix/service/speech/tts` | `rpc` | gRPC | [`tts/Synthesize`](../../reference/idl.md#tts-srv-synthesize-srv) | `service/speech/tts.v1.toml` |
 | `robonix/service/speech/tts_stream` | `rpc_server_stream` | gRPC | [`tts/SynthesizeStream`](../../reference/idl.md#tts-srv-synthesizestream-srv) | `service/speech/tts_stream.v1.toml` |
 | `robonix/service/speech/dialog` | `rpc_server_stream` | gRPC（已注册，实现不可用） | [`speech/StartDialog`](../../reference/idl.md#speech-srv-startdialog-srv) | `service/speech/dialog.v1.toml` |
-| `robonix/service/speech/speak` | `rpc` | 模型上下文协议（Model Context Protocol，MCP） | [`speech/Speak`](../../reference/idl.md#speech-srv-speak-srv) | `service/speech/speak.v1.toml` |
+| `robonix/service/speech/speak` | `rpc` | MCP | [`speech/Speak`](../../reference/idl.md#speech-srv-speak-srv) | `service/speech/speak.v1.toml` |
 | `robonix/service/speech/list_speakers` | `rpc` | MCP | [`speech/ListSpeakers`](../../reference/idl.md#speech-srv-listspeakers-srv) | `service/speech/list_speakers.v1.toml` |
 | `robonix/service/speech/wake_word` | `rpc_client_stream` | gRPC | [`speech/DetectWakeWord`](../../reference/idl.md#speech-srv-detectwakeword-srv) | `service/speech/wake_word.v1.toml` |
 

@@ -1,7 +1,7 @@
 # Webots 快速上手
 
 
-本教程在一台 Linux x86_64 主机上启动 Tiago Webots 仿真、Robonix 系统组件、原语（Primitive）、服务（Service）和技能（Skill），然后通过 Liaison 提交一条自然语言任务。第一次执行会编译 Rust 工作区、构建容器并下载依赖；后续复用缓存时才是快速启动流程。
+本教程在一台 Linux x86_64 主机上启动 Tiago Webots 仿真，以及 Robonix 的系统组件、原语（Primitive）、服务（Service）和技能（Skill），然后通过 Liaison 提交一条自然语言任务。第一次执行会编译 Rust 工作区、构建容器并下载依赖；后续复用缓存时才是快速启动流程。
 
 <div class="procedure-meta">
   <div><strong>目标平台</strong>Ubuntu 22.04 或 Debian 13，x86_64</div>
@@ -11,10 +11,10 @@
 
 ## 1. 检查主机
 
-默认图形界面路径需要可用的 X Server 和图形栈，以及 Git、Make、Python 3.10+、Rust stable、uv、Docker Engine 和 Compose v2。
+默认图形界面路径需要可用的 X Server 和图形栈。命令行工具需要 Git、Make、Python 3.10+、Rust stable、uv、Docker Engine 和 Compose v2。
 
 :::note[本教程使用的图形环境]
-当前完整 Webots 测试使用 NVIDIA GPU、NVIDIA 驱动和 `nvidia-container-toolkit`；下面的主流程以这条已验证路径为准。仓库的基础 Compose 也映射了 `/dev/dri`，镜像内还包含 Xvfb，但 Intel/AMD 图形和 CPU 软件渲染尚未纳入完整端到端验收，只作为兼容与排错路径。
+当前完整 Webots 测试使用 NVIDIA GPU、NVIDIA 驱动和 `nvidia-container-toolkit`；下面的主流程以这条已验证路径为准。仓库的基础 Compose 也映射了 `/dev/dri`，镜像内还包含 Xvfb。但 Intel/AMD 图形和 CPU 软件渲染尚未纳入完整端到端验收，只作为兼容与排错路径。
 :::
 
 在 Ubuntu / Debian 上安装基础工具：
@@ -74,7 +74,7 @@ git submodule status --recursive
 make install
 ```
 
-`make install` 将 `rbnx`、代码生成器和 Atlas、Executor、Soma、Vitals、Pilot、Liaison 等系统可执行文件安装到 `~/.cargo/bin`，并把当前克隆目录登记为 Robonix 源码根目录。确认安装结果：
+`make install` 把 `rbnx`、代码生成器和 Atlas、Executor、Soma、Vitals、Pilot、Liaison 等系统可执行文件安装到 `~/.cargo/bin`。它同时把当前克隆目录登记为 Robonix 源码根目录。确认安装结果：
 
 ```bash
 export PATH="$HOME/.cargo/bin:$PATH"

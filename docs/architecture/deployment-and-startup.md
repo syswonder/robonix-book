@@ -77,7 +77,7 @@ system:
 Soma 会根据 Atlas 中发现的里程计和关节状态能力，在 `rbnx-boot/logs/soma-runtime/` 下生成临时 ROS 2 订阅脚本和数据源 JSON，再自动启动读取器。这些文件是运行产物，不是开发者需要维护的配置文件。
 
 :::info[Webots 的跨容器特例]
-Webots 示例把 ROS 2 图放在仿真容器中，而 Soma 主进程运行在宿主机，因此该示例在自己的 `system.soma.runtime_reader_command` 中使用 `docker exec`，让自动生成的读取器在仿真容器内运行。原生 ROS 2 机器人不需要这个字段；只有把 Soma 与 ROS 2 图刻意分到不同运行环境时，才需要按对应容器或远程执行环境覆盖它。
+Webots 示例把 ROS 2 图放在仿真容器中，Soma 主进程则运行在宿主机。因此该示例在 `system.soma.runtime_reader_command` 中使用 `docker exec`，让自动生成的读取器在仿真容器内运行。原生 ROS 2 机器人不需要这个字段；只有把 Soma 与 ROS 2 图刻意分到不同运行环境时，才需要按对应容器或远程执行环境覆盖它。
 :::
 
 启动诊断应同时检查前台阶段、Atlas 能力和 Soma 自己的日志：
@@ -120,7 +120,7 @@ rbnx logs -d /path/to/deploy/rbnx-boot/logs -t soma --json
 :::warning[后向兼容：已有命名空间 Driver]
 早期软件包可能在自己的 `capabilities/` 目录中保存 Driver TOML，并在清单中声明唯一的 `<provider-namespace>/driver`。这种完整的旧实现目前仍可继续构建和启动，但计划逐步迁移到共享 Driver；维护旧仓库时不要同时追加 `robonix/lifecycle/driver`。
 
-受管启动还支持一个单向迁移场景：旧清单仍精确声明命名空间 Driver，但旧生成服务完全不存在，运行时只注册带兼容标记的共享 Driver，此时启动器会输出迁移警告。旧服务只存在一部分、Driver ID 与提供方命名空间不匹配，或同一提供方注册多条 Driver，都会使启动失败。旧包的完整维护和迁移步骤见[软件包与部署清单规范](../integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
+受管启动还支持一个单向迁移场景。旧清单仍精确声明命名空间 Driver，但旧生成服务已完全不存在。此时运行时只注册带兼容标记的共享 Driver，启动器输出迁移警告。旧服务只存在一部分、Driver ID 与提供方命名空间不匹配，或同一提供方注册多条 Driver，都会使启动失败。旧包的完整维护和迁移步骤见[软件包与部署清单规范](../integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)。
 :::
 
 某个非内置软件包启动失败时，`rbnx boot` 会将它列入最终 `failures` 段，并保留其他已成功启动的组件。内置系统组件的启动前校验或进程创建失败会终止本次启动并清理已启动的子进程。除 Soma 的第一阶段就绪检查外，当前启动器不会统一等待每个内置组件的业务健康接口，因此“进程已创建”不等于“业务已就绪”。
@@ -238,4 +238,4 @@ rbnx shutdown
 bash examples/webots/sim/stop.sh
 ```
 
-该脚本只停止 Webots 示例自己的 Compose 项目和启动脚本记录的 RViz2 进程，不停止 Atlas、Pilot、能力提供方或其他 Robonix 进程，因此不能代替 `rbnx shutdown`。真实机器人部署应使用 `rbnx shutdown`。受管关闭依次尝试 Driver `CMD_SHUTDOWN`、可选的 `stop:` hook，再以 SIGTERM/SIGKILL 终止受管进程组。没有额外外部资源的软件包可以省略 `stop:`；创建了脱离受管进程组的守护进程、容器或设备会话时，必须由 Driver 或 `stop:` 可靠清理。
+该脚本只停止两样东西：Webots 示例自己的 Compose 项目，以及启动脚本记录的 RViz2 进程。它不停止 Atlas、Pilot、能力提供方或其他 Robonix 进程，因此不能代替 `rbnx shutdown`。真实机器人部署应使用 `rbnx shutdown`。受管关闭依次尝试 Driver `CMD_SHUTDOWN`、可选的 `stop:` hook，再以 SIGTERM/SIGKILL 终止受管进程组。没有额外外部资源的软件包可以省略 `stop:`；创建了脱离受管进程组的守护进程、容器或设备会话时，必须由 Driver 或 `stop:` 可靠清理。

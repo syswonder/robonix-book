@@ -4,11 +4,11 @@ title: 空间地图
 <span id="空间地图-robonixservicemap"></span>
 # 空间地图
 
-`map` 服务是算法无关的同步定位与建图（Simultaneous Localization and Mapping，SLAM）及定位输出面：把占据栅格、地图坐标系位姿、全局点云、融合里程和地图生命周期统一成 `robonix/service/map/*` 能力约定。导航、Scene 和可视化按能力约定消费这些结果，不依赖具体 SLAM 引擎。
+`map` 服务是算法无关的 SLAM 与定位输出面。它把占据栅格、地图坐标系位姿、全局点云、融合里程和地图生命周期统一成 `robonix/service/map/*` 能力约定。导航、Scene 和可视化按能力约定消费这些结果，不依赖具体 SLAM 引擎。
 
 部署配置、参数体系与排障步骤见[建图与定位服务使用指南](../../components/mapping.md)，本页只描述接口。
 
-能力约定 TOML 在 `capabilities/service/map/`；直接使用的接口定义语言（Interface Definition Language，IDL）文件位于 `capabilities/lib/{map,lifecycle,common_interfaces}/`。
+能力约定 TOML 在 `capabilities/service/map/`；直接使用的IDL 文件位于 `capabilities/lib/{map,lifecycle,common_interfaces}/`。
 
 新软件包省略 Driver 条目，由框架自动注册共享的 `robonix/lifecycle/driver`；显式选择共享 Driver 的行为相同。未实现生命周期回调时，框架记录警告并执行空操作。
 
@@ -25,7 +25,7 @@ title: 空间地图
 | `robonix/service/map/pose` | `topic_out` | ROS 2 话题 | [`geometry_msgs/PoseWithCovarianceStamped`](../../reference/idl.md#common-interfaces-geometry-msgs-msg-posewithcovariancestamped-msg) | `service/map/pose.v1.toml` |
 | `robonix/service/map/odom` | `topic_out` | ROS 2 话题（未绑定外部里程计时） | [`nav_msgs/Odometry`](../../reference/idl.md#common-interfaces-nav-msgs-msg-odometry-msg) | `service/map/odom.v1.toml` |
 | `robonix/service/map/pointcloud` | `topic_out` | ROS 2 话题 | [`sensor_msgs/PointCloud2`](../../reference/idl.md#common-interfaces-sensor-msgs-msg-pointcloud2-msg) | `service/map/pointcloud.v1.toml` |
-| `robonix/service/map/save_map` | `rpc` | gRPC + 模型上下文协议（Model Context Protocol，MCP） | [`map/SaveMap`](../../reference/idl.md#map-srv-savemap-srv) | `service/map/save_map.v1.toml` |
+| `robonix/service/map/save_map` | `rpc` | gRPC + MCP | [`map/SaveMap`](../../reference/idl.md#map-srv-savemap-srv) | `service/map/save_map.v1.toml` |
 | `robonix/service/map/load_map` | `rpc` | gRPC + MCP | [`map/LoadMap`](../../reference/idl.md#map-srv-loadmap-srv) | `service/map/load_map.v1.toml` |
 | `robonix/service/map/delete_map` | `rpc` | gRPC + MCP（软件包清单漏列） | [`map/DeleteMap`](../../reference/idl.md#map-srv-deletemap-srv) | `service/map/delete_map.v1.toml` |
 | `robonix/service/map/reset_map` | `rpc` | gRPC + MCP（软件包清单漏列） | [`map/ResetMap`](../../reference/idl.md#map-srv-resetmap-srv) | `service/map/reset_map.v1.toml` |

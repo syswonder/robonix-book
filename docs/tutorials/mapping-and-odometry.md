@@ -4,7 +4,7 @@ title: 建图参数与里程计接入
 
 # 建图参数与里程计接入
 
-本页说明新机器人如何把底盘里程计、激光雷达和 RGB-D 相机接入 Robonix Mapping，并把 RTAB-Map 参数保存在机器人部署仓库。完成后，系统只有一条连通的 `map → odom → base_link → sensor frames` 变换链。
+本页说明新机器人如何把底盘里程计、激光雷达和 RGB-D 相机接入 Robonix Mapping，以及如何把 RTAB-Map 参数保存在机器人部署仓库。完成后，系统只有一条连通的 `map → odom → base_link → sensor frames` 变换链。
 
 ## 里程计数据由谁提供
 
@@ -90,7 +90,7 @@ curl --fail --location \
 | `Icp/MaxTranslation` | `0.5` | 单次 ICP 修正可接受的最大平移，单位米 |
 | `Icp/MaxRotation` | `0.78` | 单次 ICP 修正可接受的最大旋转，单位弧度 |
 
-Webots Tiago 示例同时融合激光雷达和 RGB-D，将 `Grid/RayTracing` 设为 `false`，避免后续从桌面下方穿过的二维雷达射线清掉深度相机已经观测到的桌面等高处障碍。它还将 `RGBD/LinearUpdate` 和 `RGBD/AngularUpdate` 设为 `0.05`，将 `Rtabmap/DetectionRate` 设为 `5.0`，并增加 `Mem/NotLinkedNodesKept: false`。这些是针对该仿真传感器组合、频率和算力的部署值，不是新机器人的通用默认值。可执行示例见固定修订中的 [`examples/webots/config/rtabmap_params.yaml`](https://github.com/syswonder/robonix/blob/02603f426a19bf7e196c7f48919cef9089b7425e/examples/webots/config/rtabmap_params.yaml)。
+Webots Tiago 示例同时融合激光雷达和 RGB-D，并把 `Grid/RayTracing` 设为 `false`。否则后续从桌面下方穿过的二维雷达射线，会清掉深度相机已经观测到的桌面等高处障碍。它还将 `RGBD/LinearUpdate` 和 `RGBD/AngularUpdate` 设为 `0.05`，将 `Rtabmap/DetectionRate` 设为 `5.0`，并增加 `Mem/NotLinkedNodesKept: false`。这些是针对该仿真传感器组合、频率和算力的部署值，不是新机器人的通用默认值。可执行示例见固定修订中的 [`examples/webots/config/rtabmap_params.yaml`](https://github.com/syswonder/robonix/blob/02603f426a19bf7e196c7f48919cef9089b7425e/examples/webots/config/rtabmap_params.yaml)。
 
 ## 验证顺序
 
@@ -143,5 +143,5 @@ rbnx logs -t mapping -l info
 地图稳定后再运行 Explore、保存空间地图、标注房间并测试导航。保存、加载和位姿重定位接口见[空间地图](../interface-catalog/service/map.md)。
 
 :::note[地图只保存一次，房间标记不会被删除]
-空间地图只保存一次，其空间制品不可变：对同一 `map_id` 再次 Save 会返回 409：要编辑房间和对象，应以定位模式 Load 该地图；要重建空间制品，只能删除后重新保存。地图重建后，已有房间标记不会被删除，而是标为过期并显示“map was rebuilt — review stale rooms”横幅，由用户确认仍有效或重新绘制。详见[场景服务的界面语义](../interface-catalog/system/scene.md#地图与房间标记的界面语义)。
+空间地图只保存一次，其空间制品不可变：对同一 `map_id` 再次 Save 会返回 409：要编辑房间和对象，应以定位模式 Load 该地图；要重建空间制品，只能删除后重新保存。地图重建后，已有房间标记不会被删除，只标为过期并显示“map was rebuilt — review stale rooms”横幅。用户可以确认它仍有效，也可以重新绘制。详见[场景服务的界面语义](../interface-catalog/system/scene.md#地图与房间标记的界面语义)。
 :::

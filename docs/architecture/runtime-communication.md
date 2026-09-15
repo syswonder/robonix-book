@@ -1,6 +1,6 @@
 # 运行时通信
 
-Robonix 用**能力约定（Contract）**描述稳定的接口语义，再由每个能力提供方（Provider）选择实际的**传输方式（Transport）**。这两层不能混为一谈：能力约定中的 `rpc`、`topic_in` 和 `topic_out` 说明调用形态，ROS 2、gRPC 和模型上下文协议（Model Context Protocol，MCP）才是运行时通信实现。
+Robonix 用**能力约定（Contract）**描述稳定的接口语义。实际的**传输方式（Transport）**由每个能力提供方（Provider）自行选择。这两层不能混为一谈。能力约定中的 `rpc`、`topic_in` 和 `topic_out` 说明的是调用形态。运行时通信实现是 ROS 2、gRPC 和模型上下文协议（Model Context Protocol，MCP）。
 
 本页说明组件之间的连接关系；各组件职责与落地状态见[系统组件](components.md)，Atlas 控制面字段见[能力目录](atlas.md)。
 
@@ -58,7 +58,7 @@ gRPC 的请求、响应和流式模型见 [gRPC 官方介绍](https://grpc.io/do
 
 ### MCP
 
-MCP 用于把模型可以规划和调用的能力暴露为工具，例如相机快照、场景查询、导航目标、语音播报和任务级技能。Pilot 从 Atlas 查询当前注册的 MCP 能力、描述和输入结构，据此生成机器人任务描述语言（Robot Task Description Language，RTDL）方案。发现和生成方案本身不调用这些业务工具；但在规划前的上下文准备中，Pilot 会经 Executor 读取 Scene 快照，并可读取记忆服务。
+MCP 用于把模型可以规划和调用的能力暴露为工具，例如相机快照、场景查询、导航目标、语音播报和任务级技能。Pilot 从 Atlas 查询当前注册的 MCP 能力、描述和输入结构，据此生成 RTDL 方案。发现和生成方案本身不调用这些业务工具；但在规划前的上下文准备中，Pilot 会经 Executor 读取 Scene 快照，并可读取记忆服务。
 
 方案提交给 Executor 后，Executor 才为每个 `do` 节点连接目标提供方的 MCP 端点并调用工具。Executor 自身的一部分内置操作也登记为 MCP 能力，但由进程内分发，不会建立外部 MCP 网络连接。
 
@@ -92,7 +92,7 @@ Atlas 是能力目录和控制面，不代理业务数据。一次完整连接�
 | 技能首次激活 | Executor → 目标技能 Driver | gRPC |
 | 机器人连续数据 | 原语 ↔ 服务 | 通常为 ROS 2 |
 
-Liaison 每次通过 Atlas 解析 Pilot 的实际端点；Pilot 同样通过 Atlas 解析 Executor。`rbnx ask` 是面向调试的另一条入口，会绕过 Liaison 并直接连接 Pilot。RTDL `do` 节点一直保存完整 `contract_id`；Pilot 给模型展示的简短名、以及 Executor 在单个 MCP 服务内使用的 leaf 工具名，都不是 ROS 2 话题名，也不是 Atlas 中的能力身份。
+Liaison 每次通过 Atlas 解析 Pilot 的实际端点；Pilot 同样通过 Atlas 解析 Executor。`rbnx ask` 是面向调试的另一条入口，会绕过 Liaison 并直接连接 Pilot。RTDL `do` 节点一直保存完整 `contract_id`；Pilot 给模型展示的是简短名，Executor 在单个 MCP 服务内用的是 leaf 工具名。两者都不是 ROS 2 话题名，也不是 Atlas 中的能力身份。
 
 模型可见工具并不替代机器人数据平面。以“抓取积木”为例，Pilot 和 Executor 通过 MCP 启动抓取技能；技能通过 Atlas 发现机械臂能力，再用 ROS 2 关节命令和关节状态与机械臂原语通信；该原语最后调用厂商 SDK 控制机械臂和夹爪。完整改造步骤见[抓积木接入示例](../tutorials/existing-python-feature.md)。
 
@@ -105,7 +105,7 @@ Liaison 每次通过 Atlas 解析 Pilot 的实际端点；Pilot 同样通过 Atl
 - Speech 可以用 gRPC 提供语音识别与合成缓冲区，同时用 MCP 提供模型可调用的 `speak`。
 - 所有受管提供方都通过 gRPC Driver 接收生命周期命令，不影响其业务能力使用其它传输。
 
-接口目录中的传输列描述当前参考实现，不代表能力约定永久绑定该传输。具体部署仍应以 Atlas 中实际注册的 `(provider_id, contract_id, transport)` 为准。架构图里的 `/rgb`、`/odom`、`/map` 一类短标签只能视为某次部署的端点示例，不能代替完整 `contract_id`；消费方仍须通过 `ConnectCapability` 取得该实例的最终端点。图中把某个接口标成 gRPC、ROS 2 或 MCP，也只表示画出的那条路径，不表示独占绑定：同一能力约定可以同时声明多种传输，图里没有列出的接口也不能据此判定不存在。
+接口目录中的传输列描述当前参考实现，不代表能力约定永久绑定该传输。具体部署仍应以 Atlas 中实际注册的 `(provider_id, contract_id, transport)` 为准。架构图里的 `/rgb`、`/odom`、`/map` 一类短标签只能视为某次部署的端点示例，不能代替完整 `contract_id`；消费方仍须通过 `ConnectCapability` 取得该实例的最终端点。图中把某个接口标成 gRPC、ROS 2 或 MCP，只表示画出的那条路径，不表示独占绑定。同一能力约定可以同时声明多种传输。图里没有列出的接口，也不能据此判定不存在。
 
 ## 开发与排查
 
