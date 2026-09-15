@@ -143,6 +143,27 @@ bash examples/webots/sim/start.sh --world office.wbt
 
 **预期结果：** 终端出现 `[sim/start] ros up (... topics)` 和 RViz2 日志路径；Webots 与 RViz2 窗口可见。
 
+#### RViz2 窗口里在看什么
+
+RViz2 是验收和排障工具，机器人无头运行时不需要它。示例自带的配置是 `examples/webots/sim/rviz2_default.rviz`，Fixed Frame 设为 `map`，默认打开这些显示项：
+
+| 显示项 | 话题 | 用途 |
+|---|---|---|
+| Map | `/map` | 建图服务输出的二维占据栅格 |
+| Map | `/global_costmap/costmap` | 导航的全局代价地图 |
+| Map | `/local_costmap/costmap` | 导航的局部代价地图 |
+| LaserScan | `/scanner_normalized` | 雷达点，用来判断是否与墙面重合 |
+| Path | `/plan` | 全局路径 |
+| Path | `/local_plan` | 局部路径 |
+| Odometry | `/odom` | 底盘里程计 |
+| TF | — | 坐标树 |
+
+左侧 **Displays** 面板控制每一项的开关。刚启动时 `/map` 还是空的，建图服务收到足够数据后才会出现栅格。
+
+三件事最值得先看。**TF 是否连通**：展开 TF 显示，确认 `map → odom → base_link` 这条链存在，断在哪一级就说明哪一级的发布者没起来。**雷达是否贴合**：机器人静止时 LaserScan 的点应当落在墙上，明显偏移说明定位不对。**代价地图是否合理**：机器人周围不应出现大片致命代价，否则规划会失败。
+
+这些显示项只是读取话题，RViz2 自己不驱动机器人。完整的本体验收清单见[本体接入指南 §7.4](../integration-guide/vendor-onboarding.md#74-使用-rviz2-验证地图定位与导航)，那里还说明了从 RViz 直接下发导航目标时 `SetGoal` 与 `GoalTool` 的区别。
+
 ### 终端 2：Robonix 系统
 
 ```bash
@@ -351,6 +372,7 @@ rbnx update
 
 ## 下一步
 
+- [图形客户端](./client.md)：把 `rbnx chat` 换成网页界面，可以看 RTDL 树、用客户端电脑的麦克风和扬声器。
 - [系统部署与启动](../architecture/deployment-and-startup.md)：理解真实启动所有权、生命周期和日志位置。
 - [本体接入指南](../integration-guide/vendor-onboarding.md)：把 Webots 能力提供方替换为真实机器人硬件。
 - [开发者指南](../developer-guide.md)：从 template-rbnx 开发自己的原语、服务或技能。
