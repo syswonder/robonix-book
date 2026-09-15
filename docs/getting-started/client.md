@@ -155,7 +155,7 @@ ROBONIX 回复文本
 | **Node detail** | 点选某个节点后显示它的提供方、开始时间、耗时，以及展开的调用参数与结果 | 看某次调用传了什么、返回了什么 |
 | **Event Log** | 本次会话的状态事件，带时间戳 | 判断卡在规划、执行还是等待 |
 
-**任务结束后 RTDL 树会消失**，Forest 显示 `No RTDL tree is currently executing`。要回看已结束的任务，用 **Execution history**。
+Forest 里显示的是**当前正在执行的那一个 plan**，不是整条任务。一个任务通常由多个 plan 组成，Pilot 每次 `PLANNING THE NEXT STEP` 就产生下一个，界面上的 `Plan 10 · round 1` 就是它的编号。**一个 plan 执行完，它的树随即消失**，没有下一个时 Forest 显示 `No RTDL tree is currently executing`。要回看已经执行完的 plan，用 **Execution history**。
 
 ### 健康状态（Vitals）
 
