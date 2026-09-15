@@ -22,7 +22,7 @@ title: 记忆
 | `robonix/service/memory/save` | `rpc` | MCP | [`memory/Save`](../../reference/idl.md#memory-srv-save-srv)（`std_msgs/String` → `std_msgs/String`，已废弃） | `service/memory/save.v1.toml` |
 | `robonix/service/memory/compact` | `rpc` | MCP | [`memory/Compact`](../../reference/idl.md#memory-srv-compact-srv)（空请求 → `std_msgs/String`） | `service/memory/compact.v1.toml` |
 
-参考实现：Robonix 源码中的 [`services/memsearch`](https://github.com/syswonder/robonix/tree/cec06ee874eace27dd622e6ce4685c971f04a9e4/services/memsearch)（`memsearch[onnx]` + `milvus-lite`）。三个记忆操作都用 `@memory.mcp(...)` 暴露，不挂载业务 gRPC servicer。MCP 服务内部的工具名默认取 leaf `search`、`save`、`compact`，但 Atlas 发现与 RTDL 路由仍使用完整 `robonix/service/memory/search`、`robonix/service/memory/save` 和 `robonix/service/memory/compact`。Driver 由 Robonix API 以 gRPC 提供。
+参考实现：Robonix 源码中的 [`services/memsearch`](https://github.com/syswonder/robonix/tree/223675d9a5000e70debae4f2512404cec5c9c442/services/memsearch)（`memsearch[onnx]` + `milvus-lite`）。三个记忆操作都用 `@memory.mcp(...)` 暴露，不挂载业务 gRPC servicer。MCP 服务内部的工具名默认取 leaf `search`、`save`、`compact`，但 Atlas 发现与 RTDL 路由仍使用完整 `robonix/service/memory/search`、`robonix/service/memory/save` 和 `robonix/service/memory/compact`。Driver 由 Robonix API 以 gRPC 提供。
 
 ## memgraph 提供方（结构化记忆）
 

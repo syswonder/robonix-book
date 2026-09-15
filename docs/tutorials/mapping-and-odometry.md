@@ -1,5 +1,5 @@
 ---
-title: 建图参数与里程计接入
+title: 接入传感器与里程计
 ---
 
 # 建图参数与里程计接入
@@ -90,7 +90,7 @@ curl --fail --location \
 | `Icp/MaxTranslation` | `0.5` | 单次 ICP 修正可接受的最大平移，单位米 |
 | `Icp/MaxRotation` | `0.78` | 单次 ICP 修正可接受的最大旋转，单位弧度 |
 
-Webots Tiago 示例同时融合激光雷达和 RGB-D，并把 `Grid/RayTracing` 设为 `false`。否则后续从桌面下方穿过的二维雷达射线，会清掉深度相机已经观测到的桌面等高处障碍。它还将 `RGBD/LinearUpdate` 和 `RGBD/AngularUpdate` 设为 `0.05`，将 `Rtabmap/DetectionRate` 设为 `5.0`，并增加 `Mem/NotLinkedNodesKept: false`。这些是针对该仿真传感器组合、频率和算力的部署值，不是新机器人的通用默认值。可执行示例见固定修订中的 [`examples/webots/config/rtabmap_params.yaml`](https://github.com/syswonder/robonix/blob/02603f426a19bf7e196c7f48919cef9089b7425e/examples/webots/config/rtabmap_params.yaml)。
+Webots Tiago 示例同时融合激光雷达和 RGB-D，并把 `Grid/RayTracing` 设为 `false`。否则后续从桌面下方穿过的二维雷达射线，会清掉深度相机已经观测到的桌面等高处障碍。它还将 `RGBD/LinearUpdate` 和 `RGBD/AngularUpdate` 设为 `0.05`，将 `Rtabmap/DetectionRate` 设为 `5.0`，并增加 `Mem/NotLinkedNodesKept: false`。这些是针对该仿真传感器组合、频率和算力的部署值，不是新机器人的通用默认值。可执行示例见固定修订中的 [`examples/webots/config/rtabmap_params.yaml`](https://github.com/syswonder/robonix/blob/223675d9a5000e70debae4f2512404cec5c9c442/examples/webots/config/rtabmap_params.yaml)。
 
 ## 验证顺序
 

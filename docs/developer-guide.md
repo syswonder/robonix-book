@@ -2,7 +2,7 @@
 toc_max_heading_level: 2
 ---
 
-# Robonix 开发者指南
+# 开发者指南
 
 本指南介绍如何开发 Robonix 软件包（Package）。一个软件包可以实现原语（Primitive）、服务（Service）或技能（Skill）。它依据标准能力约定实现接口，在运行时向 Atlas 注册能力，再由机器人部署清单选择和配置。
 

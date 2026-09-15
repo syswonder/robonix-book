@@ -1,17 +1,33 @@
 import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
 
+// 类目划分的判据是读者此刻在做什么，不是文件放在哪个目录。architecture/ 下的部署
+// 两篇归「部署与运行」，其余归「工作原理」；integration-guide/ 下的打包、构建、
+// 发布三篇归「软件包开发」，那里本来就讲怎么做出一个软件包。
+//
+// 「接口目录」是人写的解释，「自动生成的参考」由 rbnx docs 从源码生成，是权威来源。
+// 两个类目的名字要能看出这个区别，否则读者不知道该查哪一个。
 const sidebars: SidebarsConfig = {
   handbook: [
     'home',
     {
       type: 'category',
-      label: '开始使用',
+      label: '入门',
       items: [
         'getting-started/quickstart',
         'getting-started/client',
-        {type: 'doc', id: 'getting-started/x86-ubuntu-la-arch/README', label: 'x86 仿真 + LoongArch 部署'},
+      ],
+    },
+    {
+      type: 'category',
+      label: '部署与运行',
+      items: [
         'architecture/deployment-and-startup',
         'architecture/multiplatform-deployment',
+        {
+          type: 'doc',
+          id: 'getting-started/x86-ubuntu-la-arch/README',
+          label: 'x86 仿真 + LoongArch 部署实例',
+        },
       ],
     },
     {
@@ -22,19 +38,21 @@ const sidebars: SidebarsConfig = {
         {type: 'doc', id: 'components/mapping', label: '建图与定位'},
         {type: 'doc', id: 'components/navigation', label: '导航'},
         {type: 'doc', id: 'components/scene', label: '场景服务'},
+        {type: 'doc', id: 'appendix/speech-backends', label: '语音后端配置'},
       ],
     },
     {
       type: 'category',
-      label: '接入与发布',
+      label: '接入机器人',
       items: [
         'integration-guide/index',
         'integration-guide/vendor-onboarding',
-        {type: 'doc', id: 'integration-guide/mujoco-simulation-onboarding', label: '接入 MuJoCo 仿真本体'},
-        {type: 'doc', id: 'tutorials/mapping-and-odometry', label: '建图与里程计'},
-        'integration-guide/packaging-spec',
-        'integration-guide/build-and-codegen',
-        'integration-guide/package-catalog',
+        {
+          type: 'doc',
+          id: 'integration-guide/mujoco-simulation-onboarding',
+          label: '接入 MuJoCo 仿真本体',
+        },
+        {type: 'doc', id: 'tutorials/mapping-and-odometry', label: '接入传感器与里程计'},
       ],
     },
     {
@@ -43,11 +61,14 @@ const sidebars: SidebarsConfig = {
       items: [
         'developer-guide',
         {type: 'doc', id: 'tutorials/existing-python-feature', label: '抓积木接入示例'},
+        'integration-guide/packaging-spec',
+        'integration-guide/build-and-codegen',
+        'integration-guide/package-catalog',
       ],
     },
     {
       type: 'category',
-      label: '理解 Robonix',
+      label: '工作原理',
       items: [
         'architecture/components',
         'architecture/runtime-communication',
@@ -58,9 +79,9 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: '接口参考',
+      label: '接口目录',
       items: [
-        {type: 'doc', id: 'interface-catalog/index', label: '接口目录'},
+        {type: 'doc', id: 'interface-catalog/index', label: '接口目录总览'},
         {
           type: 'category',
           label: '原语',
@@ -112,19 +133,12 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: '参考',
+      label: '自动生成的参考',
       items: [
-        'reference/index',
+        {type: 'doc', id: 'reference/index', label: '生成说明'},
         'reference/contracts',
         'reference/idl',
         'reference/api',
-      ],
-    },
-    {
-      type: 'category',
-      label: '附录',
-      items: [
-        {type: 'doc', id: 'appendix/speech-backends', label: '语音后端配置'},
       ],
     },
     {

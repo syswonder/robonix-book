@@ -83,7 +83,7 @@ Soma 使用的 `soma.yaml` 是一台机器人的**本体描述文件**，不是 
 
 ## 当前实现状态
 
-表中的“已实现”只表示当前源码存在可启动实现，不能单独证明某台机器人已经获得支持。机器人支持必须按下面的顺序验收；任一步失败，都不能把“进程存在”写成“整机已支持”。命令与参数来自源码中的 [`tools/rbnx/src/cmd/mod.rs`](https://github.com/syswonder/robonix/blob/cec06ee874eace27dd622e6ce4685c971f04a9e4/tools/rbnx/src/cmd/mod.rs)，Atlas 检查项来自 [`system/atlas/proto/atlas.proto`](https://github.com/syswonder/robonix/blob/cec06ee874eace27dd622e6ce4685c971f04a9e4/system/atlas/proto/atlas.proto)。
+表中的“已实现”只表示当前源码存在可启动实现，不能单独证明某台机器人已经获得支持。机器人支持必须按下面的顺序验收；任一步失败，都不能把“进程存在”写成“整机已支持”。命令与参数来自源码中的 [`tools/rbnx/src/cmd/mod.rs`](https://github.com/syswonder/robonix/blob/223675d9a5000e70debae4f2512404cec5c9c442/tools/rbnx/src/cmd/mod.rs)，Atlas 检查项来自 [`system/atlas/proto/atlas.proto`](https://github.com/syswonder/robonix/blob/223675d9a5000e70debae4f2512404cec5c9c442/system/atlas/proto/atlas.proto)。
 
 1. **核对源清单。** 逐项检查机器人仓库的 `robonix_manifest.yaml`，以及每个部署项通过 `path` / `url`、`branch` 和 `manifest` 选中的 `package_manifest*.yaml`。实例 `name` 必须与预期 `provider_id` 一致；包清单只能声明运行时真正提供的能力约定。
 2. **验证并构建所选目标。** 对本地包先运行 `rbnx validate ./path/to/package`，再从部署目录运行 `rbnx build -f ./robonix_manifest.yaml`。后者必须成功构建部署清单实际选择的目标变体，而不只是默认包清单。

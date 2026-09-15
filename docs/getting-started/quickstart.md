@@ -63,12 +63,12 @@ python3 -c 'import grpc_tools.protoc; print("grpc_tools: ok")'
 
 ## 2. 安装 Robonix
 
-克隆源码，检出本手册校验过的提交，并初始化能力约定与接口定义子模块：
+克隆源码并初始化子模块。本页的命令输出、参数默认值和界面截图都取自 `223675d9`，跟着做时检出同一个提交，看到的东西才和这里一致：
 
 ```bash
 git clone --recurse-submodules https://github.com/syswonder/robonix.git
 cd robonix
-git checkout --detach cec06ee874eace27dd622e6ce4685c971f04a9e4
+git checkout --detach 223675d9a5000e70debae4f2512404cec5c9c442
 git submodule update --init --recursive
 
 git rev-parse HEAD
@@ -84,7 +84,7 @@ rbnx --version
 rbnx path root
 ```
 
-**预期结果：** `git rev-parse HEAD` 输出 `cec06ee874eace27dd622e6ce4685c971f04a9e4`；`rbnx path root` 输出刚克隆的 Robonix 仓库绝对路径。
+**预期结果：** `git rev-parse HEAD` 输出 `223675d9a5000e70debae4f2512404cec5c9c442`；`rbnx path root` 输出刚克隆的 Robonix 仓库绝对路径。
 
 ## 3. 配置视觉语言模型
 
@@ -130,7 +130,13 @@ Webots 部署包含一条完整的语音链路：音频原语、语音识别与�
 
 ## 5. 启动仿真与 Robonix
 
-使用两个终端。两个终端都从同一个 Robonix clone 工作。
+仿真和 Robonix 分两个终端启动，第 6 节提交任务时再开第三个。三个终端都进第 2 节克隆的那一份源码，不要另外克隆：仿真脚本、部署清单和 `rbnx` 解析的路径都以它为准。
+
+| 终端 | 作用 | 生命周期 |
+|---|---|---|
+| 1 | Webots 仿真、ROS 2、RViz2 | 前台阻塞，关掉即停仿真 |
+| 2 | `rbnx boot` 拉起 Robonix 全栈 | 前台阻塞，`Ctrl+C` 即关闭部署 |
+| 3 | `rbnx caps` / `rbnx chat` 等查询与交互 | 随时开关 |
 
 ### 终端 1：Webots、ROS 2 与 RViz2
 
@@ -207,7 +213,7 @@ Scene 调试页默认位于 [http://127.0.0.1:50107/](http://127.0.0.1:50107/)�
 
 ## 6. 提交第一条任务
 
-保持前两个终端运行，在第三个终端检查注册状态：
+保持终端 1 和终端 2 运行，在终端 3 检查注册状态：
 
 ```bash
 export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
@@ -218,13 +224,31 @@ rbnx tools
 rbnx chat
 ```
 
-`rbnx chat` 先通过 Atlas 发现 Liaison，再由 Liaison 把用户输入交给 Pilot；它不是绕过交互层直连 Pilot。可以依次尝试：
+`rbnx chat` 先通过 Atlas 发现 Liaison，再由 Liaison 把用户输入交给 Pilot，不绕过交互层直连 Pilot。
+
+下面三句各走一条不同的链路，建议依次试：
 
 ```text
 What can you see in front of the robot?
+```
+
+这句只读相机。Pilot 调用场景服务的能力，回答里应当出现房间里的物体。
+
+```text
 Explore the current room and report what you find.
+```
+
+这句会让机器人动起来。Pilot 选中第 5 节列出的探索技能，Executor 首次调用它时把它从 `INACTIVE` 激活。在第三个终端重新执行 `rbnx caps` 可以看到状态变了：
+
+```text
+● explore [ACTIVE] robonix/skill/explore (4 caps)
+```
+
+```text
 What tasks are currently running?
 ```
+
+这句查执行状态，不下发新动作。
 
 界面顶部会打印本次可用的按键：
 
@@ -236,7 +260,9 @@ Enter = send · F2 = voice (auto end on silence) · Ctrl+A = audio settings · E
 
 `Esc` 中断当前交互回合，`Ctrl+C` 退出文本用户界面（Text User Interface，TUI）。
 
-**预期结果：** 终端界面显示用户输入、规划状态、机器人任务描述语言（Robot Task Description Language，RTDL）能力调用与最终回复；Explore 被调用时会从 `INACTIVE` 转为 `ACTIVE`，其提供方日志是 `rbnx-boot/logs/explore.log`。
+**预期结果：** 每一轮对话，界面从上到下依次出现四种内容：自己输入的那句话、Pilot 的规划状态、被调用的能力，以及最终回复。左侧是这条时间线，右上的 Task / Forest 面板同步显示当前任务和它的机器人任务描述语言（Robot Task Description Language，RTDL）树。
+
+回复不符合预期时，先分清是规划错了还是执行错了。界面上能看到 Pilot 选了哪些能力，这是规划部分；能力自己做了什么要看提供方日志，每个提供方一个文件，例如 Explore 的在 `rbnx-boot/logs/explore.log`。只看启动器日志的尾部通常看不出问题。
 
 ### 选择麦克风与扬声器
 

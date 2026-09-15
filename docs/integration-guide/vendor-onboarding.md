@@ -53,7 +53,7 @@ bash start.sh
 ```bash
 git clone --recurse-submodules https://github.com/syswonder/robonix.git
 cd robonix
-git checkout --detach cec06ee874eace27dd622e6ce4685c971f04a9e4
+git checkout --detach 223675d9a5000e70debae4f2512404cec5c9c442
 git submodule update --init --recursive
 make install
 rbnx setup "$PWD"
@@ -114,7 +114,7 @@ AgileX Ranger Mini v3 仓库当前只能作为部署连线的部分参考，不�
 
 ### 3.2 创建 `soma.yaml`
 
-Soma 描述机器人本体与部件，不负责环境物体，也不替 Vitals 做健康阈值判断。`soma.yaml` 是本体描述文件；部署清单里的 `system.soma` 和可选的 Soma `config` 文件是进程配置。不要把监听地址、Atlas 地址等进程参数写进本体文件，也不要把 `robot.components` 写进进程配置。Soma 的进程参数见主仓库的 [`system/soma/README.md`](https://github.com/syswonder/robonix/blob/cec06ee874eace27dd622e6ce4685c971f04a9e4/system/soma/README.md)；本节的本体字段以实际读取它们的 [`store.rs`](https://github.com/syswonder/robonix/blob/cec06ee874eace27dd622e6ce4685c971f04a9e4/system/soma/src/store.rs) 为准。
+Soma 描述机器人本体与部件，不负责环境物体，也不替 Vitals 做健康阈值判断。`soma.yaml` 是本体描述文件；部署清单里的 `system.soma` 和可选的 Soma `config` 文件是进程配置。不要把监听地址、Atlas 地址等进程参数写进本体文件，也不要把 `robot.components` 写进进程配置。Soma 的进程参数见主仓库的 [`system/soma/README.md`](https://github.com/syswonder/robonix/blob/223675d9a5000e70debae4f2512404cec5c9c442/system/soma/README.md)；本节的本体字段以实际读取它们的 [`store.rs`](https://github.com/syswonder/robonix/blob/223675d9a5000e70debae4f2512404cec5c9c442/system/soma/src/store.rs) 为准。
 
 编写前先准备三份事实，而不是从示例里猜值：
 
