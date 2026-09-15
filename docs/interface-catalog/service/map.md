@@ -52,3 +52,9 @@ title: 空间地图
 RTAB-Map 参数名、默认值和上游说明以 [`Parameters.h`](https://github.com/introlab/rtabmap/blob/master/corelib/include/rtabmap/core/Parameters.h) 为准。以 service 提供的 template 为起点，在 deployment 的 YAML 中增加或修改本体所需参数；运行时只读取这份 deployment 文件，不隐式叠加上游配置。
 
 > 上游已知缺陷：三份软件包清单都漏列 `get_mode`、`get_pose`、`delete_map`、`reset_map`，但实现已同时注册其 gRPC 服务端和 MCP 工具。依赖软件包清单枚举能力的工具看不到这四项；调用方应先从 Atlas 确认实际注册状态。
+
+
+## 参考
+
+- RTAB-Map 论文：Labbé M, Michaud F。[RTAB-Map as an open-source lidar and visual simultaneous localization and mapping library for large-scale and long-term online operation](https://doi.org/10.1002/rob.21831)。*Journal of Field Robotics*, 2018。
+- 建图服务实现：[syswonder/service-map-rbnx](https://github.com/syswonder/service-map-rbnx)。

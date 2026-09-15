@@ -126,3 +126,10 @@ rbnx inspect
 ```
 
 `rbnx caps -v` 用于核对提供方、能力约定和传输；`rbnx channels` 用于检查已经建立的消费关系；`rbnx inspect` 提供 Atlas 的整体诊断快照。标准接口和当前参考实现见[接口目录](../interface-catalog/index.md)，Python 调用方法见[开发者指南](../developer-guide.md#14-python-接口)。
+
+
+## 参考
+
+- ROS 2 论文：Macenski S, Foote T, Gerkey B, Lalancette C, Woodall W。[Robot Operating System 2: Design, architecture, and uses in the wild](https://doi.org/10.1126/scirobotics.abm6074)。*Science Robotics*, 2022。
+- gRPC：[grpc.io](https://grpc.io/)，接口定义使用 [Protocol Buffers](https://protobuf.dev/)。
+- Model Context Protocol：[规范文档](https://modelcontextprotocol.io/)。

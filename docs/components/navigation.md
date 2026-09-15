@@ -32,7 +32,7 @@ service:
         odom: chassis
         scan: lidar
       dynamic_speed:
-        max_linear_speed_mps: 0.3
+        max_linear_speed_mps: 0.35
         default_percentage: 75
         step_percentage: 20
         min_percentage: 20
@@ -78,7 +78,7 @@ service:
 | `guard_terminal_timeout_s` | `15.0` | 终点对准阶段的总时限 |
 | `guard_no_progress_s` | `3.0` | 终点旋转期间偏航误差没有实质减少的最长时间 |
 | `guard_global_spin_timeout_s` | `25.0` | 路线上任意位置连续原地旋转的最长时间，包含规划器与控制器的恢复循环 |
-| `guard_global_spin_limit_rad` | `6.783` | 连续原地旋转的累计角度上限 |
+| `guard_global_spin_limit_rad` | `6.783185307` | 连续原地旋转的累计角度上限，即 2π 再加 0.5 弧度的余量 |
 
 `params_profile` 是已废弃的选择器，新部署不要用，现有部署会在启动时收到迁移警告。
 
@@ -86,7 +86,7 @@ service:
 
 `dynamic_speed.max_linear_speed_mps` 是部署给出的平面速度硬上限，单位 m/s，语义是 `sqrt(vx² + vy²)`。它必须等于所选控制器实际形成的平面上限，即同时考虑 `max_speed_xy` 和更严的逐轴 `max_vel_x` / `max_vel_y`。最终速度守卫会独立地再执行一次这个限制。
 
-`default_percentage` 是这个上限的起始百分比。现有部署普遍取 75，于是 `0.3 × 75% = 0.225 m/s` 就是启动速度。`step_percentage` 是加减的百分点数，不是倍数。
+`default_percentage` 是这个上限的起始百分比，取值随部署而定。上面这份取自 Lite3 部署，`0.35 × 75% = 0.2625 m/s` 就是启动速度；Webots 仿真部署则是上限 `0.26` 配 `100`，启动即满速。`step_percentage` 是加减的百分点数，不是倍数。
 
 角速度约束留在部署自有的 Nav2 YAML 里（例如 DWB 的 `max_vel_theta`）。Robonix 在这一层不提供独立的角速度策略；控制器在处理 Nav2 速度限制时可能按比例调整自己的内部运动学。
 
@@ -146,16 +146,21 @@ Nav2 的大部分行为来自插件，而**插件的参数只在选了它之后�
 
 **行为树**。`bt_xml_file` 指向部署自有的 XML，它决定失败时执行哪些恢复动作。Lite3 的部署刻意用了一棵保守的树：只做重规划、清代价地图和等待，从不在四足机器人上调用 Nav2 通用的 `Spin` 和 `BackUp`。恢复动作是否安全取决于机器人形态。
 
-## 四道守卫，以及目标被无故取消时查哪一个
+## 守卫会在什么时候取消目标
 
 Nav2 之后还有一道最终速度守卫，`guard_*` 字段配置它。它解决的是机器人原地空转、或者在终点附近反复微调却永不结束的情况。
 
-| 守卫 | 触发条件 |
+守卫分两套判据。机器人进入距全局路径终点 `guard_terminal_xy_m` 以内时切换到终点判据，此前一直用全局判据。`guard_terminal_xy_m` 本身只决定切换位置，不会触发取消。
+
+真正会取消目标的条件有五条，日志里以 `ROTATION GUARD TRIPPED` 打印原因原文：
+
+| 日志原因 | 触发条件 |
 |---|---|
-| 终点对准 | 进入 `guard_terminal_xy_m` 范围后适用更严限制 |
-| 终点超时 | 对准阶段超过 `guard_terminal_timeout_s` |
-| 无进展 | 对准期间 `guard_no_progress_s` 内偏航误差没有实质减少 |
-| 全局自转 | 任意位置连续原地旋转超过 `guard_global_spin_timeout_s` 或累计超过 `guard_global_spin_limit_rad` |
+| `continuous stationary rotation timeout` | 任意位置连续原地旋转超过 `guard_global_spin_timeout_s` |
+| `continuous stationary rotation limit` | 连续原地旋转累计超过 `guard_global_spin_limit_rad` |
+| `terminal rotation timeout` | 终点阶段总时长超过 `guard_terminal_timeout_s` |
+| `terminal cumulative rotation limit` | 终点阶段累计转角超过进入时偏航误差加 0.5 弧度，且不低于 0.5 弧度 |
+| `terminal yaw made no progress` | 终点阶段 `guard_no_progress_s` 内偏航误差没有实质减少 |
 
 **默认值是给理想底盘的。** Hantewin Benben 的部署把 `guard_no_progress_s` 调到 `8.0`、`guard_terminal_timeout_s` 调到 `25.0`，理由写在清单注释里而且是量出来的：这台滑移转向底盘在 `0.15 rad/s` 的终点旋转指令下只能实现约 `0.12 rad/s` 的有效转速，收掉最后约 `0.8 rad` 的偏航误差要 6 到 7 秒，而默认的 3 秒无进展窗口会把正在收敛的目标取消掉。
 
@@ -185,3 +190,12 @@ Nav2 之后还有一道最终速度守卫，`guard_*` 字段配置它。它解�
 **改了参数没有任何反应。** 确认那一节对应的插件确实被选中，以及改的是不是被 `velocity_smoother` 或最终速度守卫在更下游重新限制掉了。
 
 **接入实体机器人时不想让它动。** 把 `velocity_output_topic` 指向 `/robonix/nomotion/cmd_vel`，整条链路照常跑，只是没有人订阅那个话题。
+
+
+## 参考
+
+本页涉及的上游系统出处：
+
+- Nav2 论文：Macenski S, Martín F, White R, Clavero J G。[The Marathon 2: A Navigation System](https://doi.org/10.1109/IROS45743.2020.9341207)。*IEEE/RSJ IROS*, 2020。
+- Nav2 代码与文档：[ros-navigation/navigation2](https://github.com/ros-navigation/navigation2)，参数说明见 [docs.nav2.org](https://docs.nav2.org/)。
+- 行为树引擎：[BehaviorTree.CPP](https://github.com/BehaviorTree/BehaviorTree.CPP)。

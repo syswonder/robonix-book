@@ -1384,3 +1384,8 @@ Ranger/Piper 参考本体包采用“共享本体与 Bridge 协议、分离运�
 - [Robonix 文档](https://book.robonix.ai/)
 
 接入完成后，厂家模型和控制接口仍保持可追溯；本体包新增的部分集中在加载、协议桥接、 Robonix 能力约定和测试。验收以传感器、导航和操作任务的实际结果为准。
+
+## 参考
+
+- MuJoCo 论文：Todorov E, Erez T, Tassa Y。[MuJoCo: A physics engine for model-based control](https://doi.org/10.1109/IROS.2012.6386109)。*IEEE/RSJ IROS*, 2012。
+- MuJoCo 代码：[google-deepmind/mujoco](https://github.com/google-deepmind/mujoco)；建模格式见 [MJCF 参考](https://mujoco.readthedocs.io/en/stable/XMLreference.html)。

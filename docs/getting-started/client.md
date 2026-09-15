@@ -7,13 +7,13 @@ import TabItem from '@theme/TabItem';
 
 这是它和 `rbnx chat` 的根本区别：`rbnx chat` 是机器人本机的终端界面，用机器人的音频设备；Client 用的是你这台设备的麦克风和扬声器，人不必守在机器人跟前。
 
-目前支持 Linux、macOS 和 Windows，后续会扩展到手机和平板。
+目前支持 Linux、macOS 和 Windows。
 
 它只需要机器人 Atlas 的地址，Liaison、Executor 和音频能力都由它自己从 Atlas 发现，不用逐个填。
 
 本页依据 [`739f8499`](https://github.com/syswonder/robonix-client/tree/739f8499) 编写。
 
-![Chat 页，一条探索任务正在执行。左侧是四个标签和会话列表，中间是对话，右侧自上而下是 Current Goal、RTDL Forest、Execution history、Node detail 和 Event Log。](/img/ui/cl-chat-live.webp)
+![Chat 页，一条探索任务正在执行。左侧是页面切换和会话列表，中间是对话，右侧自上而下是 Current Goal、RTDL Forest、Execution history、Node detail 和 Event Log。](/img/ui/cl-chat-live.webp)
 
 右栏是它与 `rbnx chat` 最大的差别，也是排障时真正用得上的部分：
 
@@ -32,7 +32,7 @@ import TabItem from '@theme/TabItem';
 
 ## 1. 准备机器人端
 
-客户端所在主机必须能访问机器人 Atlas 的监听地址。需要从外部主机连接时，机器人部署清单至少要让 Atlas、Liaison 和 Executor 监听可信局域网或 Tailscale 接口：
+客户端所在主机必须能访问机器人 Atlas 的监听地址。需要从外部主机连接时，机器人部署清单至少要让 Atlas、Liaison 和 Executor 监听可信局域网或 Tailscale 接口。要用 Vitals 页，还得加上 Soma 和 Vitals。客户端经 Atlas 发现后直接连它们的 gRPC 端点，只监听回环时整页都是 unknown：
 
 ```yaml
 system:
@@ -120,29 +120,34 @@ robonix-client --robot-host 192.168.1.50
 
 ## 4. 使用页面
 
-左侧四个标签对应四件事：下达任务、看机器人健康、配音频、改连接参数。
+左侧是页面切换，四个页面各管一件事：下达任务、看机器人健康、配音频、改连接参数。
 
 ### 聊天（Chat）
 
 顶栏是连接信息：**Robot Host** 和 **Atlas Port** 指向机器人，**User** 是提交任务时带的身份，右侧三个指示分别是运行状态、**Hands-free** 开关和连接状态。改了地址要重新 **Connect**。
 
-**会话管理**在左栏。**New session** 开一条新会话，历史会话列在下面，鼠标悬停出现 **Rename** 和 **Delete**。会话之间互不影响，换一条会话等于换一条任务上下文。**Clear** 清空当前会话的消息，不删除会话本身。
+顶栏的 **New session** 开一条新会话。左栏只列历史会话，鼠标悬停某条会出现 **Rename** 和 **Delete**。会话之间互不影响，换一条会话等于换一条任务上下文。
+
+Conversation 面板右上角还有一个 **Clear**。它**删掉左栏的全部历史会话**并新开一条空的，不是只清当前会话的消息。只想删一条用那条会话上的 **Delete**。
 
 中间是对话区。一轮任务会依次出现这些内容：
 
 ```text
 STATUS  SUBMITTED TASK; WAITING FOR PILOT STREAM.
-STATUS  PLANNING THE NEXT STEP
+STATUS  CONNECTED; WAITING FOR ROBONIX EVENTS.
 STATUS  IN_PROGRESS
+STATUS  PLANNING THE NEXT STEP
 STATUS  DONE
 ROBONIX 回复文本
 ```
+
+中间的 `IN_PROGRESS` 和 `PLANNING THE NEXT STEP` 会随着[方案](../interface-catalog/system/pilot.md)一轮轮推进反复出现。
 
 任务执行期间再输入一句，不会新开任务，而是作为任务调整指令（steer）加进去，消息前面标 `ADDED TO RUNNING TASK`：
 
 ![同一条会话里的三轮对话。第二、三轮标着 ADDED TO RUNNING TASK，说明它们加进了正在执行的任务而不是另起一条。](/img/ui/cl-chat-multi.webp)
 
-底部输入框旁边，空闲时是 **Send**，任务执行时变成红色的 **ABORT ALL TASKS**。**Start recording** 按钮和 `F2` 等价。
+底部输入框旁边是 **Start recording**（等价于 `F2`）和 **Send**。任务执行期间，Send 左边会**多出**一个红色的 **ABORT ALL TASKS**，Send 本身仍在原位，此时按它是向运行中的任务追加一句。
 
 右栏是这个客户端比 `rbnx chat` 多出来的部分，排障时真正有用：
 
@@ -150,7 +155,7 @@ ROBONIX 回复文本
 |---|---|---|
 | **Current Goal** | 当前目标，以及它被解析到哪个提供方、能力约定和操作。`EXECUTOR VERIFIED` 表示 Executor 已校验这次调用 | 判断 Pilot 有没有选对能力 |
 | **RTDL Forest** | 正在执行的 RTDL 树。标题栏给出 `1 active · plan 10 · round 1 · 1 call(s)` | 看任务被拆成了什么结构 |
-| **Active RTDL** | 展开当前树，执行中的节点是橙色 | 看卡在哪个节点 |
+| **Active RTDL** | 展开当前树，节点按状态着色：未开始是灰蓝，执行中是黄色且正在跑的那个会呼吸闪动，成功是绿色，失败是红色 | 看卡在哪个节点 |
 | **Execution history** | 已结束的执行记录，数字是条数 | 回看上一条任务怎么走的 |
 | **Node detail** | 点选某个节点后显示它的提供方、开始时间、耗时，以及展开的调用参数与结果 | 看某次调用传了什么、返回了什么 |
 | **Event Log** | 本次会话的状态事件，带时间戳 | 判断卡在规划、执行还是等待 |
@@ -159,11 +164,11 @@ Forest 里显示的是**当前正在执行的那一个 plan**，不是整条任�
 
 ### 健康状态（Vitals）
 
-Vitals 回答“机器人本身怎么样”，与任务是否成功无关。任务失败时先看这一页，能分清是硬件、提供方还是规划的问题。
+这一页回答的是机器人本体的硬件状态，例如温度、电压、电池和关节电机，数据由 Soma 汇总后交给 Vitals 按阈值评估。它不显示任务执行到哪一步，那属于 Chat 页的 RTDL 面板。任务失败时两边对着看，就能分清是硬件异常、提供方没就绪，还是规划本身有问题。
 
 ![Vitals 页。顶栏是整机摘要，左栏是部件树，中间是 URDF 模型，右栏是选中部件的详情，底部是模块与提供方表。](/img/ui/cl-vitals.webp)
 
-顶栏是整机摘要：**HARDWARE** / **BATTERY** / **SOFTWARE** 各自的健康计数、上次更新时间，以及 Soma、Hardware、Modules、Atlas 四个数据源的指示灯。右侧 **Alerts** 带数字，点开是告警中心。机器人有异常时名字后面出现 `WARN` 之类的徽标。
+顶栏是四个并列指标：**HARDWARE** 和 **SOFTWARE** 是健康计数，**BATTERY** 是电量百分比与电压，**UPDATED** 是上次刷新距今多久。右边还有 Soma、Hardware、Modules、Atlas 四个数据源的指示灯。右侧 **Alerts** 带数字，点开是告警中心。机器人有异常时名字后面出现 `WARN` 之类的徽标。
 
 左栏 **Body** 是部件树，来自本体模型（Soma）声明的结构，例如底盘、左右轮、电池、头部相机、雷达、音频。每项后面一个状态点。点某个部件，中间的 URDF 模型会高亮它，右栏切换到它的详情。
 
@@ -194,7 +199,7 @@ Client 启动时会自动起本机音频服务。**Audio Device Server** 仍显�
 
 ![Settings 页。机器人地址、Atlas 端口、用户标识、录音时限和可选的 Liaison Endpoint。](/img/ui/cl-settings.webp)
 
-Settings 保存机器人地址、Atlas 端口、用户标识（**User ID** 与 **User Name**）、**Record Seconds** 录音时限，以及可选的 **Liaison Endpoint**。
+Settings 页有五个字段：**Robot Host**、**Atlas Port**、**Liaison Endpoint**、**User ID** 和 **Voice Record Limit (s)**。（**User Name** 在 Audio 页的 Voiceprint 区域，不在这里。）
 
 点 **Save Settings** 写入 `~/.config/robonix-client/settings.yaml`，页面同时在浏览器本地存储保留一份。
 
@@ -208,7 +213,7 @@ Settings 保存机器人地址、Atlas 端口、用户标识（**User ID** 与 *
 2. 发送“目前有哪些能力？”并收到文本回复；部署已接入相机和图像理解能力时，再发送“你能看到什么？”验证视觉链路。
 3. 发送一个持续几秒的任务，在执行期间再提交一句修改要求，确认它作为任务调整指令生效。
 4. 打开 Active RTDL，确认显示的运行节点与 Executor 一致。
-5. 点击 Stop，确认按钮短暂显示 **Stopping**，随后任务结束且界面回到空闲。
+5. 点击 **ABORT ALL TASKS**，确认按钮短暂显示 **Aborting**，随后任务结束且界面回到空闲。
 6. 使用音频桥时，确认麦克风测试有输入电平、扬声器测试能播放声音，再测试一次 F2 语音任务。
 
 ## 排错

@@ -56,7 +56,7 @@ service:
 | 字段 | 默认值 | 含义 |
 |---|---|---|
 | `algo` | `rtabmap` | 建图引擎。**只用 `rtabmap`**，在跑的机器人部署全是它。`config.spec` 里另外列出的取值没有部署在用，不要选 |
-| `occupancy_sources` | 所有可用输入 | 参与构建二维占据栅格的输入，取 `lidar`、`depth` |
+| `occupancy_sources` | 所有可用输入 | 参与构建二维占据栅格的输入，取 `lidar`、`depth`。它与 `Grid/Sensor`、`Grid/FromDepth` 是两种互斥写法，同时配置会在启动时直接抛 `RuntimeError`，二选一 |
 | `params_file` | 无 | 部署自己拥有的 RTAB-Map 参数 YAML，相对路径从 `robonix_manifest.yaml` 所在目录解析。从上游 `config/rtabmap_params.template.yaml` 复制一份到部署仓库作为起点，上游模板运行时不会被加载 |
 | `rtabmap_params` | 无 | 在 `params_file` 之上的最终覆盖，键用 RTAB-Map 的名字例如 `Grid/FootprintLength`，值必须是标量 |
 | `base_frame` | `base_link` | 机器人本体坐标系，必须与完整 URDF/TF 树以及导航服务用的一致 |
@@ -76,9 +76,10 @@ service:
 
 ```yaml
 config:
+  odom_frame: odom_icp             # RTAB-Map 私有轨迹改名，不能再叫 odom
   navigation_odom_bridge: true
   navigation_odom_topic: /odom
-  navigation_odom_frame: odom      # 打开桥时必须与私有的 odom_frame 不同
+  navigation_odom_frame: odom      # 底盘里程计拥有的坐标系，必须与上面不同
 ```
 
 默认关闭，保持原有 TF 行为。
@@ -121,7 +122,7 @@ config:
 | `Grid/3D` | `false` | 二维导航用二维栅格 |
 | `Grid/MaxObstacleHeight` | `1.0` 到 `1.5` | 高于此高度的回波不算障碍。按机器人真实高度定 |
 | `Grid/MaxGroundHeight` | `0.1` | 低于此高度算地面 |
-| `Grid/FootprintLength` / `Width` | 按 Soma 声明 | 写进栅格之前先去掉机身自身的回波。Lite3 用的是 soma.yaml 里考虑步态的包络 `0.68 × 0.46`，而不是官方静态尺寸 `0.61 × 0.37` |
+| `Grid/FootprintLength` / `Width` | 直接写在参数文件里 | 写进栅格之前先去掉机身自身的回波。Lite3 在 `config/rtabmap_params.yaml` 里填 `0.68 × 0.46`，比 `soma.yaml` 声明的 `0.610 × 0.370` 大一圈，留给步态摆动。这两个值不会自动同步，改机身尺寸时要一起改 |
 | `Grid/Sensor` / `Grid/FromDepth` | Lite3 设 `0` / `false` | 只用雷达建栅格。RGB-D 仍供 RTAB-Map 和场景服务使用，但不会把同一堵墙用受外参误差影响的方式再写一遍 |
 
 **`Reg/*` 与 `Optimizer/*`：位姿配准。** `Reg/Strategy: 1` 选 ICP，`Reg/Force3DoF: true` 把配准限制在平面内。后者在四足机器人上是必需的：不加的话步态带来的横滚和俯仰会让地图产生形变。
@@ -130,7 +131,7 @@ config:
 
 **`Vis/*`：视觉特征阈值。** `Vis/MinInliers` 默认 20，两台用二维激光的机器人都放宽到 12，理由同样是特征少。
 
-**`RGBD/*`：更新频率与回环。** `RGBD/LinearUpdate` 和 `RGBD/AngularUpdate` 决定移动多少才生成新节点（现有取值 `0.05` 到 `0.1`）。`RGBD/ProximityBySpace` 打开空间邻近检测，`RGBD/ProximityPathMaxNeighbors: 1` 把搜索限制在最近的路径邻居，Lite3 用它在保留走廊回环的同时减少平行墙造成的错误连接。
+**`RGBD/*`：更新频率与回环。** `RGBD/LinearUpdate` 和 `RGBD/AngularUpdate` 决定移动多少才生成新节点（现有取值 `0.05` 到 `0.1`）。`RGBD/ProximityBySpace` 打开空间邻近检测。`RGBD/ProximityPathMaxNeighbors` 是每条路径上参与比对的邻居节点数上限，上游默认 `0` 表示关闭这种一对多的邻近检测；Lite3 设成 `1`，在保留走廊回环的同时减少平行墙造成的错误连接。
 
 **`Rtabmap/DetectionRate`** 是每秒处理几帧。Lite3 取 `1.0` 并写明了依据：手动建图推荐速度 0.10 到 0.15 m/s，1 Hz 意味着每次更新间隔 10 到 15 厘米，同时给 Jetson 留下足够算力做 RGB-D 与点云同步和 ICP 里程计。该参数应当从建图时的移动速度倒推。
 
@@ -260,7 +261,7 @@ rbnx logs -t mapping -l info
 - 节点过稀时，逐步降低 `RGBD/LinearUpdate` 和 `RGBD/AngularUpdate`；节点过密导致计算堆积时则提高。
 - 处理跟不上输入时，降低 `Rtabmap/DetectionRate`，不要仅增大队列。
 - 旋转时配准失败时，先检查 TF/时间/里程计，再调整 ICP 门限。
-- `Grid/RayTracing=false` 会减少自由空间清理，容易留下幽灵障碍；设为 `true` 又可能让低位二维雷达错误清掉 RGB-D 看到的桌面等高处障碍。Webots 混合传感器基线选择 `false`，真实部署必须用“障碍移走”和“雷达从障碍下方穿过”两类场景共同验证。
+- `Grid/RayTracing` 取值取决于雷达输出的形态。Webots 与 Lite3 都设 `true`，靠射线清出走过的自由空间，否则地图上会留下没被清掉的旧障碍。Go2 设 `false`，因为它的 UniLiDAR 发的是稀疏非重复的点包而不是完整平面扫描，逐包做射线追踪会在回波之间拉出放射状的假自由空间，而地面回波本身已经提供了可通行区域。换雷达时这一项要重新判断，并用“障碍移走”和“雷达从障碍下方穿过”两类场景验证。
 
 地图稳定后再运行 Explore、保存空间地图、标注房间并测试导航。保存、加载和位姿重定位接口见[空间地图](../interface-catalog/service/map.md)。
 
@@ -273,3 +274,13 @@ rbnx logs -t mapping -l info
 **建的图漂移或者尺度不对。** 先确认 `base_frame` 和 `odom_frame` 与 URDF/TF 树一致，再确认里程计提供方确实在声明的坐标系里发布。这两项不一致时地图看起来仍然像地图，但所有坐标都是错的。
 
 **Web 界面打不开。** 默认只绑回环地址。要从别的机器访问必须先有带认证的覆盖层，不要直接把 `webui_host` 改成 `0.0.0.0`。
+
+
+## 参考
+
+本页涉及的上游系统与参数出处：
+
+- RTAB-Map 论文：Labbé M, Michaud F。[RTAB-Map as an open-source lidar and visual simultaneous localization and mapping library for large-scale and long-term online operation](https://doi.org/10.1002/rob.21831)。*Journal of Field Robotics*, 2018。
+- RTAB-Map 代码与参数手册：[introlab/rtabmap](https://github.com/introlab/rtabmap)，参数含义见 [Tutorials·Advanced Parameter Tuning](https://github.com/introlab/rtabmap/wiki/Advanced-Parameter-Tuning)。
+- ROS 2 封装：[introlab/rtabmap_ros](https://github.com/introlab/rtabmap_ros)。
+- 本页的 Lite3 取值出自 [syswonder/robot-deep_robotics-lite3](https://github.com/syswonder/robot-deep_robotics-lite3) 的 `config/rtabmap_params.yaml` 与 `soma.yaml`；Go2 取值出自 [syswonder/robot-unitree-go2](https://github.com/syswonder/robot-unitree-go2)；Webots 取值出自 Robonix 仓库的 `examples/webots/config/rtabmap_params.yaml`。

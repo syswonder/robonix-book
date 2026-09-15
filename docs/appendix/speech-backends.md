@@ -94,3 +94,10 @@ service:
 ```
 
 Webots 快速上手就是这么设的。
+
+
+## 参考
+
+- FunASR 论文：Gao Z, Li Z, Wang J, 等。[FunASR: A Fundamental End-to-End Speech Recognition Toolkit](https://arxiv.org/abs/2305.11013)。*INTERSPEECH*, 2023。代码见 [modelscope/FunASR](https://github.com/modelscope/FunASR)。
+- Whisper 论文：Radford A, Kim J W, Xu T, 等。[Robust Speech Recognition via Large-Scale Weak Supervision](https://arxiv.org/abs/2212.04356)。代码见 [openai/whisper](https://github.com/openai/whisper)。
+- 腾讯云实时语音识别与语音合成的接口与计费以[官方文档](https://cloud.tencent.com/document/product/1093)为准。

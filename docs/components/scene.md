@@ -33,7 +33,7 @@ cd system/scene && bash scripts/build.sh
 # 起仿真（Webots + 底盘 + 相机 + 雷达）
 cd ../../examples/webots && bash sim/start.sh
 
-# 起整栈：atlas、executor、pilot、三个原语、场景、建图、导航、探索
+# 起整栈：atlas、executor、pilot、各路原语、场景、建图、导航、探索
 export DISPLAY=:0
 rbnx boot
 ```
@@ -77,6 +77,8 @@ tier=... detector=... grounding=... inputs=[...]
 
 ## 一次感知循环做了什么
 
+检测器在架构上是可替换的槽位，`metric` 档当前选用的是 **ConceptGraphs**，一套开放词表的三维场景图构建方法。它的做法是逐帧检测并分割物体，把每个掩码编码成视觉特征，反投影成三维点云，再跨帧把属于同一个物体的观测合并成一条持久记录。场景服务在容器里从上游仓库的 `ali-dev` 分支源码安装，只替换输入输出接口，合并算法本身不改。
+
 `metric` 档默认每 0.6 秒执行一次。每一拍都完整跑完下面九步，不会因为画面变化不大就跳过某一拍，所以 GPU 占用是持续的，不随机器人是否移动而变。周期由 `SCENE_DETECT_PERIOD_S` 控制。
 
 ```mermaid
@@ -93,7 +95,7 @@ flowchart TB
   GEO --> FLT2["过滤背景类<br/>地板 墙 天花板 地毯"]
   FLT2 --> ASSOC["与对象地图<br/>关联并融合"]
   ASSOC --> MAP[("对象地图<br/>感知流水线内部")]
-  MAP --> CLEAN["周期性清理<br/>合并重叠 · 删除已观测为空"]
+  MAP --> CLEAN["每 10 拍清理一次<br/>去噪 · 合并重叠 · 删点数过少"]
   CLEAN --> MAP
   MAP --> REG[("对象注册表<br/>对外查询")]
 ```
@@ -105,14 +107,14 @@ flowchart TB
 5. 掩码结合深度图反投影成地图坐标系下的点云和有向包围盒，所用的相机到地图变换优先取自 TF2，其次由位姿加校验过的外参组合。
 6. 背景类（地板、墙、天花板、地毯）和只落在地面上的检测被过滤掉。
 7. 剩下的检测与 ConceptGraphs 的对象地图做关联并融合。这份对象地图是感知流水线自己的累积结果，跨帧存在，每一拍在它上面增删改。
-8. 周期性清理：合并重叠对象，删除“旧位置已经被明确观测为空”的对象。
+8. 每 10 拍做一次清理：去噪、合并重叠对象、删除点数过少的记录。这一步不是每拍都跑。
 9. 把对象地图的当前状态投射成对象注册表，供外部查询。
 
 ## 对象如何建立、合并与消失
 
 这一节决定了实际效果，调参也集中在这里。
 
-<strong>关联</strong>按类别与坐标系分桶，在类内做匈牙利最小代价匹配，代价是三维欧氏距离加上置信度惩罚，超出逐类门限半径的配对直接判为不可匹配。匹配上的对象用指数滑动平均更新位姿，未匹配的检测建立新对象。
+<strong>关联</strong>由 ConceptGraphs 的合并流水线完成：先算空间相似度与视觉相似度并加权聚合，再交给 `merge_detections_to_objects`。聚合结果要过三道闸才允许合并。质心距离超过 1.5 米直接否决，避免出现横跨房间的巨大包围盒。YOLO 类别不同直接否决。聚合相似度低于 0.55 则不合并，转为新建对象。
 
 这里有一个必须知道的后果：**关联是类别严格的**。同一把椅子这一帧被认成 `chair`、下一帧被认成 `couch`，就会产生两个对象。这是重复对象的主要来源，也是 `SCENE_CG_MERGE_CLASS_GROUPS` 存在的原因。
 
@@ -160,11 +162,9 @@ system:
       map_id: office
       observations:
         - kind: rgb
-          topic: /camera/color/image_raw
-          type: sensor_msgs/msg/Image
+          contract: robonix/primitive/camera/rgb
         - kind: depth
-          topic: /camera/depth/image_rect_raw
-          type: sensor_msgs/msg/Image
+          contract: robonix/primitive/camera/depth
       camera_provider_id: tiago_camera
       camera_frame: camera_color_optical_frame
       base_frame: base_link
@@ -174,14 +174,28 @@ system:
 
 | 字段 | 含义 |
 |---|---|
-| `observations` | 逻辑输入种类到 ROS 2 话题与消息类型的映射。`kind` 取 `rgb`、`depth`、`lidar2d`、`pose`、`odom` 等 |
+| `observations` | 声明场景服务订阅哪几路输入。每条必须同时写 `kind` 与 `contract`，缺一条会记一行警告并跳过该路输入。话题名和消息类型由 Atlas 按能力约定解析，不在这里填 |
 | `camera_provider_id` | 相机提供方的实例名，即部署清单里该原语的 `name`（例如 `tiago_camera`），不是软件包标识 `com.robonix.*`。彩色图、深度图、内参、外参必须来自同一台物理相机，这个字段把它们钉在同一个提供方上 |
-| `camera_frame` | 相机光学坐标系名。不配置时按 TF 树解析，解析不出来就停止输出而不是猜 |
+| `camera_frame` | 相机光学坐标系名。不配置时取当前彩色图消息自带的 `header.frame_id` |
 | `base_frame` | 机身坐标系名，与本体模型（Soma）声明的值核对 |
 | `pose_max_age_s` | 用于相机到世界投影的位姿最大接收年龄，超龄样本会让检测被扣住不发布 |
 | `map_id` | 地图身份的静态回退值。建图服务广播 `robonix/service/map/lifecycle` 时以广播为准 |
 | `intrinsics_fallback` | 手写一组相机内参（fx、fy、cx、cy 和分辨率）备用。相机的 `intrinsics` 能力一直没送来可用数据时，检测器改用这组值做反投影，日志里打一条 `camera intrinsics fallback` 警告。不配置时缺内参就一直等，不会自己编一个 |
 | `web_port` | 操作界面端口，设为 `0` 关闭界面 |
+
+`kind` 与 `contract` 的合法组合固定为下面几组：
+
+| `kind` | `contract` | 消息类型 |
+|---|---|---|
+| `rgb` | `robonix/primitive/camera/rgb` | `Image` |
+| `depth` | `robonix/primitive/camera/depth` | `Image` |
+| `intrinsics` | `robonix/primitive/camera/intrinsics` | `CameraInfo` |
+| `camera_extrinsics` | `robonix/primitive/camera/extrinsics` | `TransformStamped` |
+| `lidar2d` | `robonix/primitive/lidar/lidar` | `LaserScan` |
+| `lidar3d` | `robonix/primitive/lidar/lidar3d` | `PointCloud2` |
+| `pose` | `robonix/service/map/pose` | `PoseWithCovarianceStamped` |
+| `odom` | `robonix/primitive/chassis/odom` | `Odometry` |
+| `occupancy_grid` | `robonix/service/map/occupancy_grid` | `OccupancyGrid` |
 
 ### 环境变量
 
@@ -263,7 +277,7 @@ system:
 2. 在 **Map ID** 里填一个名字，例如 `office_3f`。之后 `goal_room` 这类查询只在这个 ID 的范围内找房间。
 3. 点 **Save current**。成功后状态行给出写入结果和房间数量。
 
-用同一个 Map ID 再点一次 Save current，**地图本身不会被覆盖**，只更新房间和对象，界面会提示该地图已存在。想重建地图，先删掉再重新保存。
+用同一个 Map ID 再点一次 Save current，结果取决于当前处于哪种模式。在定位模式下且这张地图已经加载过，地图本身不会被覆盖，只更新房间和对象。还在建图模式下则直接拒绝，界面提示该地图的空间产物不可变。想重建地图，先删掉再重新保存。
 
 这个限制是有意的。机器人定位错了的时候画面看起来仍然正常，如果这时保存能覆盖，一张好地图就被毁了，而且没法恢复。
 
@@ -327,7 +341,7 @@ Thor 是统一内存架构，显存和内存不分开，所以 `nvidia-smi` 的�
 
 ### 一处尚未定位的内存异常
 
-同一条巡场路线上，有一次容器常驻内存在一个采样周期（5 秒）内从 2.8 GB 涨到 22.0 GB，维持约两分钟后随容器重启回落。该增长是突发的，不是缓慢累积。原因尚未定位，当前的主要怀疑对象是周期性合并，它会把两团点云拼接后重新处理。
+同一条巡场路线上，有一次容器常驻内存在一个采样周期（5 秒）内从 2.8 GB 涨到 22.0 GB，维持约两分钟后随容器重启回落。该增长是突发的，不是缓慢累积。原因尚未定位，当前的主要怀疑对象是周期性合并，它会把两个对象的点云拼接后重新处理。
 
 嵌入式平台的内存与显存共用，一次这样的增长足以让整机终止，因此移植前应先复现并修复。
 
@@ -347,7 +361,7 @@ Thor 是统一内存架构，显存和内存不分开，所以 `nvidia-smi` 的�
 
 **启动后界面打不开，进程仍在运行。** 生命周期激活（`CMD_ACTIVATE`）有 90 秒上限。x86 上从感知计划打印到检测器就绪实测 12.6 秒，其中 YOLO-World 约 5 秒、CLIP 约 1 秒，余量很大。超时几乎都是被某个外部资源阻塞，而不是模型加载慢：用日志里 `perception plan:` 到 `ConceptGraphsDetector started` 两行的时间差判断。上一次部署没有完全退出、端口仍被占用，是最常见的一种。调大 `ROBONIX_DRIVER_INIT_TIMEOUT_S` 只会把问题推后，不要用它绕过。
 
-**跑着跑着 scene 挂了，日志最后一行是 `exit status: 137`。** 137 是被 SIGKILL。先分清是不是内存：
+**运行一段时间后 scene 退出，日志最后一行是 `exit status: 137`。** 137 是被 SIGKILL。先分清是不是内存：
 
 ```bash
 docker inspect <容器名> --format '{{.State.OOMKilled}}'
@@ -361,7 +375,7 @@ docker inspect <容器名> --format '{{.State.OOMKilled}}'
     status = StatusCode.DEADLINE_EXCEEDED
 ```
 
-位姿数据先停，随后 scene 调 Soma 取 footprint 超时，生命周期心跳跟着超时，启动器判定失败并 SIGKILL 它。根因在上游的 ROS 2 数据流，不在 scene 自己——此时 Soma 往往还是 `ACTIVE`，看它的状态会误导。
+位姿数据先停，随后 scene 调 Soma 取 footprint 超时，生命周期心跳跟着超时，启动器判定失败并 SIGKILL 它。根因在上游的 ROS 2 数据流，不在 scene 自己。此时 Soma 往往还是 `ACTIVE`，看它的状态会误导。
 
 先确认仿真或机器人还在发位姿。仿真容器跑了很久之后 ROS 2 数据流卡住是复现过的，`sim/stop.sh` 有时停不掉它，需要 `docker rm -f` 强制重建。
 
@@ -369,6 +383,19 @@ docker inspect <容器名> --format '{{.State.OOMKilled}}'
 
 **对象重复。** 先看重复的两条记录类别是否不同。不同就属于标签抖动，用 `SCENE_CG_MERGE_CLASS_GROUPS` 把这两个类归组；相同就调 `SCENE_CG_SAME_CLASS_MERGE_DIST_M`。两者都不要调过头，合并过激会把两个相邻的真实物体折叠成一个。
 
-**对象位置整体偏移。** 检查相机到地图的变换来源。TF 树完整时走 TF；只有位姿加外参时，任何一处标定误差都会整体搬运所有对象。启动日志的 `grounding=` 字段是 `degraded` 就说明走的是回退路径。
+**对象位置整体偏移。** 检查相机到地图的变换来源。TF 树完整时走 TF；只有位姿加外参时，任何一处标定误差都会整体搬运所有对象。启动日志的 `grounding=` 字段只反映启动那一刻内参与位姿两条能力约定是否接上，`degraded` 说明其中至少一条缺失，与运行时选了 TF 还是外参无关。
 
 **建图回环后对象留在原地。** 这是已知缺陷，当前没有实现修复。重建地图后用标注页确认或重画房间，对象会随重新观测重建。
+
+
+## 参考
+
+感知流水线与所用模型的出处：
+
+- ConceptGraphs 论文：Gu Q, Kuwajerwala A, Morin S, Jatavallabhula K M, 等。[ConceptGraphs: Open-Vocabulary 3D Scene Graphs for Perception and Planning](https://arxiv.org/abs/2309.16650)。arXiv:2309.16650。另有[项目主页](https://concept-graphs.github.io/)。
+- ConceptGraphs 代码：[concept-graphs/concept-graphs](https://github.com/concept-graphs/concept-graphs)，场景服务使用其 `ali-dev` 分支。
+- YOLO-World 开放词表检测，经 [Ultralytics](https://github.com/ultralytics/ultralytics) 提供的 `YOLOWorld` 接口调用。
+- [MobileSAM](https://github.com/ChaoningZhang/MobileSAM)，负责由检测框生成掩码。
+- [OpenCLIP](https://github.com/mlfoundations/open_clip)，`ViT-B-32` 权重，负责掩码特征编码。
+
+本页的实测数字来自 x86 工作站上的 Webots 仿真部署，硬件配置见「硬件要求」一节。

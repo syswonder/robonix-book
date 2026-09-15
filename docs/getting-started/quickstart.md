@@ -44,7 +44,11 @@ export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 
 Docker 使用官方的 [Ubuntu](https://docs.docker.com/engine/install/ubuntu/) 或 [Debian](https://docs.docker.com/engine/install/debian/) 安装步骤。安装后确认当前用户可以直接运行 Docker；如果刚加入 `docker` 组，需要重新登录当前桌面会话。
 
-scene 镜像的构建需要 BuildKit（`RUN --mount=type=cache`），因此还需 buildx 插件；用发行版自带的 `docker.io` 时它不会一并装上，Ubuntu 上执行 `sudo apt install docker-buildx`。
+scene 镜像的构建需要 BuildKit（`RUN --mount=type=cache`），因此还需 buildx 插件。按上面 Docker 官方源装的，它随 `docker-buildx-plugin` 一并装上。用发行版自带的 `docker.io` 则要另装，Ubuntu 和 Debian 的包名都是 `docker-buildx`：
+
+```bash
+sudo apt install docker-buildx
+```
 
 ```bash
 git --version
@@ -147,7 +151,7 @@ bash examples/webots/sim/start.sh --world office.wbt
 
 脚本会启动仿真容器，等待 ROS 2 话题就绪，并在容器内启动 RViz2。它默认使用 ROS 中间件实现（ROS Middleware Implementation，RMW）`rmw_zenoh_cpp`；同一部署中的 ROS 2 进程必须使用相同的 `RMW_IMPLEMENTATION`。Webots 容器会为该示例启动 `rmw_zenohd`，本快速上手流程不需要另起路由器，也不需要设置第二个 Robonix 专用 RMW 变量。
 
-**预期结果：** 终端出现 `[sim/start] ros up (... topics)` 和 RViz2 日志路径；Webots 与 RViz2 窗口可见。
+**预期结果：** 终端先出现 `[sim/start] waiting for live sim sensor data...`，随后是 `[sim/start] live odom, RGB, and lidar data received` 和 RViz2 日志路径；Webots 与 RViz2 窗口可见。就绪判据是 `/odom`、`/head_front_camera/rgb/image_raw`、`/scanner` 三个话题各收到一帧。
 
 #### RViz2 窗口里在看什么
 
@@ -168,11 +172,23 @@ RViz2 是验收和排障工具，机器人无头运行时不需要它。示例�
 
 左侧 **Displays** 面板控制每一项的开关。刚启动时 `/map` 还是空的，建图服务收到足够数据后才会出现栅格。
 
-三件事最值得先看。<strong>TF 是否连通</strong>：展开 TF 显示，确认 `map → odom → base_link` 这条链存在，断在哪一级就说明哪一级的发布者没起来。<strong>雷达是否贴合</strong>：机器人静止时 LaserScan 的点应当落在墙上，明显偏移说明定位不对。<strong>代价地图是否合理</strong>：机器人周围不应出现大片致命代价，否则规划会失败。
+三件事最值得先看。
+
+<strong>TF 是否连通</strong>。在左侧 Displays 面板里找到 `TF` 这一项，点它左边的三角展开，里面有 `Frames` 和 `Tree` 两个子项。`Frames` 列出当前收到的所有坐标系，`Tree` 才是要看的那个，展开后按父子关系缩进显示，正常应该读成 `map` 底下挂 `odom`，`odom` 底下挂 `base_link`。某一级没出现，就是那一级的发布者没起来：缺 `map` 是建图服务没起或还没输出，缺 `odom → base_link` 是底盘原语没发里程计。命令行的等价做法是 `ros2 run tf2_ros tf2_echo map base_link`，连通时持续打印平移和旋转，断了会一直报找不到变换。<strong>雷达是否贴合</strong>：机器人静止时 LaserScan 的点应当落在墙上，明显偏移说明定位不对。<strong>代价地图是否合理</strong>：机器人周围不应出现大片致命代价，否则规划会失败。
 
 ![RViz2 在 Webots 示例跑起来之后的样子。左侧 Displays 面板列出本页表格里的各项，中间是 SlamMap 的占据栅格叠加两层代价地图和雷达点，左下 Navigation 2 面板显示导航状态。](/img/ui/rviz2-live.webp)
 
-这些显示项只是读取话题，RViz2 自己不驱动机器人。完整的本体验收清单见[本体接入指南 §7.4](../integration-guide/vendor-onboarding.md#74-使用-rviz2-验证地图定位与导航)，那里还说明了从 RViz 直接下发导航目标时 `SetGoal` 与 `GoalTool` 的区别。
+上面这些显示项只读话题，但 RViz2 不止能看。本示例的 RViz 配置带了三样能动机器人的工具：
+
+| 工具或面板 | 位置 | 作用 |
+|---|---|---|
+| 2D Pose Estimate | 顶部工具栏 | 发布到 `/initialpose`，用来在定位跑偏时手工把机器人摆回正确位置 |
+| 2D Goal Pose | 顶部工具栏 | 发布到 `/rviz_goal_pose`，在地图上点一下即可下发导航目标 |
+| Navigation 2 面板 | 左下 | 显示导航状态，并可取消正在执行的目标 |
+
+2D Goal Pose 能真正驱动机器人，是因为启动脚本额外拉起了一个中继进程 `goal_pose_relay.py`，它把 `/rviz_goal_pose` 转成 `navigate_to_pose` 动作再发给 Nav2。中继还会把时间戳清零，因为 RViz 的目标工具即使在 `use_sim_time` 下也盖墙上时间，规划器无法拿它对齐仿真时钟的 TF。
+
+需要急停时，用 Navigation 2 面板取消当前目标；它只终止导航，不停止其他组件。完整的本体验收清单见[本体接入指南 §7.4](../integration-guide/vendor-onboarding.md#74-使用-rviz2-验证地图定位与导航)，那里还说明了自建部署里 `SetGoal` 与 `GoalTool` 的区别。
 
 ### 终端 2：Robonix 系统
 
@@ -323,7 +339,7 @@ bash examples/webots/sim/start.sh --world kitchen.wbt
 | `complete_apartment.wbt`<br />![Webots 完整公寓场景预览](/img/webots/complete_apartment.jpg) | `break_room.wbt`<br />![Webots 休息室场景预览](/img/webots/break_room.jpg) |
 | `kitchen.wbt`<br />![Webots 厨房场景预览](/img/webots/kitchen.jpg) |  |
 
-默认的 `office.wbt` 第一次启动时，会通过 `https://ghfast.top/` 下载一次带校验和的 [`webots-office-seed-v3`](https://github.com/syswonder/robonix-assets/releases/tag/webots-office-seed-v3)，随后从持久化 Webots 缓存卷复用。要绕过镜像站直连 GitHub，可把 `ROBONIX_WEBOTS_SEED_MIRROR` 设为空；`ROBONIX_WEBOTS_SEED_URL` 可以覆盖完整下载地址。
+仿真容器第一次启动时，无论选哪个场景，都会通过 `https://ghfast.top/` 下载一次带校验和的 [`webots-office-seed-v3`](https://github.com/syswonder/robonix-assets/releases/tag/webots-office-seed-v3)，随后从持久化 Webots 缓存卷复用。要绕过镜像站直连 GitHub，可把 `ROBONIX_WEBOTS_SEED_MIRROR` 设为空；`ROBONIX_WEBOTS_SEED_URL` 可以覆盖完整下载地址。
 
 ## 8. 停止并清理运行进程
 
@@ -336,7 +352,9 @@ rbnx shutdown
 bash sim/stop.sh
 ```
 
-`sim/stop.sh` 会对该示例的 Compose 项目执行 `docker compose down`，并停止启动脚本记录的 RViz2 进程。它保留可复用的镜像、Webots 资源卷和软件包构建缓存，不会按进程名扫描或终止 Robonix 与软件包进程，因此不能代替 `rbnx shutdown`。
+`sim/stop.sh` 是全量清场脚本，不只停仿真：它按进程名 `pkill -9` 掉 Robonix 的系统二进制（atlas、executor、soma、pilot、vitals、liaison）和各软件包进程，按模式杀 RViz2，再 `docker rm -f` 掉 mapping、scene、explore 容器，最后 `docker compose -f compose.yaml down`。
+
+**正常关闭仍应先 `rbnx shutdown`**，让各组件走完生命周期；`sim/stop.sh` 是那之后的兜底。它保留可复用的镜像、Webots 资源卷和软件包构建缓存。
 
 ## 排错
 
@@ -380,7 +398,7 @@ aplay -l
 rbnx logs -t audio_driver -l warn
 ```
 
-`-l` 只列硬件设备，不列 `null` 之类的 ALSA 插件。有硬件但日志报打不开设备时，按第 5 节“选择音频设备”显式指定 `hw:N,M`，或改用 `plughw:N,M` 让 ALSA 重采样。两条命令都列不出任何设备，才按同一张提示卡退回空设备；此时第 6 节的语音步骤无法验证。
+`-l` 只列硬件设备，不列 `null` 之类的 ALSA 插件。有硬件但日志报打不开设备时，按第 6 节“选择麦克风与扬声器”显式指定 `hw:N,M`，或改用 `plughw:N,M` 让 ALSA 重采样。两条命令都列不出任何设备，才按同一张提示卡退回空设备；此时第 6 节的语音步骤无法验证。
 
 ### 软件包启动失败
 
@@ -409,3 +427,11 @@ rbnx update
 - [本体接入指南](../integration-guide/vendor-onboarding.md)：把 Webots 能力提供方替换为真实机器人硬件。
 - [开发者指南](../developer-guide.md)：从 template-rbnx 开发自己的原语、服务或技能。
 - [接口目录](../interface-catalog/index.md)：查询标准契约与 ROS 接口定义。
+
+
+## 参考
+
+- Webots 论文：Michel O。[Cyberbotics Ltd. Webots: Professional Mobile Robot Simulation](https://doi.org/10.5772/5618)。*International Journal of Advanced Robotic Systems*, 2004。代码见 [cyberbotics/webots](https://github.com/cyberbotics/webots)。
+- ROS 2 论文：Macenski S, Foote T, Gerkey B, Lalancette C, Woodall W。[Robot Operating System 2: Design, architecture, and uses in the wild](https://doi.org/10.1126/scirobotics.abm6074)。*Science Robotics*, 2022。
+- Docker Engine 与 buildx 的安装步骤以 [Docker 官方文档](https://docs.docker.com/engine/install/)为准。
+- Robonix 源码：[syswonder/robonix](https://github.com/syswonder/robonix)。

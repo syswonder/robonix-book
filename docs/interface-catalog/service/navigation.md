@@ -38,3 +38,9 @@ title: 导航
 > 实现文档：[README（部署目标、`params_file`、3D lidar 与兼容迁移）](https://github.com/syswonder/service-navigation-rbnx/blob/b1a923a25cb3bf75554b861fceb605a190ae641b/README.md) · [`config.spec`（全部 instance 配置、类型、默认值与约束）](https://github.com/syswonder/service-navigation-rbnx/blob/b1a923a25cb3bf75554b861fceb605a190ae641b/config.spec) · [实现注册](https://github.com/syswonder/service-navigation-rbnx/blob/b1a923a25cb3bf75554b861fceb605a190ae641b/nav2_wrapper/atlas_bridge.py)
 
 各 server 与 plugin 的参数见 Nav2 官方 [Configuration Guide](https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/)。本体尺寸、footprint、costmap、planner 和 controller 的实机调优见 [Tuning Guide](https://docs.nav2.org/rolling/configuration_and_development/tuning_guide/)。
+
+
+## 参考
+
+- Nav2 论文：Macenski S, Martín F, White R, Clavero J G。[The Marathon 2: A Navigation System](https://doi.org/10.1109/IROS45743.2020.9341207)。*IEEE/RSJ IROS*, 2020。
+- 导航服务实现：[syswonder/service-navigation-rbnx](https://github.com/syswonder/service-navigation-rbnx)。
