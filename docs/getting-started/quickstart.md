@@ -147,20 +147,24 @@ bash examples/webots/sim/start.sh --world office.wbt
 
 RViz2 是验收和排障工具，机器人无头运行时不需要它。示例自带的配置是 `examples/webots/sim/rviz2_default.rviz`，Fixed Frame 设为 `map`，默认打开这些显示项：
 
-| 显示项 | 话题 | 用途 |
+| Displays 面板中的名字 | 话题 | 用途 |
 |---|---|---|
-| Map | `/map` | 建图服务输出的二维占据栅格 |
-| Map | `/global_costmap/costmap` | 导航的全局代价地图 |
-| Map | `/local_costmap/costmap` | 导航的局部代价地图 |
-| LaserScan | `/scanner_normalized` | 雷达点，用来判断是否与墙面重合 |
-| Path | `/plan` | 全局路径 |
-| Path | `/local_plan` | 局部路径 |
-| Odometry | `/odom` | 底盘里程计 |
-| TF | — | 坐标树 |
+| `SlamMap` | `/map` | 建图服务输出的二维占据栅格 |
+| `GlobalCostmap` | `/global_costmap/costmap` | 导航的全局代价地图 |
+| `LocalCostmap` | `/local_costmap/costmap` | 导航的局部代价地图 |
+| `LaserScan` | `/scanner_normalized` | 雷达点，用来判断是否与墙面重合 |
+| `GlobalPlan` | `/plan` | 全局路径 |
+| `LocalPlan` | `/local_plan` | 局部路径 |
+| `Odometry` | `/odom` | 底盘里程计 |
+| `GoalPose` | `/rviz_goal_pose` | 从 RViz 工具栏下发的目标点 |
+| `TF` | — | 坐标树 |
+| `Grid` | — | 参考网格，不来自机器人 |
 
 左侧 **Displays** 面板控制每一项的开关。刚启动时 `/map` 还是空的，建图服务收到足够数据后才会出现栅格。
 
 三件事最值得先看。**TF 是否连通**：展开 TF 显示，确认 `map → odom → base_link` 这条链存在，断在哪一级就说明哪一级的发布者没起来。**雷达是否贴合**：机器人静止时 LaserScan 的点应当落在墙上，明显偏移说明定位不对。**代价地图是否合理**：机器人周围不应出现大片致命代价，否则规划会失败。
+
+![RViz2 在 Webots 示例跑起来之后的样子。左侧 Displays 面板列出本页表格里的各项，中间是 SlamMap 的占据栅格叠加两层代价地图和雷达点，左下 Navigation 2 面板显示导航状态。](/img/ui/rviz2-live.webp)
 
 这些显示项只是读取话题，RViz2 自己不驱动机器人。完整的本体验收清单见[本体接入指南 §7.4](../integration-guide/vendor-onboarding.md#74-使用-rviz2-验证地图定位与导航)，那里还说明了从 RViz 直接下发导航目标时 `SetGoal` 与 `GoalTool` 的区别。
 
@@ -227,6 +231,8 @@ What tasks are currently running?
 ```text
 Enter = send · F2 = voice (auto end on silence) · Ctrl+A = audio settings · Esc = abort turn · Ctrl+C = quit.
 ```
+
+![rbnx chat 的界面。左侧是对话区，右上是当前任务与 RTDL 森林，底部输入框的标题栏重复了可用按键。](/img/ui/rbnx-chat-main.webp)
 
 `Esc` 中断当前交互回合，`Ctrl+C` 退出文本用户界面（Text User Interface，TUI）。
 
