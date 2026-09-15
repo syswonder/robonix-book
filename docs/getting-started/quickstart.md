@@ -23,7 +23,7 @@
 sudo apt update
 sudo apt install -y \
   build-essential git curl ca-certificates \
-  python3 python3-pip python3-grpc-tools alsa-utils
+  python3 python3-pip python3-grpc-tools alsa-utils ffmpeg
 ```
 
 安装 Rust stable：
@@ -42,6 +42,8 @@ export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 
 Docker 使用官方的 [Ubuntu](https://docs.docker.com/engine/install/ubuntu/) 或 [Debian](https://docs.docker.com/engine/install/debian/) 安装步骤。安装后确认当前用户可以直接运行 Docker；如果刚加入 `docker` 组，需要重新登录当前桌面会话。
 
+scene 镜像的构建需要 BuildKit（`RUN --mount=type=cache`），因此还需 buildx 插件；用发行版自带的 `docker.io` 时它不会一并装上，Ubuntu 上执行 `sudo apt install docker-buildx`。
+
 ```bash
 git --version
 make --version | head -n 1
@@ -51,6 +53,7 @@ cargo --version
 uv --version
 docker version --format '{{.Server.Version}}'
 docker compose version
+docker buildx version
 python3 -c 'import grpc_tools.protoc; print("grpc_tools: ok")'
 ```
 
