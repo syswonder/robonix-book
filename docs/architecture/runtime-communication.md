@@ -1,6 +1,6 @@
 # 运行时通信
 
-Robonix 用**能力约定（Contract）**描述稳定的接口语义。实际的**传输方式（Transport）**由每个能力提供方（Provider）自行选择。这两层不能混为一谈。能力约定中的 `rpc`、`topic_in` 和 `topic_out` 说明的是调用形态。运行时通信实现是 ROS 2、gRPC 和模型上下文协议（Model Context Protocol，MCP）。
+Robonix 用**能力约定<strong>（Contract）描述稳定的接口语义。实际的</strong>传输方式**（Transport）由每个能力提供方（Provider）自行选择。这两层不能混为一谈。能力约定中的 `rpc`、`topic_in` 和 `topic_out` 说明的是调用形态。运行时通信实现是 ROS 2、gRPC 和模型上下文协议（Model Context Protocol，MCP）。
 
 本页说明组件之间的连接关系；各组件职责与落地状态见[系统组件](components.md)，Atlas 控制面字段见[能力目录](atlas.md)。
 

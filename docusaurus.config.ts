@@ -25,7 +25,9 @@ const config: Config = {
     locales: ['zh-Hans'],
   },
   plugins: [],
+  markdown: {mermaid: true},
   themes: [
+    '@docusaurus/theme-mermaid',
     [
       '@easyops-cn/docusaurus-search-local',
       {

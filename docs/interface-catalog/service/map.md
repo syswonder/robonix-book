@@ -35,7 +35,7 @@ title: 空间地图
 | `robonix/service/map/pose_estimate` | `rpc` | gRPC + MCP | [`map/PoseEstimate`](../../reference/idl.md#map-srv-poseestimate-srv) | `service/map/pose_estimate.v1.toml` |
 | `robonix/service/map/list_maps` | `rpc` | gRPC + MCP | [`map/ListMaps`](../../reference/idl.md#map-srv-listmaps-srv) | `service/map/list_maps.v1.toml` |
 
-`robonix/service/map/pose` 是 **map 帧**的机器人位姿（融合定位结果），与底盘原语 `robonix/primitive/chassis/odom`（odom 帧、未消除漂移）分工不同。
+`robonix/service/map/pose` 是 <strong>map 帧</strong>的机器人位姿（融合定位结果），与底盘原语 `robonix/primitive/chassis/odom`（odom 帧、未消除漂移）分工不同。
 
 `robonix/service/map/odom` 是建图算法自带里程计的可选输出。部署通过 `sensor_providers.odom` 绑定外部底盘里程计时，参考实现会刻意跳过这条能力声明，避免同一机器人出现两个 odom 提供方；消费者应改用绑定的底盘原语，而不是等待 Mapping 重发同一数据。
 

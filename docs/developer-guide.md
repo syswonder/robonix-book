@@ -63,7 +63,7 @@ rbnx shutdown
 
 Robonix 为具身智能模型提供统一的运行时。硬件驱动以原语暴露设备能力；建图、导航、语音等算法以服务暴露可复用功能；技能封装具有任务语义的行为。Atlas 维护能力目录，Pilot 把用户意图转换为执行方案，Executor 调用方案中的能力。
 
-系统组件分两层，判据是能不能换掉。**核心系统组件**不可更换，只被上层依赖，自身不依赖任何系统级服务，包括 Atlas、Chronos、Keystone、Nexus、Scribe 和 Vitals。**系统级服务**可以替换，彼此之间存在依赖，包括 Executor、Liaison、Pilot、Scene、Sentinel 和 Soma。系统级服务与你要开发的导航、建图等服务处于同一层级，只是由 Robonix 自带。
+系统组件分两层，判据是能不能换掉。<strong>核心系统组件</strong>不可更换，只被上层依赖，自身不依赖任何系统级服务，包括 Atlas、Chronos、Keystone、Nexus、Scribe 和 Vitals。<strong>系统级服务</strong>可以替换，彼此之间存在依赖，包括 Executor、Liaison、Pilot、Scene、Sentinel 和 Soma。系统级服务与你要开发的导航、建图等服务处于同一层级，只是由 Robonix 自带。
 
 这 12 个名字里有 4 个目前没有运行时实现：Chronos、Keystone 和 Sentinel 只有设计说明，Nexus 是通信库的统称而非独立进程。开发软件包时不能依赖它们，也不能写进部署清单。各组件的实现状态见[系统组件](architecture/components.md)。
 

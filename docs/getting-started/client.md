@@ -5,7 +5,7 @@ import TabItem from '@theme/TabItem';
 
 Robonix Client 是运行在 Linux 或 macOS 上的客户端网页。它先连接机器人上的 Atlas，再发现 Liaison、Executor 和音频能力；用户不需要分别填写这些组件的地址。
 
-它和 `rbnx chat` 提交任务的路径相同，都经 Liaison 到 Pilot，区别在三点：客户端是网页而非终端；它能可视化 RTDL 树和执行历史；语音可以用**客户端这台电脑**的麦克风和扬声器，而 `rbnx chat` 用的是机器人本机的音频设备。
+它和 `rbnx chat` 提交任务的路径相同，都经 Liaison 到 Pilot，区别在三点：客户端是网页而非终端；它能可视化 RTDL 树和执行历史；语音可以用<strong>客户端这台电脑</strong>的麦克风和扬声器，而 `rbnx chat` 用的是机器人本机的音频设备。
 
 客户端跑在操作者的电脑上，不装在机器人上。跟着 [Webots 快速上手](./quickstart.md)做完仿真的话，机器人端就是那台跑 `rbnx boot` 的机器；两者同机时 `--robot-host` 用 `127.0.0.1`。
 

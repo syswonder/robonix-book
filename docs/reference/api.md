@@ -17,7 +17,7 @@
 | `robonix-codegen` | 能力约定 / IDL 代码生成 | <a href="/api/rust/robonix_codegen/index.html">API</a> |
 | `rbnx`（robonix-cli） | 开发 / 部署 CLI | <a href="/api/rust/rbnx/index.html">API</a> |
 
-本地生成需要一份已包含子模块、当前提交（HEAD）与本书 `ROBONIX_SOURCE_REVISION` 一致的 Robonix 源码检出。从**手册仓库根目录**运行：
+本地生成需要一份已包含子模块、当前提交（HEAD）与本书 `ROBONIX_SOURCE_REVISION` 一致的 Robonix 源码检出。从<strong>手册仓库根目录</strong>运行：
 
 ```bash
 export ROBONIX_SOURCE=/absolute/path/to/robonix
@@ -41,7 +41,7 @@ cp -R "$ROBONIX_SOURCE/target/doc/." build/api/rust/
 
 > scene 是服务，它的**对外** API 是能力约定（见 [能力约定参考](contracts.md) 的 `robonix/system/scene/*`）；这里收录的是它的 Python 实现文档。
 
-继续使用上面已验证的 `ROBONIX_SOURCE`，从**手册仓库根目录**运行：
+继续使用上面已验证的 `ROBONIX_SOURCE`，从<strong>手册仓库根目录</strong>运行：
 
 ```bash
 make api-install ROBONIX_SOURCE="$ROBONIX_SOURCE"

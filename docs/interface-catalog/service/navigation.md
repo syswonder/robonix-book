@@ -4,7 +4,7 @@ title: 导航
 <span id="导航-robonixservicenavigation"></span>
 # 导航
 
-导航服务承担**目标式**运动：消费方给出地图坐标系中的目标，服务内部完成路径规划与避障。当前参考实现由 Nav2 产生速度，并经最终速度保护器发布 ROS 2 话题 `/cmd_vel`；底盘如何接收该话题由机器人部署完成。该话题名不是 `robonix/primitive/chassis/twist_in` 能力约定 ID，当前参考实现也不通过 Atlas 解析这条契约。智能体和规划器应调用导航的 MCP 能力，不直接生成瞬时速度命令。
+导航服务承担<strong>目标式</strong>运动：消费方给出地图坐标系中的目标，服务内部完成路径规划与避障。当前参考实现由 Nav2 产生速度，并经最终速度保护器发布 ROS 2 话题 `/cmd_vel`；底盘如何接收该话题由机器人部署完成。该话题名不是 `robonix/primitive/chassis/twist_in` 能力约定 ID，当前参考实现也不通过 Atlas 解析这条契约。智能体和规划器应调用导航的 MCP 能力，不直接生成瞬时速度命令。
 
 部署配置、参数体系与排障步骤见[导航服务使用指南](../../components/navigation.md)，本页只描述接口。
 
