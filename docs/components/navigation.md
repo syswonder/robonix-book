@@ -8,13 +8,15 @@ title: 导航服务使用指南
 
 接口清单与载荷定义在[导航接口页](../interface-catalog/service/navigation.md)，本页不重复。
 
-本页依据上游 `service-navigation-rbnx` 提交 `cb4f2177` 编写。
+请注意，本页对应 `service-navigation-rbnx` 仓库的 `cb4f2177` commit，可能与最新版本有所差异。
 
 ## 服务负责什么
 
 导航服务是系统安装的 ROS 2 Nav2 栈的包装层。它通过 Atlas 发现地图、里程计和雷达输入，把它们接到 Nav2 上，暴露 `robonix/service/navigation/*` 能力，并在 Nav2 的输出之后再加一道最终速度守卫。
 
-**导航行为属于机器人部署，不属于这个软件包。** 每台机器人必须自带一份完整的 Nav2 参数 YAML，用 `params_file` 指过去。上游的 `config/nav2_params.example.yml` 是中性示例，不是任何一台机器人的档案。
+**当前的导航按室内场景设计。** 代价地图是二维的，地图来自[建图服务](./mapping.md)的二维占据栅格，`provider_ids` 不含 GNSS 角色。室外导航需要另外的地图表示与定位源，不在本页范围内。
+
+**导航行为属于机器人部署，不属于这个软件包。** 每台机器人必须自带一份完整的 Nav2 参数 YAML，用 `params_file` 指过去。上游的 `config/nav2_params.example.yml` 是中性示例，不对应任何一台具体机器人。
 
 ## 最小配置
 
@@ -38,7 +40,7 @@ service:
 
 相对路径从 `robonix_manifest.yaml` 所在目录解析。
 
-`provider_ids` 支持四个角色：`map`、`odom`、`scan`、`scan_cloud`。它给的是 Atlas 上的提供方 ID，不是 ROS 话题名——服务在 `ConnectCapability` 拿到真实端点之后才订阅。
+`provider_ids` 支持四个角色：`map`、`odom`、`scan`、`scan_cloud`。它给的是 Atlas 上的提供方 ID，不是 ROS 话题名。服务在 `ConnectCapability` 拿到真实端点之后才订阅。
 
 ### 三维雷达
 
@@ -69,7 +71,7 @@ service:
 | `provider_ids` | 必填 | 输入角色到 Atlas 提供方 ID 的映射 |
 | `dynamic_speed` | 必填 | 运行时调速策略，见下一节 |
 | `bt_xml_file` | 无 | 部署自有的行为树 XML |
-| `action_wait_s` | `45.0` | `CMD_INIT` 等待 `navigate_to_pose` 动作服务器就绪的上限。超时即初始化失败并拆掉已拉起的 Nav2 与守卫进程。真机部署普遍调到 `80` 到 `90` |
+| `action_wait_s` | `45.0` | `CMD_INIT` 等待 `navigate_to_pose` 动作服务器就绪的上限。超时就算初始化失败，已经拉起来的 Nav2 和守卫进程会被一并清理。真机部署普遍调到 `80` 到 `90` |
 | `use_sim_time` | `false` | 用 ROS `/clock` |
 | `velocity_output_topic` | `/cmd_vel` | 最终速度守卫的发布话题。接入实体机器人期间设成 `/robonix/nomotion/cmd_vel` 之类的空转汇聚点。空值、相对路径和畸形话题名会让启动直接失败 |
 | `guard_terminal_xy_m` | `0.45` | 距全局路径终点多近时，原地旋转被当作终点对准并适用更严的限制 |
@@ -82,7 +84,7 @@ service:
 
 ## 调速策略要和机器人的真实能力对齐
 
-`dynamic_speed.max_linear_speed_mps` 是部署给出的平面速度硬上限，单位 m/s，语义是 `sqrt(vx² + vy²)`。它必须等于所选控制器实际形成的平面天花板——同时考虑 `max_speed_xy` 和更严的逐轴 `max_vel_x` / `max_vel_y`。最终速度守卫会独立地再执行一次这个限制。
+`dynamic_speed.max_linear_speed_mps` 是部署给出的平面速度硬上限，单位 m/s，语义是 `sqrt(vx² + vy²)`。它必须等于所选控制器实际形成的平面上限，即同时考虑 `max_speed_xy` 和更严的逐轴 `max_vel_x` / `max_vel_y`。最终速度守卫会独立地再执行一次这个限制。
 
 `default_percentage` 是这个上限的起始百分比。现有部署普遍取 75，于是 `0.3 × 75% = 0.225 m/s` 就是启动速度。`step_percentage` 是加减的百分点数，不是倍数。
 
@@ -142,7 +144,7 @@ Nav2 的大部分行为来自插件，而**插件的参数只在选了它之后�
 
 **层的顺序**。全局代价地图通常是静态层、障碍层、膨胀层；局部代价地图没有静态层。膨胀层必须在最后。
 
-**行为树**。`bt_xml_file` 指向部署自有的 XML，它决定失败时执行哪些恢复动作。Lite3 的部署刻意用了一棵保守的树：只做重规划、清代价地图和等待，从不在四足机器人上调用 Nav2 通用的 `Spin` 和 `BackUp`。这是一个好例子——恢复动作是否安全取决于机器人形态。
+**行为树**。`bt_xml_file` 指向部署自有的 XML，它决定失败时执行哪些恢复动作。Lite3 的部署刻意用了一棵保守的树：只做重规划、清代价地图和等待，从不在四足机器人上调用 Nav2 通用的 `Spin` 和 `BackUp`。恢复动作是否安全取决于机器人形态。
 
 ## 四道守卫，以及目标被无故取消时查哪一个
 
@@ -170,7 +172,7 @@ Nav2 之后还有一道最终速度守卫，`guard_*` 字段配置它。它解�
 5. 连上 Nav2 的 `speed_limit` 订阅端；
 6. 暴露导航、状态、取消与调速能力。
 
-必需的提供方缺失时返回 `deferred`；配置非法或 Nav2 启动失败返回 `error`，并拆掉所有已拉起的子进程。
+必需的提供方缺失时返回 `deferred`；配置非法或者 Nav2 起不来返回 `error`，同时清理掉所有已经拉起的子进程。
 
 ## 定位常见问题
 

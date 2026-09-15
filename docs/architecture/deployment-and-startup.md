@@ -107,7 +107,7 @@ rbnx logs -d /path/to/deploy/rbnx-boot/logs -t soma --json
 
 不属于内置二进制的 `system:` 项，以及 `service:` 中的包，由 `rbnx` 逐个启动：
 
-1. 校验目标提供方 ID 当前不在 Atlas 中；如果同名实例仍存活则立即失败，不接管旧实例。
+1. 校验目标提供方 ID 当前不在 Atlas 中；如果同名实例仍在注册表中则立即失败，不接管旧实例。
 2. 记录启动前的 Atlas 提供方集合。
 3. 执行 `rbnx start -p <package>`，同时把部署项 `name` 通过 `RBNX_INSTANCE_NAME` 传给软件包。
 4. 等待恰好一个本次启动后新注册的提供方。
