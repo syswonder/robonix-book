@@ -24,7 +24,7 @@ const config: Config = {
     defaultLocale: 'zh-Hans',
     locales: ['zh-Hans'],
   },
-  plugins: [],
+  plugins: ['docusaurus-plugin-image-zoom'],
   markdown: {mermaid: true},
   themes: [
     '@docusaurus/theme-mermaid',
@@ -58,6 +58,12 @@ const config: Config = {
     ],
   ],
   themeConfig: {
+    // 所有正文图片可点击放大；截图里的小字需要放大才看得清。
+    // zIndex 必须高于导航栏（Docusaurus 的 navbar 是 200），否则遮罩盖不住顶栏。
+    imageZoom: {
+      selector: '.markdown img',
+      options: {margin: 24, background: 'rgba(12,14,18,.94)', scrollOffset: 0},
+    },
     announcementBar: {
       id: `source-baseline-${sourceRevision.slice(0, 8)}`,
       content:

@@ -8,7 +8,7 @@ title: 导航服务使用指南
 
 接口清单与载荷定义在[导航接口页](../interface-catalog/service/navigation.md)，本页不重复。
 
-请注意，本页对应 `service-navigation-rbnx` 仓库的 `cb4f2177` commit，可能与最新版本有所差异。
+本页依据 [`service-navigation-rbnx`](https://github.com/syswonder/service-navigation-rbnx) 的 [`2af0841a`](https://github.com/syswonder/service-navigation-rbnx/tree/2af0841a) 编写。该仓库独立于 Robonix 主仓库演进，字段和默认值以它自己的 [`config.spec`](https://github.com/syswonder/service-navigation-rbnx/blob/2af0841a/config.spec) 为准。
 
 ## 服务负责什么
 

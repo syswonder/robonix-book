@@ -347,6 +347,24 @@ Thor 是统一内存架构，显存和内存不分开，所以 `nvidia-smi` 的�
 
 **启动后界面打不开，进程仍在运行。** 生命周期激活（`CMD_ACTIVATE`）有 90 秒上限。x86 上从感知计划打印到检测器就绪实测 12.6 秒，其中 YOLO-World 约 5 秒、CLIP 约 1 秒，余量很大。超时几乎都是被某个外部资源阻塞，而不是模型加载慢：用日志里 `perception plan:` 到 `ConceptGraphsDetector started` 两行的时间差判断。上一次部署没有完全退出、端口仍被占用，是最常见的一种。调大 `ROBONIX_DRIVER_INIT_TIMEOUT_S` 只会把问题推后，不要用它绕过。
 
+**跑着跑着 scene 挂了，日志最后一行是 `exit status: 137`。** 137 是被 SIGKILL。先分清是不是内存：
+
+```bash
+docker inspect <容器名> --format '{{.State.OOMKilled}}'
+```
+
+返回 `true` 才是内存问题，对应下面那处尚未定位的内存异常。返回 `false` 时往前翻日志，通常能看到这条链：
+
+```text
+[scene] latest pose/odometry sample is 21.68s old; spatial self update skipped
+[scene-geometry] Soma footprint unavailable: <_InactiveRpcError ...>
+    status = StatusCode.DEADLINE_EXCEEDED
+```
+
+位姿数据先停，随后 scene 调 Soma 取 footprint 超时，生命周期心跳跟着超时，启动器判定失败并 SIGKILL 它。根因在上游的 ROS 2 数据流，不在 scene 自己——此时 Soma 往往还是 `ACTIVE`，看它的状态会误导。
+
+先确认仿真或机器人还在发位姿。仿真容器跑了很久之后 ROS 2 数据流卡住是复现过的，`sim/stop.sh` 有时停不掉它，需要 `docker rm -f` 强制重建。
+
 **一个对象都没有。** 按顺序看三处：启动日志的 `tier=` 行是不是 `geometric`；相机页有没有图；日志里有没有周期性的检测计数行。`metric` 档缺内参时会一直等待，这是设计行为，日志里会说明。
 
 **对象重复。** 先看重复的两条记录类别是否不同。不同就属于标签抖动，用 `SCENE_CG_MERGE_CLASS_GROUPS` 把这两个类归组；相同就调 `SCENE_CG_SAME_CLASS_MERGE_DIST_M`。两者都不要调过头，合并过激会把两个相邻的真实物体折叠成一个。

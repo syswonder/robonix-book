@@ -8,7 +8,7 @@ title: 建图与定位服务使用指南
 
 接口清单与载荷定义在[空间地图接口页](../interface-catalog/service/map.md)，本页不重复。
 
-本页依据上游 `service-map-rbnx` 提交 `898432ef` 编写。
+本页依据 [`service-map-rbnx`](https://github.com/syswonder/service-map-rbnx) 的 [`898432ef`](https://github.com/syswonder/service-map-rbnx/tree/898432ef) 编写。该仓库独立于 Robonix 主仓库演进，参数模板见 [`config/rtabmap_params.template.yaml`](https://github.com/syswonder/service-map-rbnx/blob/898432ef/config/rtabmap_params.template.yaml)。
 
 ## 服务负责什么
 
@@ -136,7 +136,7 @@ config:
 
 ### 三条踩过的坑
 
-这三条都写在真实部署的注释里，不是推测。
+
 
 **`RGBD/MaxOdomCacheSize: 0`。** 默认值大于 0 时，定位的回环修正要等第二次确认匹配才生效。机器人静止时这次确认永远不会来，于是 map 到 odom 的修正一直挂起，`/map` 显示的是一个局部窗口而不是加载进来的整张图。
 

@@ -3,7 +3,28 @@ import TabItem from '@theme/TabItem';
 
 # 图形客户端
 
-Robonix Client 是运行在 Linux 或 macOS 上的客户端网页。它先连接机器人上的 Atlas，再发现 Liaison、Executor 和音频能力；用户不需要分别填写这些组件的地址。
+[Robonix Client](https://github.com/syswonder/robonix-client) 跑在**操作者自己的设备上**，不装在机器人上。机器人只负责跑 Robonix，人在自己的电脑上开一个网页去指挥它。
+
+这是它和 `rbnx chat` 的根本区别：`rbnx chat` 是机器人本机的终端界面，用机器人的音频设备；Client 用的是你这台设备的麦克风和扬声器，人不必守在机器人跟前。
+
+目前支持 Linux、macOS 和 Windows，后续会扩展到手机和平板。
+
+它只需要机器人 Atlas 的地址，Liaison、Executor 和音频能力都由它自己从 Atlas 发现，不用逐个填。
+
+本页依据 [`739f8499`](https://github.com/syswonder/robonix-client/tree/739f8499) 编写。
+
+![Chat 页。左侧是四个标签，中间是对话，右侧自上而下是 Current Goal、RTDL Forest、Execution history、Node detail 和 Event Log。](/img/ui/client-chat.webp)
+
+右栏是它与 `rbnx chat` 最大的差别，也是排障时真正用得上的部分：
+
+| 面板 | 内容 |
+|---|---|
+| Current Goal | 当前目标，以及它被解析到哪个提供方、能力约定和操作。`EXECUTOR VERIFIED` 表示 Executor 已校验过这次调用 |
+| RTDL Forest | 正在执行的 RTDL 树 |
+| Active RTDL | 展开当前树的完整结构 |
+| Execution history | 已结束的执行记录，可以回看上一条任务怎么走的 |
+| Node detail | 点选某个节点后显示它的提供方、开始时间、耗时、参数与结果 |
+| Event Log | 本次会话的状态事件，用来判断任务卡在规划、执行还是等待 |
 
 它和 `rbnx chat` 提交任务的路径相同，都经 Liaison 到 Pilot，区别在三点：客户端是网页而非终端；它能可视化 RTDL 树和执行历史；语音可以用<strong>客户端这台电脑</strong>的麦克风和扬声器，而 `rbnx chat` 用的是机器人本机的音频设备。
 
@@ -64,6 +85,13 @@ brew install portaudio
 ```
 
 </TabItem>
+<TabItem value="windows" label="Windows">
+
+`sounddevice` 自带 PortAudio DLL，通常不需要额外安装。
+
+音频服务仍然找不到设备时，装一个自带 PortAudio 的 PyAudio 预编译轮子，[elibroftw/pyaudio_portaudio](https://github.com/elibroftw/pyaudio_portaudio/releases) 提供 Python 3.10–3.14 的 `win_amd64` 版本。
+
+</TabItem>
 </Tabs>
 
 随后安装 Client：
@@ -103,6 +131,8 @@ robonix-client --robot-host 192.168.1.50
 
 ### 音频（Audio）
 
+![Audio 页。上半选择输入与输出的提供方和设备，下半是麦克风与扬声器测试。](/img/ui/client-audio.webp)
+
 Client 启动时会自动启动本机音频服务；如果 **Audio Device Server** 仍显示 offline，再点击 **Start Audio**。点击 **Refresh Route** 后，若语音输入和输出都使用客户端电脑的设备：
 
 1. Input Primitive 选择 `audio_client_bridge`。
@@ -113,7 +143,15 @@ Client 启动时会自动启动本机音频服务；如果 **Audio Device Server
 
 路由生效后，按 **F2** 开始一次语音输入；页面上的 **Voice** 按钮作用相同。免按键语音需要再显式开启 **Hands-free**。
 
+### 健康状态（Vitals）
+
+Vitals 页显示本体与各提供方的健康快照，用来在任务失败时分清是硬件、提供方还是规划的问题。
+
+![Vitals 页。按组件列出健康状态与新鲜度。](/img/ui/client-vitals.webp)
+
 ### 设置（Settings）
+
+![Settings 页。机器人地址、Atlas 端口、用户标识和录音时限，保存后写入 ~/.config/robonix-client/settings.yaml。](/img/ui/client-settings.webp)
 
 Settings 保存机器人地址、Atlas 端口、用户标识、录音时限和可选的 Liaison Endpoint。点击 **Save Settings** 后，设置会写入 `~/.config/robonix-client/settings.yaml`，页面也会在浏览器本地存储中保留当前值。正常部署应留空 **Liaison Endpoint**，让 Client 从 Atlas 发现它。
 
