@@ -1,7 +1,9 @@
 # 命名空间与能力约定
 
 
-Robonix 使用 **能力约定（Contract）<strong> 定义稳定、可复用的调用或数据接口。一条约定包含五项：接口 ID、数据结构、交互方式、版本和类别。</strong>能力（Capability）** 是某个运行实例对一条能力约定的具体实现。它在运行时绑定传输方式（Transport）和访问地址（Endpoint）。
+Robonix 使用<strong>能力约定（Contract）</strong>定义稳定、可复用的调用或数据接口。一条约定包含五项：接口 ID、数据结构、交互方式、版本和类别。
+
+<strong>能力（Capability）</strong>是某个运行实例对一条能力约定的具体实现。它在运行时绑定传输方式（Transport）和访问地址（Endpoint）。
 
 ## 能力约定 ID 是接口名，不是设备 ID
 

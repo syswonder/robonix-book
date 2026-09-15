@@ -281,7 +281,7 @@ system:
 
 1. 在 `/user` 点 **✏ Annotate room**，按钮变成 `✕ Cancel drawing`。
 2. 在地图上依次点击房间的各个角点，至少三个。
-3. <strong>双击</strong>或按 **Enter** 结束，按 **Esc** 取消。
+3. <strong>双击</strong>或按 `Enter` 结束，按 `Esc` 取消。
 4. 在右侧列表里给它命名。
 
 地图重建（`generation` 提升）之后房间不会被删除，而是标为过期并显示成黄色，同时出现提示横幅。逐个确认仍然有效点 **Still valid**，位置变了就重画。房间由人工标注产生，系统只做标记，不会自动删除。

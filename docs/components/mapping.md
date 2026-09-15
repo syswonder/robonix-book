@@ -91,7 +91,7 @@ config:
 
 RTAB-Map 的 ROS 包装层里有两类参数，行为不同，混淆它们会让节点起不来：
 
-- **斜杠命名的 RTAB-Map 参数<strong>，例如 `Grid/CellSize`、`Reg/Strategy`。包装层把它们统一声明为</strong>字符串**。
+- <strong>斜杠命名的 RTAB-Map 参数</strong>，例如 `Grid/CellSize`、`Reg/Strategy`。包装层把它们统一声明为<strong>字符串</strong>。
 - **原生 ROS 参数**，例如 `deskewing`、`publish_null_when_lost`。它们有各自的声明类型，必须保持布尔或数值。
 
 服务已经按这个区分处理：`params_file` 与 `rtabmap_params` 里斜杠命名的键会被转成字符串，其余保持原类型。这条规则的存在是因为曾经全部字符串化，导致一个声明为布尔的原生参数被换成字符串，节点直接拒绝启动。
@@ -170,7 +170,7 @@ service:
       map_id: lab_3f
 ```
 
-`mapping` 模式**总是打开一个全新的空运行时库<strong>。同时写了 `map_id` 也会被忽略：它指向的是一个已保存产物，不是一个正在运行的会话。</strong>没有“启动后继续扩展地图 X”这种配置。**
+`mapping` 模式<strong>总是打开一个全新的空运行时库</strong>。同时写了 `map_id` 也会被忽略：它指向的是一个已保存产物，不是一个正在运行的会话。<strong>没有“启动后继续扩展地图 X”这种配置。</strong>
 
 `localization` 模式必须给 `map_id`，地图不存在就启动失败。这是有意的约束，避免在用户以为正在定位时，服务从开机位姿重新建图。它把已保存的数据库复制一份并在副本上定位，因此**地图坐标系跨重启稳定**，场景服务才能为同一个 ID 恢复语义状态。
 
