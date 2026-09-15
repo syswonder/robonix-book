@@ -1,7 +1,7 @@
 # EAIOS 架构背景
 
 
-Robonix 是具身智能操作系统（Embodied AI Operating System，EAIOS）架构的参考实现。EAIOS 由中国计算机学会泛在操作系统开放社区提出，见 2026 年发布的《具身智能操作系统技术白皮书》。它要解决的问题是：让 AI 模型不必为每一种硬件重写一遍，因此需要在机器人系统层建立一套统一抽象。
+Robonix 是具身智能操作系统（Embodied AI Operating System，EAIOS）架构的参考实现。EAIOS 由中国计算机学会（China Computer Federation，CCF）泛在操作系统开放社区提出，见 2026 年发布的《具身智能操作系统技术白皮书》。其核心目标是在机器人系统层面建立统一的抽象体系，实现 AI 模型与硬件之间的软硬解耦。
 
 白皮书原文：[gitlink.org.cn/zone/uos/source/292](https://gitlink.org.cn/zone/uos/source/292)
 
@@ -26,7 +26,7 @@ EAIOS 采用“原语–服务–技能–任务”四层抽象体系（白皮�
 
 技能（Skill）封装可复用的行为序列，连接高层任务与底层原语。白皮书把技能分为两种。
 
-基本技能是静态的，运行实现固定，以独立执行单元注册到系统。例如预训练的视觉-语言-动作模型（Vision-Language-Action，VLA），或 ROS 2 执行算法。
+基本技能以独立执行单元注册到系统，运行实现固定，白皮书称之为静态技能。例如预训练的视觉-语言-动作模型（Vision-Language-Action，VLA），或 ROS 2 执行算法。
 
 机器人任务描述语言（Robot Task Description Language，RTDL）技能是动态的。它由系统在任务执行过程中生成，描述一段控制流程，运行时由 RTDL 解释器调度与组合。某类流程在多次运行中被验证稳定后，可以固化为基本技能存入技能库。
 
