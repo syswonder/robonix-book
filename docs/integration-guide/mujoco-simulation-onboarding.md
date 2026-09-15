@@ -118,6 +118,54 @@ ROS 2 topic / action / TF
 
 参考实现中的 MuJoCo 物理步进使用 CPU，Native viewer 和 RGB 离屏相机使用硬件 OpenGL。 因此 `--headless` 只关闭 viewer，仍发布 RGB 时仍需要 GPU 上下文；启动脚本默认拒绝 `llvmpipe`、`softpipe` 等软件 renderer。其他项目若不发布 RGB，可以根据自己的传感器实现放宽这项要求。
 
+### Native 后端在原生 Linux 上的容器配置
+
+参考本体包的 `sim/compose.native.yaml` 面向 WSL2 编写，直接在原生 Linux 上启动会失败。它挂载 WSL 专有的设备和目录：
+
+```yaml
+    environment:
+      LD_LIBRARY_PATH: /usr/lib/wsl/lib
+    devices:
+      - /dev/dxg:/dev/dxg
+    volumes:
+      - /mnt/wslg:/mnt/wslg
+      - /usr/lib/wsl:/usr/lib/wsl:ro
+```
+
+`/dev/dxg` 是 WSL2 的 GPU 设备节点，原生 Linux 上不存在，Docker 直接报 `error gathering device information while adding custom device "/dev/dxg": no such file or directory`。
+
+原生 Linux 加装了 `nvidia-container-toolkit` 时，改为走 nvidia runtime：
+
+```yaml
+  bridge:
+    runtime: nvidia
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility,graphics,display
+    devices:
+      - /dev/dri:/dev/dri
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+```
+
+`NVIDIA_DRIVER_CAPABILITIES` 必须包含 `graphics`。只给 `compute,utility` 时容器能看到 GPU，但拿不到 OpenGL，启动脚本的 GPU 检查会报 `GPU check failed: software renderer detected: llvmpipe`，随后自行停止。这条检查即上一段所说的软件 renderer 拒绝策略。
+
+改完之后按原流程启动，日志出现 `native runtime ready` 即为成功：
+
+```bash
+bash sim/start.sh --backend native --viewer --environment scenesmith_house_187
+```
+
+![Native 后端的 MuJoCo viewer。场景是 scenesmith_house_187，机器人为 Ranger Mini v3 底盘加 Piper 机械臂。](/img/ui/mujoco-native.webp)
+
+viewer 的控制面板默认折叠。`Tab` 展开左栏，`Shift+Tab` 展开右栏。左栏的 Simulation 可以暂停、复位和单步，Physics 和 Rendering 分别调物理与显示选项；右栏的 Joint 和 Control 可以直接拖动关节与控制量，接线阶段用它确认某个 actuator 是否对应预期的自由度，比反复改代码快。
+
+![展开控制面板后的 viewer。左栏自上而下是 File、Option、Simulation、Watch、Physics、Rendering、Visualization、Group enable，右栏是 Joint、Control、Equality。](/img/ui/mujoco-ui.webp)
+
+MuJoCo 的渲染是 OpenGL 光栅化，Rendering 面板里的开关是阴影、反射、天空盒、雾和线框这一类，没有光线追踪管线。需要照片级画面时，通常把 MJCF 场景导入离线渲染器出图，物理仍留在 MuJoCo。
+
+Web 后端在无图形界面的主机上也起不来：`sim/start.sh` 会等待浏览器连上 `http://127.0.0.1:5180/`，连接不上就判定启动失败并停止容器。纯 SSH 环境应当用 Native 后端，或自行提供一个能连上该地址的浏览器。
+
 选择运行时可以遵循以下原则：
 
 - 厂家已经提供 Python/C++ MuJoCo 控制器、MPC、强化学习策略或原生插件时，优先 Native；
