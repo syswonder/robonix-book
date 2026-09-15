@@ -165,7 +165,7 @@ system:
         - kind: depth
           topic: /camera/depth/image_rect_raw
           type: sensor_msgs/msg/Image
-      camera_provider_id: com.robonix.example.tiago_camera
+      camera_provider_id: tiago_camera
       camera_frame: camera_color_optical_frame
       base_frame: base_link
       pose_max_age_s: 2.0
@@ -175,7 +175,7 @@ system:
 | 字段 | 含义 |
 |---|---|
 | `observations` | 逻辑输入种类到 ROS 2 话题与消息类型的映射。`kind` 取 `rgb`、`depth`、`lidar2d`、`pose`、`odom` 等 |
-| `camera_provider_id` | 彩色图、深度图、内参、外参必须来自同一台物理相机，这个字段把它们钉在同一个提供方上 |
+| `camera_provider_id` | 相机提供方的实例名，即部署清单里该原语的 `name`（例如 `tiago_camera`），不是软件包标识 `com.robonix.*`。彩色图、深度图、内参、外参必须来自同一台物理相机，这个字段把它们钉在同一个提供方上 |
 | `camera_frame` | 相机光学坐标系名。不配置时按 TF 树解析，解析不出来就停止输出而不是猜 |
 | `base_frame` | 机身坐标系名，与本体模型（Soma）声明的值核对 |
 | `pose_max_age_s` | 用于相机到世界投影的位姿最大接收年龄，超龄样本会让检测被扣住不发布 |
@@ -248,7 +248,7 @@ system:
 
 ![标注与地图页。填入 Map ID 后 Save current 保存；Annotate room 沿房间边界打点画多边形。地图还没保存时，顶部状态显示 unsaved live。](/img/ui/scene-user.webp)
 
-新部署一个对象都没有时，先开相机页。它把“相机没接上”和“检测器什么都没找到”分开，这两者在日志里长得很像。
+新部署一个对象都没有时，先开相机页：页面上有图就说明相机链路通，问题在检测；页面空白或标题里的时间戳不再前进，问题在相机或 TF。
 
 ### 保存一张地图
 
