@@ -1,16 +1,10 @@
-# MuJoCo 仿真本体接入 Robonix 指南
+# 接入 MuJoCo 仿真本体
 
-这份指南面向已经取得厂家模型或驱动资料、准备把 MuJoCo 仿真机器人接入 Robonix 的
-开发者。接入工作以复用现有模型、控制器和 ROS 接口为主，再补充目标本体包所需的加载、
-桥接和 Robonix 能力约定（Capability）配置。本文不讨论从 CAD 开始重建机器人动力学模型。
+这份指南面向已经取得厂家模型或驱动资料、准备把 MuJoCo 仿真机器人接入 Robonix 的开发者。接入工作以复用现有模型、控制器和 ROS 接口为主，再补充目标本体包所需的加载、 桥接和 Robonix 能力约定（Capability）配置。本文不讨论从 CAD 开始重建机器人动力学模型。
 
-文中的文件结构参考 Robonix 社区发布的
-[`Ranger Mini V3 + Piper`](https://packages.robonix.ai/robots/robonix.robot.agilex.ranger_with_piper_mujoco/)
-本体包。所有相对路径均以该本体包的仓库根目录为基准。
+文中的文件结构参考 Robonix 社区发布的 [`Ranger Mini V3 + Piper`](https://packages.robonix.ai/robots/robonix.robot.agilex.ranger_with_piper_mujoco/) 本体包。所有相对路径均以该本体包的仓库根目录为基准。
 
-完成本文后，机器人应当能够由 `start.sh` 独立启动 Web 或 Native MuJoCo 仿真，由
-`rbnx boot` 加载同一套本体包，并通过 Robonix 原语（Primitive）、服务（Service）和
-技能（Skill）完成移动、感知或操作任务。
+完成本文后，机器人应当能够由 `start.sh` 独立启动 Web 或 Native MuJoCo 仿真，由 `rbnx boot` 加载同一套本体包，并通过 Robonix 原语（Primitive）、服务（Service）和技能（Skill）完成移动、感知或操作任务。
 
 开始前应准备好下列资料：
 
@@ -95,9 +89,7 @@ ROS 2 topic / action / TF
 
 ## 先确定 MuJoCo 运行时
 
-本文所说的 Web MuJoCo，是指通过 WebAssembly（WASM）在浏览器中运行 MuJoCo；Native
-MuJoCo 是指通过官方 Python/C++ 库在本机进程或容器中运行 MuJoCo。两者使用相同的 MJCF
-模型语义和物理引擎，但加载资产、执行控制器、渲染画面和管理进程的方式不同。
+本文所说的 Web MuJoCo，是指通过 WebAssembly（WASM）在浏览器中运行 MuJoCo；Native MuJoCo 是指通过官方 Python/C++ 库在本机进程或容器中运行 MuJoCo。两者使用相同的 MJCF 模型语义和物理引擎，但加载资产、执行控制器、渲染画面和管理进程的方式不同。
 
 | 对比项 | Web MuJoCo | Native MuJoCo |
 | --- | --- | --- |
@@ -120,20 +112,59 @@ MuJoCo 是指通过官方 Python/C++ 库在本机进程或容器中运行 MuJoCo
 - Robonix 原语、服务、技能、`robonix_manifest.yaml` 和 `soma.yaml`；
 - 同一组端到端验收任务。
 
-不必强行共用控制器源码和渲染代码。Web 控制器围绕 WASM 数组和 JavaScript 生命周期
-编写；Native 控制器直接操作原生 `MjModel`、`MjData` 和厂家 Python/C++ API。更合适的
-共用边界是 Bridge 消息协议，而不是控制器内部类。
+不必强行共用控制器源码和渲染代码。Web 控制器围绕 WASM 数组和 JavaScript 生命周期编写；Native 控制器直接操作原生 `MjModel`、`MjData` 和厂家 Python/C++ API。更合适的共用边界是 Bridge 消息协议，而不是控制器内部类。
 
-参考本体包目前允许通过 `sim/start.sh --backend web|native` 选择后端。Web 后端支持
-Mesh 和 SPZ；Native 后端只支持 Mesh，选择 SPZ 会在加载模型前报错。这个限制来自当前
-SPZ 渲染链路只接入了浏览器，并不是 MuJoCo 物理引擎本身的限制。若要让 Native 后端显示
-Gaussian Splatting，需要额外集成原生 GS 渲染器，并同步 MuJoCo 相机、时间和坐标变换；
-碰撞、LiDAR 和深度仍应来自 MJCF 几何。
+参考本体包目前允许通过 `sim/start.sh --backend web|native` 选择后端。Web 后端支持 Mesh 和 SPZ；Native 后端只支持 Mesh，选择 SPZ 会在加载模型前报错。这个限制来自当前 SPZ 渲染链路只接入了浏览器，并不是 MuJoCo 物理引擎本身的限制。若要让 Native 后端显示 Gaussian Splatting，需要额外集成原生 GS 渲染器，并同步 MuJoCo 相机、时间和坐标变换； 碰撞、LiDAR 和深度仍应来自 MJCF 几何。
 
-参考实现中的 MuJoCo 物理步进使用 CPU，Native viewer 和 RGB 离屏相机使用硬件 OpenGL。
-因此 `--headless` 只关闭 viewer，仍发布 RGB 时仍需要 GPU 上下文；启动脚本默认拒绝
-`llvmpipe`、`softpipe` 等软件 renderer。其他项目若不发布 RGB，可以根据自己的传感器
-实现放宽这项要求。
+参考实现中的 MuJoCo 物理步进使用 CPU，Native viewer 和 RGB 离屏相机使用硬件 OpenGL。 因此 `--headless` 只关闭 viewer，仍发布 RGB 时仍需要 GPU 上下文；启动脚本默认拒绝 `llvmpipe`、`softpipe` 等软件 renderer。其他项目若不发布 RGB，可以根据自己的传感器实现放宽这项要求。
+
+### Native 后端在原生 Linux 上的容器配置
+
+参考本体包的 `sim/compose.native.yaml` 面向 WSL2 编写，直接在原生 Linux 上启动会失败。它挂载 WSL 专有的设备和目录：
+
+```yaml
+    environment:
+      LD_LIBRARY_PATH: /usr/lib/wsl/lib
+    devices:
+      - /dev/dxg:/dev/dxg
+    volumes:
+      - /mnt/wslg:/mnt/wslg
+      - /usr/lib/wsl:/usr/lib/wsl:ro
+```
+
+`/dev/dxg` 是 WSL2 的 GPU 设备节点，原生 Linux 上不存在，Docker 直接报 `error gathering device information while adding custom device "/dev/dxg": no such file or directory`。
+
+原生 Linux 加装了 `nvidia-container-toolkit` 时，改为走 nvidia runtime：
+
+```yaml
+  bridge:
+    runtime: nvidia
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility,graphics,display
+    devices:
+      - /dev/dri:/dev/dri
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+```
+
+`NVIDIA_DRIVER_CAPABILITIES` 必须包含 `graphics`。只给 `compute,utility` 时容器能看到 GPU，但拿不到 OpenGL，启动脚本的 GPU 检查会报 `GPU check failed: software renderer detected: llvmpipe`，随后自行停止。这条检查即上一段所说的软件 renderer 拒绝策略。
+
+改完之后按原流程启动，日志出现 `native runtime ready` 即为成功：
+
+```bash
+bash sim/start.sh --backend native --viewer --environment scenesmith_house_187
+```
+
+![Native 后端的 MuJoCo viewer。场景是 scenesmith_house_187，机器人为 Ranger Mini v3 底盘加 Piper 机械臂。](/img/ui/mujoco-native.webp)
+
+viewer 的控制面板默认折叠。`Tab` 展开左栏，`Shift+Tab` 展开右栏。左栏的 Simulation 可以暂停、复位和单步，Physics 和 Rendering 分别调物理与显示选项；右栏的 Joint 和 Control 可以直接拖动关节与控制量，接线阶段用它确认某个 actuator 是否对应预期的自由度，比反复改代码快。
+
+![展开控制面板后的 viewer。左栏自上而下是 File、Option、Simulation、Watch、Physics、Rendering、Visualization、Group enable，右栏是 Joint、Control、Equality。](/img/ui/mujoco-ui.webp)
+
+MuJoCo 的渲染是 OpenGL 光栅化，Rendering 面板里的开关是阴影、反射、天空盒、雾和线框这一类，没有光线追踪管线。需要照片级画面时，通常把 MJCF 场景导入离线渲染器出图，物理仍留在 MuJoCo。
+
+Web 后端在无图形界面的主机上也起不来：`sim/start.sh` 会等待浏览器连上 `http://127.0.0.1:5180/`，连接不上就判定启动失败并停止容器。纯 SSH 环境应当用 Native 后端，或自行提供一个能连上该地址的浏览器。
 
 选择运行时可以遵循以下原则：
 
@@ -149,9 +180,7 @@ Gaussian Splatting，需要额外集成原生 GS 渲染器，并同步 MuJoCo �
 1. 厂家提供可独立运行的 MuJoCo XML/MJCF、模型资产和运动控制实现；
 2. 厂家提供 URDF/Xacro、mesh、完整 ROS 2 驱动和控制接口说明。
 
-其他仿真平台工程、SDK、强化学习 checkpoint、CAD/mesh 或通信协议通常还缺少 MuJoCo
-动力学模型、控制语义或 ROS 2 接口。遇到这类资料时，先向厂家补充索取；仍有缺项再
-根据具体机器人单独处理。
+其他仿真平台工程、SDK、强化学习 checkpoint、CAD/mesh 或通信协议通常还缺少 MuJoCo 动力学模型、控制语义或 ROS 2 接口。遇到这类资料时，先向厂家补充索取；仍有缺项再根据具体机器人单独处理。
 
 ## 根据厂家资产选择接入路线
 
@@ -175,8 +204,7 @@ Gaussian Splatting，需要额外集成原生 GS 渲染器，并同步 MuJoCo �
 
 ## 路线 A：厂家已经提供 MuJoCo XML 或完整仿真
 
-厂家已有可运行的 MuJoCo 工程时，保留其中的模型和运动实现，在外层补充本框架的注册
-和协议适配即可。
+厂家已有可运行的 MuJoCo 工程时，保留其中的模型和运动实现，在外层补充本框架的注册和协议适配即可。
 
 ### 保留厂家原始文件
 
@@ -200,8 +228,7 @@ sim/native/
 └── runtime.py                    # 选择并运行对应 Native 控制器
 ```
 
-`robot_wrapper.xml` 用于引用厂家模型，`vendor/robot.xml` 保持原样，方便后续升级和
-对比。
+`robot_wrapper.xml` 用于引用厂家模型，`vendor/robot.xml` 保持原样，方便后续升级和对比。
 
 可以使用 `<include>`、MuJoCo `<model>/<attach>` 或小范围自动补丁：
 
@@ -214,9 +241,7 @@ sim/native/
 
 #### 厂家已经提供 Native MuJoCo 控制器
 
-厂家工程本身使用 Python/C++ MuJoCo 时，优先保留原生实现。Native runtime 持有
-`MjModel` 和 `MjData`，在每个仿真步调用厂家控制器，再把状态和传感器数据转成共用的
-Bridge 消息：
+厂家工程本身使用 Python/C++ MuJoCo 时，优先保留原生实现。Native runtime 持有 `MjModel` 和 `MjData`，在每个仿真步调用厂家控制器，再把状态和传感器数据转成共用的 Bridge 消息：
 
 ```text
 Native MuJoCo runtime
@@ -237,8 +262,7 @@ Native MuJoCo runtime
 
 #### 控制器可以在浏览器 JavaScript 中实现
 
-适合简单轮式运动学、位置控制机械臂或纯数学控制器。把厂家算法翻译或封装为 JS 后，
-需要做以下对比：
+适合简单轮式运动学、位置控制机械臂或纯数学控制器。把厂家算法翻译或封装为 JS 后， 需要做以下对比：
 
 - 保留公式和参数来源；
 - 用同样输入输出做离线对比测试；
@@ -246,14 +270,11 @@ Native MuJoCo runtime
 - 明确浮点精度差异；
 - 对照厂家 demo 验证同一命令下的轨迹。
 
-Web runtime 自己持有 `MjData`，因此控制器可以直接读写 WASM 数组。厂家控制器使用了
-原生 MuJoCo 回调、动态库或 Python API 时，不应机械翻译；此时改用 Native 后端，或者
-把控制器放到外部进程。
+Web runtime 自己持有 `MjData`，因此控制器可以直接读写 WASM 数组。厂家控制器使用了原生 MuJoCo 回调、动态库或 Python API 时，不应机械翻译；此时改用 Native 后端，或者把控制器放到外部进程。
 
 #### 控制器作为独立进程运行
 
-如果必须使用 Web viewer，同时厂家控制器又依赖 Python/C++、MPC、RL policy 或专用库，
-可以把控制器作为独立进程：
+如果必须使用 Web viewer，同时厂家控制器又依赖 Python/C++、MPC、RL policy 或专用库， 可以把控制器作为独立进程：
 
 ```text
 浏览器 MuJoCo
@@ -278,11 +299,9 @@ WebSocket Bridge
 - 丢帧和断连处理；
 - 模型版本和归一化参数校验。
 
-依赖特定 CUDA/PyTorch 的策略放在独立环境中运行，避免改变 Robonix 或 ROS Bridge 的
-基础环境。
+依赖特定 CUDA/PyTorch 的策略放在独立环境中运行，避免改变 Robonix 或 ROS Bridge 的基础环境。
 
-Native 后端也可以把策略拆成独立进程，但厂家控制器能够在 Native runtime 的依赖环境中
-直接运行时，进程内调用通常更简单，时延和状态同步也更容易控制。
+Native 后端也可以把策略拆成独立进程，但厂家控制器能够在 Native runtime 的依赖环境中直接运行时，进程内调用通常更简单，时延和状态同步也更容易控制。
 
 #### 厂家已经提供 ROS 2 仿真驱动
 
@@ -296,8 +315,7 @@ Native 后端也可以把策略拆成独立进程，但厂家控制器能够在 
 
 ### 包装成框架机器人目录
 
-双后端项目可以让 `robot.json` 同时保存模型入口、运行资产和传感器配置。Web loader 用它
-构建 WASM 场景；Native scene builder 读取同一份配置，在临时目录中组装 XML 和资产：
+双后端项目可以让 `robot.json` 同时保存模型入口、运行资产和传感器配置。Web loader 用它构建 WASM 场景；Native scene builder 读取同一份配置，在临时目录中组装 XML 和资产：
 
 ```json
 {
@@ -320,10 +338,7 @@ Native 后端也可以把策略拆成独立进程，但厂家控制器能够在 
 }
 ```
 
-`index.json` 是运行资产清单。Web 后端把其中的 XML、mesh 和纹理复制到 MuJoCo MEMFS；
-参考本体包的 Native scene builder 则把同一批文件复制到临时场景目录，再调用
-`MjModel.from_xml_path`。`controller.js` 通过 `robot.json.controller.module` 单独加载，
-不要求列入该索引；Native 控制器由 Python runtime 按机器人 ID 选择，也不属于模型资产。
+`index.json` 是运行资产清单。Web 后端把其中的 XML、mesh 和纹理复制到 MuJoCo MEMFS； 参考本体包的 Native scene builder 则把同一批文件复制到临时场景目录，再调用 `MjModel.from_xml_path`。`controller.js` 通过 `robot.json.controller.module` 单独加载， 不要求列入该索引；Native 控制器由 Python runtime 按机器人 ID 选择，也不属于模型资产。
 
 然后把机器人 ID 加入：
 
@@ -333,8 +348,7 @@ assets/robots/index.json
 
 ### 编写薄控制适配器
 
-适配器的目标不是替代厂家控制器，而是完成协议转换。Web 后端可以实现 JavaScript
-适配器：
+适配器的目标不是替代厂家控制器，而是完成协议转换。Web 后端可以实现 JavaScript 适配器：
 
 ```javascript
 export class MyRobotAdapter extends BaseController {
@@ -380,9 +394,7 @@ class MyNativeController:
         """恢复确定的初始状态，并清理控制器内部状态。"""
 ```
 
-如果同时支持两个后端，应为同一组命令建立对照测试，确认速度方向、单位、关节顺序、
-限幅、急停、初始姿态和抓取结果一致。两套控制器不要求逐步产生完全相同的浮点轨迹，
-但必须满足相同的安全约束和任务验收标准。
+如果同时支持两个后端，应为同一组命令建立对照测试，确认速度方向、单位、关节顺序、 限幅、急停、初始姿态和抓取结果一致。两套控制器不要求逐步产生完全相同的浮点轨迹， 但必须满足相同的安全约束和任务验收标准。
 
 目标本体包的适配器还需要保留以下运行保护：
 
@@ -399,8 +411,7 @@ class MyNativeController:
 
 ## 路线 B：厂家提供 URDF/Xacro 和 ROS 2 驱动
 
-URDF 是很有价值的起点，但它通常只完整描述 ROS 运动学、视觉和碰撞树，不一定包含
-足够的 MuJoCo 动力学与控制信息。
+URDF 是很有价值的起点，但它通常只完整描述 ROS 运动学、视觉和碰撞树，不一定包含足够的 MuJoCo 动力学与控制信息。
 
 ### URDF 中可以直接复用的内容
 
@@ -427,10 +438,7 @@ URDF 是很有价值的起点，但它通常只完整描述 ROS 运动学、视�
 9. 为闭环机构、mimic、传动和夹爪单独验证；
 10. 用厂家 ROS 接口作为 Bridge 和 primitive 的目标语义。
 
-转换得到的 MJCF 可以同时供 Web 和 Native 后端使用。需要分别验证浏览器 WASM 使用的
-MuJoCo 版本与 Native Python/C++ 使用的版本，尤其是 `<compiler>`、插件、mesh 格式、
-执行器默认值和接触参数。厂家 ROS 2 驱动位于上层接口，不应因为选择 Web 或 Native
-运行时而改变 topic、frame 和 action 语义。
+转换得到的 MJCF 可以同时供 Web 和 Native 后端使用。需要分别验证浏览器 WASM 使用的 MuJoCo 版本与 Native Python/C++ 使用的版本，尤其是 `<compiler>`、插件、mesh 格式、 执行器默认值和接触参数。厂家 ROS 2 驱动位于上层接口，不应因为选择 Web 或 Native 运行时而改变 topic、frame 和 action 语义。
 
 ### 保持 ROS 接口一致
 
@@ -456,19 +464,14 @@ MuJoCo 版本与 Native Python/C++ 使用的版本，尤其是 `<compiler>`、�
 
 ## 资料不完整时的处理
 
-如果厂家只提供 Gazebo、Isaac Sim、Webots、PyBullet、SDK、强化学习 checkpoint、CAD、
-mesh 或通信协议，暂时无法进入目标本体包的注册步骤。这些资料缺少的部分因机器人而异，无法
-用同一套转换规则补齐。
+如果厂家只提供 Gazebo、Isaac Sim、Webots、PyBullet、SDK、强化学习 checkpoint、CAD、 mesh 或通信协议，暂时无法进入目标本体包的注册步骤。这些资料缺少的部分因机器人而异，无法用同一套转换规则补齐。
 
 可以先向厂家索取以下任一组合：
 
 - 可运行的 MuJoCo 模型、依赖资产、控制器、启动示例、版本和许可证；
 - URDF/Xacro、mesh、质量惯量、碰撞、ROS 2 驱动、控制接口、TF 和启动示例。
 
-厂家无法补充时，可以把厂家仓库、版本、README、模型文件、控制 demo、ROS graph、
-正常运行日志和许可证交给熟悉该本体的开发者分析，也可以借助大模型梳理文件和接口。
-提问时先让其列出已有资料和缺项，再讨论转换方案；质量、惯量、关节轴、控制增益、安装
-位置和策略观测顺序仍以厂家资料为准。缺少这些关键参数时，暂时停止集成更稳妥。
+厂家无法补充时，可以把厂家仓库、版本、README、模型文件、控制 demo、ROS graph、 正常运行日志和许可证交给熟悉该本体的开发者分析，也可以借助大模型梳理文件和接口。 提问时先让其列出已有资料和缺项，再讨论转换方案；质量、惯量、关节轴、控制增益、安装位置和策略观测顺序仍以厂家资料为准。缺少这些关键参数时，暂时停止集成更稳妥。
 
 ---
 
@@ -521,8 +524,7 @@ assets/robots/<robot_id>/
 - checkpoint、日志和源 CAD 不属于运行资产；
 - `controller.js` 由 ES module 路径加载，不要求列入该索引。
 
-双后端本体包可以让 Web loader 和 Native scene builder 共用该清单。前者复制到 WASM
-虚拟文件系统，后者复制到临时文件系统；这样能够避免维护两份容易漂移的资产列表。
+双后端本体包可以让 Web loader 和 Native scene builder 共用该清单。前者复制到 WASM 虚拟文件系统，后者复制到临时文件系统；这样能够避免维护两份容易漂移的资产列表。
 
 ### `robot.json`
 
@@ -548,10 +550,7 @@ assets/robots/<robot_id>/
 }
 ```
 
-`controlledActuators` 填写本适配器实际拥有的 actuator，防止其他控制逻辑同时写入。
-其中 `controller` 是 Web loader 使用的字段。Native runtime 还需要维护机器人 ID 到
-Python/C++ 控制器类的映射；如果项目只支持 Native，可以采用更简单的原生注册表，但
-模型入口、资产清单和传感器配置仍应只有一个权威来源。
+`controlledActuators` 填写本适配器实际拥有的 actuator，防止其他控制逻辑同时写入。 其中 `controller` 是 Web loader 使用的字段。Native runtime 还需要维护机器人 ID 到 Python/C++ 控制器类的映射；如果项目只支持 Native，可以采用更简单的原生注册表，但模型入口、资产清单和传感器配置仍应只有一个权威来源。
 
 ### 根注册表
 
@@ -600,8 +599,7 @@ getControlKeys()
 getDescription()
 ```
 
-机械臂和抓取方法按本体能力实现。其他类型的机器人可以扩展 Bridge 协议，不需要填充
-无意义的机械臂字段。
+机械臂和抓取方法按本体能力实现。其他类型的机器人可以扩展 Bridge 协议，不需要填充无意义的机械臂字段。
 
 ### Native 控制适配器需要暴露什么
 
@@ -615,21 +613,13 @@ reset()
 pick_status                         # 有抓取状态机时
 ```
 
-`command` 接收 Bridge 下发的命令，`step` 在每次 `mj_step` 前更新执行器，`state` 输出
-底盘、机械臂和物体状态。Native runtime 还负责仿真时钟、消息发布频率、viewer 同步和
-进程退出。若厂家控制器使用不同的方法名，在这一层做薄包装即可，不要为了与 Web 类接口
-相同而改写厂家代码。
+`command` 接收 Bridge 下发的命令，`step` 在每次 `mj_step` 前更新执行器，`state` 输出底盘、机械臂和物体状态。Native runtime 还负责仿真时钟、消息发布频率、viewer 同步和进程退出。若厂家控制器使用不同的方法名，在这一层做薄包装即可，不要为了与 Web 类接口相同而改写厂家代码。
 
 ### 两个后端共用的消息边界
 
-参考实现中，两个 runtime 都连接同一个 WebSocket Bridge。常用的下行消息包括
-`cmd_vel`、`arm_joint_command`、`arm_pose_command`、`pick_object`、
-`emergency_stop` 和 `reset`；上行消息包括 `hello`、`state`、`scan`、`pointcloud`、
-`camera`、`pick_status` 和 `command_ack`。
+参考实现中，两个 runtime 都连接同一个 WebSocket Bridge。常用的下行消息包括 `cmd_vel`、`arm_joint_command`、`arm_pose_command`、`pick_object`、 `emergency_stop` 和 `reset`；上行消息包括 `hello`、`state`、`scan`、`pointcloud`、 `camera`、`pick_status` 和 `command_ack`。
 
-`hello` 至少应携带 backend、environment、robot 和 visual mode，便于健康检查确认真正
-连入的是预期运行时。新增机器人类型时可以扩展消息，但 Web 和 Native 必须同时升级协议
-版本、Bridge 解析和验收测试。
+`hello` 至少应携带 backend、environment、robot 和 visual mode，便于健康检查确认真正连入的是预期运行时。新增机器人类型时可以扩展消息，但 Web 和 Native 必须同时升级协议版本、Bridge 解析和验收测试。
 
 ### 厂家命令到统一命令的映射
 
@@ -668,8 +658,7 @@ pick_status                         # 有抓取状态机时
 }
 ```
 
-四足、人形、双臂或无人机需要先扩展 WebSocket protocol，再增加对应的 Bridge
-publisher。
+四足、人形、双臂或无人机需要先扩展 WebSocket protocol，再增加对应的 Bridge publisher。
 
 ---
 
@@ -687,13 +676,11 @@ publisher。
 - 图像尺寸；
 - 扫描频率。
 
-如果厂家模型没有传感器，可根据真实安装图、CAD 或标定文件增加包装 body/site。仅有
-照片时无法可靠确定安装位姿；临时估计值需要在文档中标明，并在取得标定结果后替换。
+如果厂家模型没有传感器，可根据真实安装图、CAD 或标定文件增加包装 body/site。仅有照片时无法可靠确定安装位姿；临时估计值需要在文档中标明，并在取得标定结果后替换。
 
 ### 参考框架支持的通用传感器
 
-Web 后端的 `src/utils/RobotSensorSuite.js` 和 Native 后端的
-`sim/native/sensors.py` 都可以根据 `robot.json` 生成：
+Web 后端的 `src/utils/RobotSensorSuite.js` 和 Native 后端的 `sim/native/sensors.py` 都可以根据 `robot.json` 生成：
 
 - LiDAR 3D 点；
 - 2D LaserScan；
@@ -719,14 +706,11 @@ Web 后端的 `src/utils/RobotSensorSuite.js` 和 Native 后端的
 | IMU | 读取 MuJoCo sensor data | 读取原生 `sensordata` |
 | RGB | Three.js/WebGL 或浏览器渲染链路 | `mujoco.Renderer`/OpenGL |
 
-RGB 图像不要求逐像素相同，因为渲染器、材质和光照实现可能不同；相机内外参、画面方向、
-可见范围和时间戳必须一致。LiDAR 与深度应命中同一碰撞分组，否则 Mapping、Navigation
-在两个后端会表现不同。
+RGB 图像不要求逐像素相同，因为渲染器、材质和光照实现可能不同；相机内外参、画面方向、 可见范围和时间戳必须一致。LiDAR 与深度应命中同一碰撞分组，否则 Mapping、Navigation 在两个后端会表现不同。
 
 ### 厂家已有传感器 ROS 驱动时
 
-如果厂家仿真已经发布相机或 LiDAR ROS topic，可以让 primitive 直接消费厂家 topic，
-避免再由 Web 或 Native runtime 重复模拟。需要确认：
+如果厂家仿真已经发布相机或 LiDAR ROS topic，可以让 primitive 直接消费厂家 topic， 避免再由 Web 或 Native runtime 重复模拟。需要确认：
 
 - topic 中数据确实来自当前 MuJoCo 场景；
 - 时间戳使用同一 `/clock`；
@@ -736,9 +720,7 @@ RGB 图像不要求逐像素相同，因为渲染器、材质和光照实现可�
 
 ### 碰撞过滤
 
-本体 LiDAR 和深度相机默认排除底盘、机械臂和传感器支架，否则地图会出现跟随机器人
-移动的障碍。当前框架用 geom group mask 排除机器人 group 4，同时保留环境 group 3
-和任务物 group 5。
+本体 LiDAR 和深度相机默认排除底盘、机械臂和传感器支架，否则地图会出现跟随机器人移动的障碍。当前框架用 geom group mask 排除机器人 group 4，同时保留环境 group 3 和任务物 group 5。
 
 厂家碰撞分组不同，需要修改 mask 或加载时重分组，并验证不会破坏接触。
 
@@ -746,10 +728,7 @@ RGB 图像不要求逐像素相同，因为渲染器、材质和光照实现可�
 
 ## ROS 2 Bridge 如何适配厂家接口
 
-`sim/bridge/bridge_node.py` 是 MuJoCo runtime 与 ROS 2 的边界。Web 浏览器和 Native
-进程都作为 runtime 连接它；Bridge 根据 `hello.backend` 记录当前后端，但向 ROS 2 发布
-相同的 topic、TF 和时钟。它不是完全通用的任意机器人 Bridge，当前 topic 和部分 frame
-面向 Ranger/Piper，接入新本体时需要明确修改。
+`sim/bridge/bridge_node.py` 是 MuJoCo runtime 与 ROS 2 的边界。Web 浏览器和 Native 进程都作为 runtime 连接它；Bridge 根据 `hello.backend` 记录当前后端，但向 ROS 2 发布相同的 topic、TF 和时钟。它不是完全通用的任意机器人 Bridge，当前 topic 和部分 frame 面向 Ranger/Piper，接入新本体时需要明确修改。
 
 ### 建立 ROS 接口清单
 
@@ -807,9 +786,7 @@ map
 
 ### 仿真时钟和 QoS
 
-所有仿真节点统一使用 `/clock` 和 `use_sim_time: true`。传感器通常使用 best-effort；
-静态变换、相机内参和地图常需要 reliable/transient-local。topic 存在但没有数据时，先
-检查 QoS、时间戳和 frame，而不是立刻修改算法。
+所有仿真节点统一使用 `/clock` 和 `use_sim_time: true`。传感器通常使用 best-effort； 静态变换、相机内参和地图常需要 reliable/transient-local。topic 存在但没有数据时，先检查 QoS、时间戳和 frame，而不是立刻修改算法。
 
 ---
 
@@ -827,8 +804,7 @@ map
 - service 依赖；
 - capability 描述和限制。
 
-仿真包和真实包可以对上层暴露相同 capability，把差异留在 provider 的底层驱动和
-启动方式中。
+仿真包和真实包可以对上层暴露相同 capability，把差异留在 provider 的底层驱动和启动方式中。
 
 ### 原语的合理粒度
 
@@ -879,9 +855,7 @@ capabilities:
 
 ### 初始化哨兵
 
-仿真 provider 在 `on_init` 阶段等待第一帧真实数据，例如 `/odom`、`/scan` 或
-JointState。Web/Native runtime 或厂家控制器没有运行时，provider 返回初始化失败，
-而不是显示 ACTIVE。
+仿真 provider 在 `on_init` 阶段等待第一帧真实数据，例如 `/odom`、`/scan` 或 JointState。Web/Native runtime 或厂家控制器没有运行时，provider 返回初始化失败， 而不是显示 ACTIVE。
 
 ### `CAPABILITY.md`
 
@@ -963,11 +937,9 @@ service:
         scan: my_lidar
 ```
 
-发布版本固定已经测试的 service/skill 版本或 commit，避免远程 `main` 变化后影响
-可复现性。
+发布版本固定已经测试的 service/skill 版本或 commit，避免远程 `main` 变化后影响可复现性。
 
-如果两个后端发布相同 ROS 接口，保持一份 `robonix_manifest.yaml` 即可。`SIM_BACKEND`
-属于仿真启动器配置，不应通过复制整套 primitive、service 和 skill 清单来实现后端切换。
+如果两个后端发布相同 ROS 接口，保持一份 `robonix_manifest.yaml` 即可。`SIM_BACKEND` 属于仿真启动器配置，不应通过复制整套 primitive、service 和 skill 清单来实现后端切换。
 
 ---
 
@@ -975,9 +947,7 @@ service:
 
 ### 沿用厂家 URDF
 
-如果厂家已有真实本体 URDF，可复制固定版本，或者在构建时从指定版本获取；项目只增加
-仿真特有的 frame。MJCF 与 ROS 命名不同时，在 Bridge 中显式映射，避免改动真实接口
-名称。
+如果厂家已有真实本体 URDF，可复制固定版本，或者在构建时从指定版本获取；项目只增加仿真特有的 frame。MJCF 与 ROS 命名不同时，在 Bridge 中显式映射，避免改动真实接口名称。
 
 MJCF 与 URDF 需要对齐以下内容：
 
@@ -1057,14 +1027,11 @@ Navigation 使用以下数据和接口：
 
 ### Scene
 
-Scene 需要一个明确的主相机和一致的 RGB-D/TF。多个相机同时声明全局 RGB capability
-时，Scene 可能选错。腕部相机用于抓取 skill，前部相机作为移动机器人的 Scene 主视觉。
+Scene 需要一个明确的主相机和一致的 RGB-D/TF。多个相机同时声明全局 RGB capability 时，Scene 可能选错。腕部相机用于抓取 skill，前部相机作为移动机器人的 Scene 主视觉。
 
 ### Explore
 
-Explore 依赖 Mapping 和 Navigation。其异步任务行为与具体机器人无关，实际执行仍由
-Nav2 和底盘完成。狭窄环境、大 footprint 或不能原地旋转的底盘需要重新
-调整探索和恢复策略。
+Explore 依赖 Mapping 和 Navigation。其异步任务行为与具体机器人无关，实际执行仍由 Nav2 和底盘完成。狭窄环境、大 footprint 或不能原地旋转的底盘需要重新调整探索和恢复策略。
 
 ---
 
@@ -1097,8 +1064,7 @@ Nav2 和底盘完成。狭窄环境、大 footprint 或不能原地旋转的底�
 9. 放置；
 10. 收纳。
 
-当前仓库的 Piper 抓取实现包含该机械臂专用的安装方向、IK 种子、关节范围和夹爪参数，
-不能原样复制到其他机械臂。
+当前仓库的 Piper 抓取实现包含该机械臂专用的安装方向、IK 种子、关节范围和夹爪参数， 不能原样复制到其他机械臂。
 
 ### 成功判定
 
@@ -1131,8 +1097,7 @@ Nav2 和底盘完成。狭窄环境、大 footprint 或不能原地旋转的底�
 - 视觉/碰撞变换；
 - 场景许可证。
 
-本体包不应为 `kitchen_my_robot`、`office_my_robot` 分别复制机器人和原语；场景
-切换只替换环境资产。
+本体包不应为 `kitchen_my_robot`、`office_my_robot` 分别复制机器人和原语；场景切换只替换环境资产。
 
 ---
 
@@ -1140,13 +1105,11 @@ Nav2 和底盘完成。狭窄环境、大 footprint 或不能原地旋转的底�
 
 ### 现成 MuJoCo 场景
 
-厂家 demo 自带的场景可以用于本体运动验证。作为导航环境使用前，还要检查连续地面、
-墙体、传感器可见碰撞和场景尺度。
+厂家 demo 自带的场景可以用于本体运动验证。作为导航环境使用前，还要检查连续地面、 墙体、传感器可见碰撞和场景尺度。
 
 ### SceneSmith 或其他结构化 Mesh 场景
 
-结构化场景通常提供 mesh、纹理、物体层级和房间布局。参考本体包的
-`scripts/prepare-scenesmith.py` 展示了预处理方式：
+结构化场景通常提供 mesh、纹理、物体层级和房间布局。参考本体包的 `scripts/prepare-scenesmith.py` 展示了预处理方式：
 
 - 保留视觉 mesh；
 - 将家具静态化；
@@ -1178,12 +1141,9 @@ Gaussian PLY -> SPZ -> 视觉
 Gaussian PLY/其他几何 -> collision.xml -> 接触、LiDAR、Depth
 ```
 
-`transform.json` 记录 SPZ 与碰撞模型之间的对齐关系。只有 SPZ 画面而没有碰撞模型时，
-机器人不会获得地面接触，LiDAR 和深度相机也没有场景返回。
+`transform.json` 记录 SPZ 与碰撞模型之间的对齐关系。只有 SPZ 画面而没有碰撞模型时， 机器人不会获得地面接触，LiDAR 和深度相机也没有场景返回。
 
-当前 Native 后端使用 MuJoCo 原生 renderer，不能直接显示 SPZ，因此只接受 Mesh 环境。
-不要在 Native 启动失败后退化为“SPZ 不显示但仍加载碰撞”，否则操作者看到的环境与机器人
-实际碰撞环境不一致。场景构建阶段应检查 `visualMode` 并明确拒绝不支持的组合。
+当前 Native 后端使用 MuJoCo 原生 renderer，不能直接显示 SPZ，因此只接受 Mesh 环境。 不要在 Native 启动失败后退化为“SPZ 不显示但仍加载碰撞”，否则操作者看到的环境与机器人实际碰撞环境不一致。场景构建阶段应检查 `visualMode` 并明确拒绝不支持的组合。
 
 ---
 
@@ -1222,10 +1182,7 @@ SPZ 环境示例：
 assets/environments/manifest.json
 ```
 
-`SceneManager` 根据 environment 自动选择视觉模式，不需要用户单独选择 `visual_mode`。
-在双后端项目中，还要由启动器或 Native scene builder 检查 backend 与视觉模式是否兼容。
-参考实现中，Mesh 可用于 Web 和 Native，SPZ 只能用于 Web；`visualMode` 仍由环境决定，
-`backend` 决定由哪个 MuJoCo runtime 加载该环境。
+`SceneManager` 根据 environment 自动选择视觉模式，不需要用户单独选择 `visual_mode`。 在双后端项目中，还要由启动器或 Native scene builder 检查 backend 与视觉模式是否兼容。 参考实现中，Mesh 可用于 Web 和 Native，SPZ 只能用于 Web；`visualMode` 仍由环境决定， `backend` 决定由哪个 MuJoCo runtime 加载该环境。
 
 ---
 
@@ -1241,8 +1198,7 @@ assets/environments/<environment_id>/objects.xml
 
 并在环境 manifest 中设置 `objectsPath`。
 
-Web `SceneManager` 和 Native scene builder 都应读取同一个 `objectsPath`，保证可交互物体
-的 ID、世界位姿、质量和碰撞属性不随后端变化。
+Web `SceneManager` 和 Native scene builder 都应读取同一个 `objectsPath`，保证可交互物体的 ID、世界位姿、质量和碰撞属性不随后端变化。
 
 ### 动态物体最低要求
 
@@ -1283,8 +1239,7 @@ Web `SceneManager` 和 Native scene builder 都应读取同一个 `objectsPath`�
 - 自己制作的低复杂度物体；
 - 从场景 mesh 中拆分出的独立物体。
 
-这些物体需要记录来源和许可证。视觉 mesh 可以保留细节，碰撞通常使用 box、cylinder、capsule 或
-凸分解。
+这些物体需要记录来源和许可证。视觉 mesh 可以保留细节，碰撞通常使用 box、cylinder、capsule 或凸分解。
 
 ---
 
@@ -1358,8 +1313,7 @@ bash sim/start.sh \
   --environment scenesmith_house_187
 ```
 
-启动器应等到 Bridge 健康接口确认预期 backend、environment 和状态帧均已就绪，再提示
-用户执行 `rbnx boot`。后端切换不应改变终端 2 和终端 3 的命令。
+启动器应等到 Bridge 健康接口确认预期 backend、environment 和状态帧均已就绪，再提示用户执行 `rbnx boot`。后端切换不应改变终端 2 和终端 3 的命令。
 
 验收分为两层：
 
@@ -1379,9 +1333,7 @@ bash sim/stop.sh
 
 ## 参考本体包中的实现
 
-Ranger/Piper 参考本体包采用“共享本体与 Bridge 协议、分离运行时实现”的结构：Piper
-复用了 MuJoCo Menagerie 模型；Web 与 Native 后端加载同一机器人和环境注册信息，分别
-实现控制、传感器与渲染，再共用 ROS 2 Bridge、Robonix 原语、服务、技能和验收流程。
+Ranger/Piper 参考本体包采用“共享本体与 Bridge 协议、分离运行时实现”的结构：Piper 复用了 MuJoCo Menagerie 模型；Web 与 Native 后端加载同一机器人和环境注册信息，分别实现控制、传感器与渲染，再共用 ROS 2 Bridge、Robonix 原语、服务、技能和验收流程。
 
 | 目标 | 参考文件 |
 | --- | --- |
@@ -1431,5 +1383,9 @@ Ranger/Piper 参考本体包采用“共享本体与 Bridge 协议、分离运�
 - [MuJoCo Computation](https://mujoco.readthedocs.io/en/stable/computation/index.html)
 - [Robonix 文档](https://book.robonix.ai/)
 
-接入完成后，厂家模型和控制接口仍保持可追溯；本体包新增的部分集中在加载、协议桥接、
-Robonix 能力约定和测试。验收以传感器、导航和操作任务的实际结果为准。
+接入完成后，厂家模型和控制接口仍保持可追溯；本体包新增的部分集中在加载、协议桥接、 Robonix 能力约定和测试。验收以传感器、导航和操作任务的实际结果为准。
+
+## 参考
+
+- MuJoCo 论文：Todorov E, Erez T, Tassa Y。[MuJoCo: A physics engine for model-based control](https://doi.org/10.1109/IROS.2012.6386109)。*IEEE/RSJ IROS*, 2012。
+- MuJoCo 代码：[google-deepmind/mujoco](https://github.com/google-deepmind/mujoco)；建模格式见 [MJCF 参考](https://mujoco.readthedocs.io/en/stable/XMLreference.html)。

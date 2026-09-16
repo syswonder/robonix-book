@@ -80,6 +80,24 @@ rbnx logs -t speech -l info
 
 如果腾讯云返回 `4004` 并提示资源包耗尽，先在控制台确认当前资源包对应的产品和引擎，再核对部署清单中的 `tencent_asr_engine`。基础中文实时识别应使用 `16k_zh`；`16k_zh_en` 的额度不能由基础引擎资源包抵扣。
 
-## Whisper 当前限制
+## 关掉 Whisper
 
-Whisper 只用于本地后端的单次语音识别接口，不是 Robonix Client 连续语音交互的默认流式识别路径。当前 Whisper 集成尚不完善，默认模型 `whisper-large-v3` 的权重和构建缓存体积超过 20 GB。Webots 快速上手因此设置 `disable_whisper: true`，使用 FunASR 完成流式识别。当前版本不建议在快速上手或常规部署中启用 Whisper。
+Whisper 只用于单次语音识别接口，连续语音交互走的是 FunASR 流式识别，不经过它。但 `disable_whisper` 默认为 `false`，服务会照样加载 `whisper-large-v3`，权重加构建缓存超过 20 GB。
+
+不需要单次识别就关掉：
+
+```yaml
+service:
+  - name: speech
+    config:
+      disable_whisper: true
+```
+
+Webots 快速上手就是这么设的。
+
+
+## 参考
+
+- FunASR 论文：Gao Z, Li Z, Wang J, 等。[FunASR: A Fundamental End-to-End Speech Recognition Toolkit](https://arxiv.org/abs/2305.11013)。*INTERSPEECH*, 2023。代码见 [modelscope/FunASR](https://github.com/modelscope/FunASR)。
+- Whisper 论文：Radford A, Kim J W, Xu T, 等。[Robust Speech Recognition via Large-Scale Weak Supervision](https://arxiv.org/abs/2212.04356)。代码见 [openai/whisper](https://github.com/openai/whisper)。
+- 腾讯云实时语音识别与语音合成的接口与计费以[官方文档](https://cloud.tencent.com/document/product/1093)为准。

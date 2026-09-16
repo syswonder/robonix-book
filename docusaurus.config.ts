@@ -24,8 +24,10 @@ const config: Config = {
     defaultLocale: 'zh-Hans',
     locales: ['zh-Hans'],
   },
-  plugins: [],
+  plugins: ['docusaurus-plugin-image-zoom'],
+  markdown: {mermaid: true},
   themes: [
+    '@docusaurus/theme-mermaid',
     [
       '@easyops-cn/docusaurus-search-local',
       {
@@ -56,6 +58,13 @@ const config: Config = {
     ],
   ],
   themeConfig: {
+    // 所有正文图片可点击放大；截图里的小字需要放大才看得清。
+    // 字段名以 docusaurus-plugin-image-zoom 为准：themeConfig.zoom，子键是 config。
+    zoom: {
+      selector: '.markdown img',
+      background: {light: 'rgba(248,249,251,.97)', dark: 'rgba(12,14,18,.97)'},
+      config: {margin: 24, scrollOffset: 0},
+    },
     announcementBar: {
       id: `source-baseline-${sourceRevision.slice(0, 8)}`,
       content:

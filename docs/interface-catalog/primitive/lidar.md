@@ -6,7 +6,7 @@ title: 激光雷达
 
 激光雷达原语覆盖二维扫描与三维点云。`robonix/primitive/lidar/lidar`（二维 `LaserScan`）和 `robonix/primitive/lidar/lidar3d`（`PointCloud2`）都是不绑定具体传输方式的 `topic_out` 数据面，供建图、避障和场景融合使用；`robonix/primitive/lidar/snapshot` 供大模型智能体按需取一帧二维扫描。
 
-能力约定 TOML 在 `capabilities/primitive/lidar/`，接口定义语言（Interface Definition Language，IDL）文件在 `capabilities/lib/lidar/` 与 `capabilities/lib/common_interfaces/`。
+能力约定 TOML 在 `capabilities/primitive/lidar/`，IDL 文件在 `capabilities/lib/lidar/` 与 `capabilities/lib/common_interfaces/`。
 
 新软件包省略 Driver 条目，由框架自动注册共享的 `robonix/lifecycle/driver`；显式选择共享 Driver 的行为相同。未实现生命周期回调时，框架记录警告并执行空操作。
 

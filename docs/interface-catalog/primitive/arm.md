@@ -2,7 +2,7 @@
 
 机械臂原语用统一的关节名称和单位提供指令、反馈与末端位姿。夹爪若属于机械臂，也作为同一 `JointState` 中的具名关节暴露。
 
-能力约定 TOML 在 `capabilities/primitive/arm/`。机械臂指令与反馈使用的接口定义语言（Interface Definition Language，IDL）文件位于 `capabilities/lib/common_interfaces/`；后向兼容 Driver 使用 `capabilities/lib/lifecycle/srv/Driver.srv`。
+能力约定 TOML 在 `capabilities/primitive/arm/`。机械臂指令与反馈使用的IDL 文件位于 `capabilities/lib/common_interfaces/`；后向兼容 Driver 使用 `capabilities/lib/lifecycle/srv/Driver.srv`。
 
 新软件包省略 Driver 条目，由框架自动注册共享的 `robonix/lifecycle/driver`；显式选择共享 Driver 的行为相同。未实现生命周期回调时，框架记录警告并执行空操作。
 
