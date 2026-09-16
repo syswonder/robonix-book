@@ -23,6 +23,7 @@ const sidebars: SidebarsConfig = {
         {type: 'doc', id: 'integration-guide/mujoco-simulation-onboarding', label: '接入 MuJoCo 仿真本体'},
         {type: 'doc', id: 'tutorials/mapping-and-odometry', label: '建图与里程计'},
         'integration-guide/packaging-spec',
+        {type: 'doc', id: 'integration-guide/result-verification', label: '使用和开发结果验证'},
         'integration-guide/build-and-codegen',
         'integration-guide/package-catalog',
       ],
@@ -78,6 +79,7 @@ const sidebars: SidebarsConfig = {
             {type: 'doc', id: 'interface-catalog/service/speech', label: '语音'},
             {type: 'doc', id: 'interface-catalog/service/voiceprint', label: '声纹'},
             {type: 'doc', id: 'interface-catalog/service/memory', label: '记忆'},
+            {type: 'doc', id: 'interface-catalog/service/verifier', label: '结果验证'},
           ],
         },
         {

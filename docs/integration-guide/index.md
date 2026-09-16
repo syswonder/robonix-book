@@ -23,6 +23,11 @@
     <span class="task-card__title">编写部署清单</span>
     <span class="task-card__description">声明系统组件、软件包来源、目标清单、实例名和运行配置。</span>
   </a>
+  <a class="task-card" href="/integration-guide/result-verification">
+    <span class="task-card__eyebrow">执行结果</span>
+    <span class="task-card__title">使用和开发结果验证</span>
+    <span class="task-card__description">配置 Executor 结果验证框架，使用现有 verifier，或按公共接口开发自定义 verifier。</span>
+  </a>
   <a class="task-card" href="/integration-guide/package-catalog">
     <span class="task-card__eyebrow">发布与分发</span>
     <span class="task-card__title">发布到社区软件包目录</span>
