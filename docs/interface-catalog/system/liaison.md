@@ -7,9 +7,9 @@ title: 交互服务
 
 ## 角色
 
-交互服务是带身份归一化、访问控制和语音编排的用户入口。`rbnx chat` 以及需要这些策略的移动应用、网页或接口客户端应先连接交互服务：文本路径转发给规划器，语音路径由交互服务编排（麦克风 → 流式语音识别 → 声纹 → 规划器 → 可选语音合成 → 扬声器）。非交互命令 `rbnx ask` 当前会绕过交互服务，直接连接规划器。
+交互服务是带身份归一化、访问控制和语音编排的用户入口。`rbnx chat` 以及需要这些策略的移动应用、网页或接口客户端应先连接交互服务。文本路径直接转发给规划器。语音路径由交互服务编排，顺序是麦克风 → 流式语音识别 → 声纹 → 规划器 → 可选语音合成 → 扬声器。非交互命令 `rbnx ask` 当前会绕过交互服务，直接连接规划器。
 
-能力约定 TOML 在 `capabilities/system/liaison/`，接口定义语言（Interface Definition Language，IDL）文件在 `capabilities/lib/liaison/`。
+能力约定 TOML 在 `capabilities/system/liaison/`，IDL 文件在 `capabilities/lib/liaison/`。
 
 ## 接口
 

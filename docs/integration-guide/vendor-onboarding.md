@@ -1,7 +1,7 @@
 # 机器人本体接入指南
 
 
-本章面向负责一台真实机器人或仿真本体的集成工程师。完成后，你将得到一个可独立克隆、构建和启动的**机器人部署仓库（Robot Deployment）**：仓库内包含整机描述、硬件实例、机器人专属配置，以及对社区软件包的引用。
+本章面向负责一台真实机器人或仿真本体的集成工程师。完成后会得到一个可独立克隆、构建和启动的**机器人部署仓库（Robot Deployment）**。仓库内包含整机描述、硬件实例、机器人专属配置，以及对社区软件包的引用。
 
 本文使用 `ACME`、`acme_rover`、`robot-acme-rover`、`acme_chassis`、`base_chassis` 等名称贯穿示例。实际接入时，请替换为自己的厂商、型号、部署仓库、软件包和运行实例名称；不要把示例名称当作固定要求。
 
@@ -33,9 +33,9 @@ robot-<vendor>-<model>/
 
 `assets/robot.jpg` 只供 Robonix 软件包目录的机器人列表展示，不参与构建、启动或模型推理。准备把机器人仓库提交到目录时再添加并压缩该图片；不发布目录条目时可以省略。
 
-硬件驱动通常放在独立原语仓库中，由 `robonix_manifest.yaml` 的 `url` 引用；只有暂不复用的部署私有代码才放在本体仓库。先查看目录中的 [AgileX Ranger Mini v3 本体页面](https://packages.robonix.ai/robots/robonix.robot.agilex.ranger_mini_v3/)了解已发布的硬件组成和软件包，再进入 [`robot-agilex-ranger_mini_v3`](https://github.com/syswonder/robot-agilex-ranger_mini_v3) 查看实际部署清单、配置和包装脚本。学习单个软件包结构时使用 [`template-rbnx`](https://github.com/syswonder/template-rbnx/tree/60dc85834c2714022b1821e6fce6c629c0314699)。采用任何参考部署前，都要核对其整机 URDF 是否包含当前机器人实际安装的全部部件；缺少的坐标关系必须先补齐，不能依赖另一份分离 URDF。
+硬件驱动通常放在独立原语仓库中，由 `robonix_manifest.yaml` 的 `url` 引用；只有暂不复用的部署私有代码才放在本体仓库。先在目录里看 [AgileX Ranger Mini v3 本体页面](https://packages.robonix.ai/robots/robonix.robot.agilex.ranger_mini_v3/)，了解已发布的硬件组成和软件包。再进入 [`robot-agilex-ranger_mini_v3`](https://github.com/syswonder/robot-agilex-ranger_mini_v3) 查看实际部署清单、配置和包装脚本。学习单个软件包结构时使用 [`template-rbnx`](https://github.com/syswonder/template-rbnx/tree/60dc85834c2714022b1821e6fce6c629c0314699)。采用任何参考部署前，都要核对其整机 URDF 是否包含当前机器人实际安装的全部部件；缺少的坐标关系必须先补齐，不能依赖另一份分离 URDF。
 
-如果构建或启动前需要设置部署目录、环境变量、设备权限、CAN / 串口、RMW router 或容器参数，把这些准备步骤统一收敛到部署仓库的 `build.sh` 和 `start.sh`。这样使用者只需要执行固定入口，脚本内部再调用 `rbnx build` 或 `rbnx boot`。
+构建或启动前的准备步骤统一收敛到部署仓库的 `build.sh` 和 `start.sh`，包括部署目录、环境变量、设备权限、CAN 与串口、RMW router 和容器参数。这样使用者只需要执行固定入口，脚本内部再调用 `rbnx build` 或 `rbnx boot`。
 
 例如 AgileX 参考仓库就通过包装脚本完成宿主环境准备，构建与启动使用：
 
@@ -53,7 +53,7 @@ bash start.sh
 ```bash
 git clone --recurse-submodules https://github.com/syswonder/robonix.git
 cd robonix
-git checkout --detach cec06ee874eace27dd622e6ce4685c971f04a9e4
+git checkout --detach 223675d9a5000e70debae4f2512404cec5c9c442
 git submodule update --init --recursive
 make install
 rbnx setup "$PWD"
@@ -114,7 +114,7 @@ AgileX Ranger Mini v3 仓库当前只能作为部署连线的部分参考，不�
 
 ### 3.2 创建 `soma.yaml`
 
-Soma 描述机器人本体与部件，不负责环境物体，也不替 Vitals 做健康阈值判断。`soma.yaml` 是本体描述文件；部署清单里的 `system.soma` 和可选的 Soma `config` 文件是进程配置。不要把监听地址、Atlas 地址等进程参数写进本体文件，也不要把 `robot.components` 写进进程配置。Soma 的进程参数见主仓库的 [`system/soma/README.md`](https://github.com/syswonder/robonix/blob/cec06ee874eace27dd622e6ce4685c971f04a9e4/system/soma/README.md)；本节的本体字段以实际读取它们的 [`store.rs`](https://github.com/syswonder/robonix/blob/cec06ee874eace27dd622e6ce4685c971f04a9e4/system/soma/src/store.rs) 为准。
+Soma 描述机器人本体与部件，不负责环境物体，也不替 Vitals 做健康阈值判断。`soma.yaml` 是本体描述文件；部署清单里的 `system.soma` 和可选的 Soma `config` 文件是进程配置。不要把监听地址、Atlas 地址等进程参数写进本体文件，也不要把 `robot.components` 写进进程配置。Soma 的进程参数见主仓库的 [`system/soma/README.md`](https://github.com/syswonder/robonix/blob/223675d9a5000e70debae4f2512404cec5c9c442/system/soma/README.md)；本节的本体字段以实际读取它们的 [`store.rs`](https://github.com/syswonder/robonix/blob/223675d9a5000e70debae4f2512404cec5c9c442/system/soma/src/store.rs) 为准。
 
 编写前先准备三份事实，而不是从示例里猜值：
 
@@ -122,7 +122,7 @@ Soma 描述机器人本体与部件，不负责环境物体，也不替 Vitals �
 2. `robonix_manifest.yaml`：提供每个运行实例的 `name`；
 3. 各实例的软件包清单或 `rbnx caps -v`：提供该实例实际声明的能力约定 ID。
 
-然后按下面的顺序写：先写能够被 Soma 加载的最小文档，再补 footprint，接着把物理设备树投影为逻辑部件树，最后填写提供方、能力和描述信息。
+然后按四步写：先写能够被 Soma 加载的最小文档，再补 footprint，接着把物理设备树投影为逻辑部件树，最后填写提供方、能力和描述信息。
 
 最小可加载文件只有两项：
 
@@ -366,7 +366,7 @@ rbnx logs -d /path/to/deploy/rbnx-boot/logs -t soma --json
 | 夹爪为 `unknown_missing_joint` 或 `unknown_stale` | 核对 ancestor/self 的 joint-state `provider_id`、精确能力路径、`joint_name` 和 2 秒新鲜度 |
 | YAML 中有部件但 Atlas 中没有提供方 | Soma 不做 `exports` 与部署清单的引用完整性检查；修正实例 `name`、包清单或启动失败 |
 
-最后要明确当前边界：Soma 不验证部件 ID 唯一性，不交叉检查 URDF link/joint/root、提供方或能力路径，也不验证通用尺寸、质量和标定数值。它没有传感器外参接口，源码中的 description 约定也尚未由 Soma 注册或实现；相机外参应走相机能力或完整 URDF/TF。当前本体健康聚合也不会填充电源、安全和故障事实，一个 Soma 进程只服务一台机器人。接口和聚合细节见[本体服务](../interface-catalog/system/soma.md)。
+最后要明确当前边界。Soma 不验证部件 ID 唯一性，不交叉检查 URDF 的 link、joint、root、提供方或能力路径，也不验证通用尺寸、质量和标定数值。它没有传感器外参接口，源码中的 description 约定也尚未由 Soma 注册或实现；相机外参应走相机能力或完整 URDF/TF。当前本体健康聚合也不会填充电源、安全和故障事实，一个 Soma 进程只服务一台机器人。接口和聚合细节见[本体服务](../interface-catalog/system/soma.md)。
 
 ## 4. 为硬件实现标准原语
 
@@ -637,7 +637,7 @@ service:
 
 `sensor_providers` 的值是 Atlas 提供方 ID，不是话题名。支持角色为 `lidar2d`、`lidar3d`、`rgb`、`depth`、`imu` 和 `odom`；RGB-D 必须同时指定 `rgb` 与 `depth`。`rtabmap_params` 可以在部署清单中对文件做少量最终覆盖，但完整基线仍应保存在部署仓库。字段以 Mapping 仓库根目录的 `config.spec` 为准。
 
-底盘里程计接入不是只填一个提供方 ID。底盘原语必须同时发布 `nav_msgs/Odometry` 和一致的 `odom → base_link` TF；当前 RTAB-Map 路径在传感器时间戳通过 TF 取外部里程位姿，并只发布 `map → odom`。完整数据流、模板参数含义和验证命令见[建图参数与里程计接入](../tutorials/mapping-and-odometry.md)。
+底盘里程计接入不是只填一个提供方 ID。底盘原语必须同时发布 `nav_msgs/Odometry` 和一致的 `odom → base_link` TF；当前 RTAB-Map 路径在传感器时间戳通过 TF 取外部里程位姿，并只发布 `map → odom`。完整数据流、模板参数含义和验证命令见[建图参数与里程计接入](../components/mapping.md#接入新传感器后的验证顺序)。
 
 参考实现为 [`service-map-rbnx`](https://github.com/syswonder/service-map-rbnx)。`algo` 省略时使用默认且推荐的 `rtabmap`；也可显式选择 `dlio` 或 `fastlio2`。目前只有 RTAB-Map 路径持续维护。DLIO 和 FAST-LIO2 不保证兼容其最新上游版本；当前参考实现中的 `fastlio2` 还被标记为漂移故障，仅用于诊断和复现。新本体应先使用 RTAB-Map 完成接入和验收，再根据传感器与平台条件评估其他算法。
 
@@ -699,7 +699,7 @@ p_parent = R_parent_child · p_child + t_parent_child
 
 例如 `header.frame_id=base_link`、`child_frame_id=camera_color_optical_frame` 表示相机光学原点在 `base_link` 中的位姿，并把相机坐标中的点变换到 `base_link`；不能发送它的逆变换。固定相机可以从静态 TF 派生；安装在机械臂等关节链上的相机必须依赖实时 URDF、关节状态和 TF，不能用固定外参代替动态链。
 
-`camera/intrinsics` 返回 ROS `sensor_msgs/CameraInfo`：`header.frame_id` 是相机光学坐标系，x 轴向图像右、y 轴向下、z 轴向前；`width/height` 是标定对应的图像尺寸；`distortion_model` 与 `D` 描述畸变；`K` 是原始图像的 3×3 内参；`R` 是立体校正旋转；`P` 是校正图像的 3×4 投影矩阵。当前 Scene 使用 `K` 中的 `fx/fy/cx/cy` 与 `width/height`，不会自行应用 `D/R/P`，因此输入的 RGB 和度量深度必须已校正并配准到同一 RGB 光学坐标系，分辨率与 `K` 对应。当前 Scene 分别读取两路最新帧，提供方还应保证 RGB 与深度时间近似同步。
+`camera/intrinsics` 返回 ROS `sensor_msgs/CameraInfo`：`header.frame_id` 是相机光学坐标系，x 轴向图像右、y 轴向下、z 轴向前；`width/height` 是标定对应的图像尺寸；`distortion_model` 与 `D` 描述畸变；`K` 是原始图像的 3×3 内参；`R` 是立体校正旋转；`P` 是校正图像的 3×4 投影矩阵。当前 Scene 只使用 `K` 中的 `fx/fy/cx/cy` 与 `width/height`，不会自行应用 `D/R/P`。因此输入的 RGB 和度量深度必须已校正并配准到同一 RGB 光学坐标系，分辨率与 `K` 对应。当前 Scene 分别读取两路最新帧，提供方还应保证 RGB 与深度时间近似同步。
 
 因此新本体必须同时满足：Mapping 绑定正确的里程计与传感器提供方并发布地图位姿；所选相机提供方声明 RGB、深度和内参；完整 URDF/TF 树连接 `map`、`base_link` 与相机光学坐标系。只有无法提供完整 TF 查询时，才额外要求同一相机提供方声明外参兼容能力。Soma 保存完整本体模型，坐标变换由机器人描述原语或仿真器中的唯一 TF 发布方发布。
 
@@ -735,7 +735,7 @@ cp robonix_manifest.yaml robonix_manifest.no-motion.yaml
 ${EDITOR:-vi} robonix_manifest.no-motion.yaml
 ```
 
-从副本中删除底盘、机械臂和其他可运动硬件的整个实例条目，保留 Atlas、Soma、Vitals、机器人描述原语、只读传感器和已审查的非运动组件。当前部署格式没有通用启停字段；`enabled: false` 或 `disabled: true` 会被忽略，不能用于安全禁用。
+从副本中删除底盘、机械臂和其他可运动硬件的整个实例条目。保留 Atlas、Soma、Vitals、机器人描述原语、只读传感器和已审查的非运动组件。当前部署格式没有通用启停字段；`enabled: false` 或 `disabled: true` 会被忽略，不能用于安全禁用。
 
 若副本保留 Pilot，启动前在当前 shell 中提供模型配置；任一值为空都会使 Pilot 预检失败：
 
@@ -828,7 +828,7 @@ ROBONIX_RVIZ_CONFIG=/absolute/path/custom.rviz bash start_rviz2.sh
 
 ### 7.6 Client 与健康状态联调
 
-完成地图与导航验收后，依次验证 Client 文本任务、相机画面理解、语音输入/输出和停止操作，并确认 Vitals 能区分本体状态、提供方状态与故障。客户端启动和音频桥接配置见[客户端使用](../getting-started/client.md)。
+完成地图与导航验收后，依次验证 Client 文本任务、相机画面理解、语音输入与输出，以及停止操作。最后确认 Vitals 能区分本体状态、提供方状态与故障。客户端启动和音频桥接配置见[客户端使用](../getting-started/client.md)。
 
 地图文件和联调环境属于测试数据。验收后只删除本次创建的临时 map id，不要清理操作者已有地图目录。
 

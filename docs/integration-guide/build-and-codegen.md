@@ -5,7 +5,7 @@
 
 ## 前置：登记 Robonix 源码树
 
-代码生成需要读取 Robonix 主仓库中的标准能力约定、接口定义语言（Interface Definition Language，IDL）和 Atlas 协议缓冲区（Protocol Buffers，Protobuf）定义。先在主仓库根目录运行：
+代码生成需要读取 Robonix 主仓库中的三样东西：标准能力约定、接口定义语言（Interface Definition Language，IDL）、Atlas 的 Protobuf 定义。先在主仓库根目录运行：
 
 ```bash
 cd /path/to/robonix
@@ -127,7 +127,7 @@ source /opt/ros/humble/setup.bash
 source /path/to/package/rbnx-build/codegen/ros2_idl/install/setup.bash
 ```
 
-目标平台可以使用不同 ROS 2 发行版；第一行应指向该平台实际安装的 ROS 2 `setup.bash`。第二行不能省略，并且必须位于系统 ROS 2 之后，使 Robonix 代码生成的软件包在叠加层中优先解析。这样不同平台使用的 `rclpy`、`rclcpp` 和 ROS 中间件实现（ROS Middleware Implementation，RMW）可以来自各自发行版，但 Robonix 能力约定引用的 ROS 2 线上数据类型始终来自同一份标准 IDL。
+目标平台可以使用不同 ROS 2 发行版；第一行应指向该平台实际安装的 ROS 2 `setup.bash`。第二行不能省略，并且必须位于系统 ROS 2 之后，使 Robonix 代码生成的软件包在叠加层中优先解析。这样一来，不同平台的 `rclpy`、`rclcpp` 和 ROS 中间件实现（RMW）可以来自各自发行版。而 Robonix 能力约定引用的 ROS 2 线上数据类型，始终来自同一份标准 IDL。
 
 ## 3. 编写构建脚本
 

@@ -1,10 +1,10 @@
 # 代码接口文档
 
-各 Rust crate 与 Python 包的逐项 API 文档，分别由 rustdoc（Rust）和 Sphinx（Python）从源码注释生成。
+各 Rust crate 与 Python 包的逐项 API 文档，由 rustdoc 和 Sphinx 从源码注释生成。
 
 本页链接的线上 API 文档只对应站点当前声明的 `ROBONIX_SOURCE_REVISION`，不是独立维护的历史版本集。
 
-手册顶部搜索用于查找概念、流程和标准接口页面。Rust API 与 Python API 是独立生成的文档树，进入对应页面后分别使用 rustdoc 或 Sphinx 自带的搜索框查询符号。
+手册顶部搜索用于查找概念、流程和标准接口页面。Rust API 与 Python API 是独立生成的文档树。进入对应页面后，用 rustdoc 或 Sphinx 自带的搜索框查询符号。
 
 ## Rust 接口文档
 
@@ -17,7 +17,7 @@
 | `robonix-codegen` | 能力约定 / IDL 代码生成 | <a href="/api/rust/robonix_codegen/index.html">API</a> |
 | `rbnx`（robonix-cli） | 开发 / 部署 CLI | <a href="/api/rust/rbnx/index.html">API</a> |
 
-本地生成需要一份已包含子模块、当前提交（HEAD）与本书 `ROBONIX_SOURCE_REVISION` 一致的 Robonix 源码检出。从**手册仓库根目录**运行：
+本地生成需要一份已包含子模块、当前提交（HEAD）与本书 `ROBONIX_SOURCE_REVISION` 一致的 Robonix 源码检出。从<strong>手册仓库根目录</strong>运行：
 
 ```bash
 export ROBONIX_SOURCE=/absolute/path/to/robonix
@@ -41,7 +41,7 @@ cp -R "$ROBONIX_SOURCE/target/doc/." build/api/rust/
 
 > scene 是服务，它的**对外** API 是能力约定（见 [能力约定参考](contracts.md) 的 `robonix/system/scene/*`）；这里收录的是它的 Python 实现文档。
 
-继续使用上面已验证的 `ROBONIX_SOURCE`，从**手册仓库根目录**运行：
+继续使用上面已验证的 `ROBONIX_SOURCE`，从<strong>手册仓库根目录</strong>运行：
 
 ```bash
 make api-install ROBONIX_SOURCE="$ROBONIX_SOURCE"

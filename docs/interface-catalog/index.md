@@ -3,7 +3,7 @@
 
 本目录罗列 Robonix 在 `capabilities/` 下随仓库分发的标准能力约定。能力约定描述接口名称、数据类型和交互方式，不指定由哪个提供方实现，也不记录某次运行中的网络地址。完整概念见[命名空间与能力约定](../architecture/namespace-and-contracts.md)。
 
-每条能力约定由 `capabilities/<kind>/` 下的一份 TOML 和 `capabilities/lib/` 下的消息或服务定义共同描述。`rbnx codegen` 根据软件包的构建目标生成 gRPC 接口、模型上下文协议（Model Context Protocol，MCP）类型辅助代码或 ROS 2 消息包；一次构建只生成明确请求的产物。详见[软件包构建与代码生成](../integration-guide/build-and-codegen.md)。
+每条能力约定由 `capabilities/<kind>/` 下的一份 TOML 和 `capabilities/lib/` 下的消息或服务定义共同描述。`rbnx codegen` 按软件包的构建目标生成代码，产物是 gRPC 接口、模型上下文协议（Model Context Protocol，MCP）类型辅助代码或 ROS 2 消息包；一次构建只生成明确请求的产物。详见[软件包构建与代码生成](../integration-guide/build-and-codegen.md)。
 
 ## 按命名空间组织
 
@@ -18,7 +18,7 @@
 
 完整的 12 个系统组件（含不对外暴露能力约定的）见 [系统组件](../architecture/components.md)。
 
-`robonix/system/*` 是命名空间，不表示层次：系统组件分核心系统组件和系统级服务两层，而这个前缀下同时有两层的成员（例如 Vitals 属核心，Pilot 属系统级服务）。上表只列当前已合并的能力约定；Keystone 与 Sentinel 的能力约定尚在评审中，合并后同样落在 `robonix/system/*` 下。
+`robonix/system/*` 是命名空间，不表示层次。系统组件分核心系统组件和系统级服务两层，这个前缀下两层的成员都有：Vitals 属核心，Pilot 属系统级服务。上表只列当前已合并的能力约定；Keystone 与 Sentinel 的能力约定尚在评审中，合并后同样落在 `robonix/system/*` 下。
 
 ## 怎么读每张表
 

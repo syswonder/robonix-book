@@ -1,4 +1,4 @@
-# 参与维护 Robonix 文档
+# 维护文档
 
 Robonix 文档与代码共同构成对外接口。命令、目录、配置字段或预期输出写错，会直接阻塞机器人接入；因此文档修改采用与代码相同的责任人审查和持续集成（CI）门槛。
 
@@ -69,7 +69,13 @@ issue 应包含页面链接、Robonix 源码分支和 commit、操作系统或�
    make check
    ```
 
-   该命令依次检查 Bash、JavaScript、JSON、Python、TOML 和 YAML 代码块语法，检查本地图片路径与替代文本，执行 TypeScript 类型检查，生成 `build/` 生产站点，再校验站内链接、旧版 mdBook 页面与锚点以及搜索索引。命令必须以状态码 0 退出。
+   该命令依次执行五步：
+
+1. 检查 Bash、JavaScript、JSON、Python、TOML 和 YAML 代码块语法。
+2. 检查本地图片路径与替代文本。
+3. 执行 TypeScript 类型检查。
+4. 生成 `build/` 生产站点。
+5. 校验站内链接、旧版 mdBook 页面与锚点，以及搜索索引。命令必须以状态码 0 退出。
 8. 检查导航、页内目录、代码块、表格、窄屏布局和所有受影响页面。视觉修改应在拉取请求中附桌面与窄屏截图。
 9. 使用拉取请求模板填写影响范围、验证证据、兼容性和人工智能辅助披露；关联问题，例如 `Closes #123`。
 
@@ -136,7 +142,7 @@ make reference ROBONIX_SOURCE=/absolute/path/to/robonix
 git diff -- docs/reference/contracts.md docs/reference/idl.md
 ```
 
-该目标会验证源码当前提交与 `ROBONIX_SOURCE_REVISION` 完全相等，拒绝脏工作树，构建固定修订中的 `rbnx`，在临时目录生成两份 Markdown，经 Docusaurus 归一化后替换参考页。提交前审查完整差异，然后运行 `make check`。
+该目标先验证源码当前提交与 `ROBONIX_SOURCE_REVISION` 完全相等，并拒绝脏工作树。随后它构建固定修订中的 `rbnx`，在临时目录生成两份 Markdown，经 Docusaurus 归一化后替换参考页。提交前审查完整差异，然后运行 `make check`。
 
 ## 版本与翻译
 
