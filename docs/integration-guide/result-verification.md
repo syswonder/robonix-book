@@ -1,14 +1,14 @@
 ---
-title: 使用和开发结果验证
+title: 使用和开发验证器（Verifier）
 ---
 
-# 使用和开发结果验证
+# 使用和开发验证器（Verifier）
 
-本页面面向配置结果验证或开发 verifier 的开发者。完成配置后，Executor 会在指定能力成功结束后调用 verifier，并根据验证结果决定该 RTDL 节点的最终状态。
+本页面面向配置验证器或开发验证器（Verifier）的开发者。完成配置后，Executor 会在指定能力成功结束后调用验证器，并根据验证结果决定该 RTDL 节点的最终状态。
 
-`verify` 是 Executor 提供的结果验证框架。Scene Verifier 和 VLM Verifier 是当前已经实现、可以使用的两个 verifier；它们不是整个 `verify` 体系，开发者也可以按照公共能力约定实现自定义 verifier。
+`verify` 是 Executor 提供的结果验证框架。Scene Verifier 和 VLM Verifier 是当前已经实现、可以使用的两个验证器；它们不是整个 `verify` 体系，开发者也可以按照公共能力约定实现自定义验证器。
 
-## 使用结果验证
+## 使用验证器
 
 在机器人部署清单的 `system.executor.verification` 中添加规则。下面是使用 Scene Verifier 验证导航结果的最小配置：
 
