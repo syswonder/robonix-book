@@ -553,7 +553,7 @@ advertise 地址写成了 127.0.0.1。检查 ssh 包裹脚本 start 里 `ROBONIX
 
 后台进程握住 stdout 会挂住管道。远程构建/下载统一：
 
-```bash
+```text
 nohup setsid <命令> </dev/null >log 2>&1 &
 ```
 
