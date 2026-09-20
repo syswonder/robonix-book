@@ -28,6 +28,11 @@ const sidebars: SidebarsConfig = {
           id: 'getting-started/x86-ubuntu-la-arch/README',
           label: 'x86 仿真 + LoongArch 部署',
         },
+        {
+          type: 'doc',
+          id: 'getting-started/jetson-x86-webots/README',
+          label: 'x86 仿真 + ARM64 部署',
+        },
       ],
     },
     {
