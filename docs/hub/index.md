@@ -4,22 +4,22 @@ Robonix Hub 用来在机器人上安装、配置和运行 Robonix，并通过软
 
 ## 两个组成部分
 
-| | 本地 Robonix Hub | Robonix Hub Cloud |
+| | Robonix Hub | Robonix Hub Cloud |
 |---|---|---|
 | 运行位置 | 机器人上，默认地址 `http://127.0.0.1:4880` | [hub.robonix.ai](https://hub.robonix.ai) |
 | 用途 | 管理所在机器人：部署、运行、日志、更新 | 账户、软件包目录、云端副本、问题反馈 |
 | 能否修改机器人 | 能 | 不能 |
 
-两者是不同的程序，外观风格一致，使用同一个账户。本地 Robonix Hub 侧栏中 `Robonix Hub Cloud` 下的页面（`目录`、`我的机器人`、`个人主页`）显示云端的内容，由本地 Robonix Hub 向云端请求。
+两者是不同的程序，外观风格一致，使用同一个账户。Robonix Hub 侧栏中 `Robonix Hub Cloud` 下的页面（`目录`、`我的机器人`、`个人主页`、`用量`）显示云端的内容，由 Robonix Hub 向云端请求。
 
 ## 在线演示
 
-在线演示 [hub.robonix.ai/demo](https://hub.robonix.ai/demo/) 是一个真实运行的本地 Robonix Hub，无需安装和登录，所做的修改只保存在当前浏览器中。
+在线演示 [hub.robonix.ai/demo](https://hub.robonix.ai/demo/) 是一个真实运行的 Robonix Hub，无需安装和登录，所做的修改只保存在当前浏览器中。
 
 ## 章节导航
 
 - [账户](./account.md)：注册、激活和登录。
-- [安装本地 Robonix Hub](./install.md)：安装、基本配置、自动更新和卸载。
+- [安装 Robonix Hub](./install.md)：安装、基本配置、自动更新和卸载。
 - [配置机器人](./configure.md)：部署页、参数表单、本机环境变量和版本。
 - [运行](./run.md)：构建软件包、启动与停止、日志、连接 robonix-client。
 - [AI 机器人配置助手](./assistant.md)：用一句话检查和修改配置，改动先经确认。
