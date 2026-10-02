@@ -26,6 +26,7 @@ const sidebars: SidebarsConfig = {
         {type: 'doc', id: 'hub/install', label: '安装本地 Robonix Hub'},
         {type: 'doc', id: 'hub/configure', label: '配置机器人'},
         {type: 'doc', id: 'hub/run', label: '运行'},
+        {type: 'doc', id: 'hub/assistant', label: 'AI 机器人配置助手'},
         {type: 'doc', id: 'hub/cloud', label: '目录与云端'},
         {type: 'doc', id: 'hub/feedback', label: '反馈问题'},
       ],

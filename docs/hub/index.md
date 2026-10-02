@@ -22,5 +22,6 @@ Robonix Hub 用来在机器人上安装、配置和运行 Robonix，并通过软
 - [安装本地 Robonix Hub](./install.md)：安装、基本配置、自动更新和卸载。
 - [配置机器人](./configure.md)：部署页、参数表单、本机环境变量和版本。
 - [运行](./run.md)：构建软件包、启动与停止、日志、连接 robonix-client。
+- [AI 机器人配置助手](./assistant.md)：用一句话检查和修改配置，改动先经确认。
 - [目录与云端](./cloud.md)：软件包目录、收藏、云端副本和 API。
 - [反馈问题](./feedback.md)：在页面上提交问题，以及提交后的处理。

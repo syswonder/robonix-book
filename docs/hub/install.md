@@ -27,7 +27,7 @@ curl -fsSL https://hub.robonix.ai/install | bash
 
 ## 设置模型服务
 
-Pilot 通过兼容 OpenAI 的接口调用模型。各机器人配置用三个变量引用模型服务：`VLM_BASE_URL`（接口地址）、`VLM_MODEL`（模型名）和 `VLM_API_KEY`（密钥）。
+Pilot 和 [AI 机器人配置助手](./assistant.md) 通过兼容 OpenAI 的接口调用模型。模型服务由三项组成，在 `设置` 页显示为 `VLM 终端 URL`、`VLM KEY` 和 `VLM 模型`，对应变量 `VLM_BASE_URL`、`VLM_API_KEY` 和 `VLM_MODEL`。
 
 - 本机尚无这三项时，安装脚本询问 `Set it now? [Y/n]`。直接回车依次填写，密钥输入时不显示；输入 `n` 跳过。
 - 本机已有这三项，或安装前已在终端中设置了同名环境变量时，安装脚本列出现有的值（密钥只显示末 4 位），询问 `Keep these? [Y/n]`。直接回车保留；输入 `n` 后逐项修改，某一项直接回车即保留原值。
