@@ -12,11 +12,11 @@ Robonix Hub 用来在机器人上安装、配置和运行 Robonix，并通过软
 
 两者是不同的程序，外观风格一致，使用同一个账户。本地 Robonix Hub 侧栏中 `Robonix Hub Cloud` 下的页面（`目录`、`我的机器人`、`个人主页`）显示云端的内容，由本地 Robonix Hub 向云端请求。
 
-## 先试用
+## 在线演示
 
 在线演示 [hub.robonix.ai/demo](https://hub.robonix.ai/demo/) 是一个真实运行的本地 Robonix Hub，无需安装和登录，所做的修改只保存在当前浏览器中。
 
-## 本章内容
+## 章节导航
 
 - [账户](./account.md)：注册、激活和登录。
 - [安装本地 Robonix Hub](./install.md)：安装、基本配置、自动更新和卸载。
