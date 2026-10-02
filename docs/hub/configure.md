@@ -11,9 +11,8 @@
 | `robonix_manifest.yaml` | 部署清单 |
 | `primitives/`、`services/` | 本机软件包，即部署清单中以本地路径引用的软件包 |
 | `scripts/`、`config/`、`sim/` 等 | 整机配置附带的脚本、配置文件和仿真场景 |
-| `.portal/history.git` | 本地 Robonix Hub 为这套部署保存的版本历史 |
 
-本地 Robonix Hub 安装时创建默认部署目录 `~/.local/share/robonix-hub/deployments/default`，名称为 `Default deployment`，其版本历史保存在 `~/.local/share/robonix-hub/state/history.git`。本地 Robonix Hub 在列表中记录每个部署目录的名称和路径。
+本地 Robonix Hub 安装时创建默认部署目录 `~/.local/share/robonix-hub/deployments/default`，名称为 `Default deployment`。每个部署目录的版本历史由本地 Robonix Hub 保存，不需要手动管理，见下文[保存版本与回滚](#保存版本与回滚)。本地 Robonix Hub 在列表中记录每个部署目录的名称和路径。
 
 一台机器人可以有多个部署目录，每个目录是一套独立的部署，相互之间不会覆盖。同一时间只有一个当前部署目录：`概览` 页的启动与停止、`部署` 页的修改、`版本` 页的回滚，都作用于当前部署目录。各套部署使用相同的端口，所以同一时间也只有当前部署目录能运行 Robonix。`概览` 页标题 `本机` 旁边的下拉框用于切换当前部署目录。
 
