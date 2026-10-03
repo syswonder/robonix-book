@@ -15,10 +15,10 @@ curl -fsSL https://hub.robonix.ai/install | bash
 | 步骤 | 内容 |
 |---|---|
 | 检查本机 | 显示用户、处理器架构、系统版本和安装位置 |
-| 系统软件包 | 缺少 git、curl、gpgv、xz 或 python3-venv 时安装；只在这一步询问一次 `sudo` 密码 |
-| 许可协议 | 校验发布签名，在终端中央的窗口中按系统语言显示许可协议；选择 `同意` 后继续 |
+| 系统软件包 | 缺少 git、curl、gpgv、xz、python3-venv 或 whiptail 时安装；只在这一步询问一次 `sudo` 密码 |
+| 许可协议 | 校验发布签名，在终端中央的窗口中显示英文许可协议；用方向键或触控板滚动，选择 `Agree` 后继续 |
 | 下载 | 按本机架构下载 Robonix Hub，校验 sha256 和签名 |
-| Robonix | 已安装 `rbnx` 时直接使用；未安装时把源码下载到 `~/.local/share/robonix-hub/robonix` 编译安装，耗时较长 |
+| Robonix | 已安装 `rbnx` 时直接使用；未安装时把源码下载到 `~/.local/share/robonix-hub/robonix` 编译安装，耗时较长；下载优先经过国内镜像 |
 | 服务 | 作为当前用户的 systemd 服务运行，并设为开机启动 |
 | 基本配置 | 设置 Pilot 使用的模型服务，见下一节 |
 | 完成 | 确认页面已响应，给出访问地址 |
