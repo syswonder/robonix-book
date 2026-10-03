@@ -50,6 +50,12 @@ Robonix Hub 在启动时和此后每 6 小时检查一次新版本。新版本�
 
 新版本的许可协议有变化时，Robonix Hub 不自动更新，需要在 `更新` 页阅读并接受新协议后再更新。`更新` 页的 `Robonix Hub` 一栏显示当前版本和更新记录，并提供 `检查更新` 和 `自动更新` 开关。
 
+同一版协议同意过一次后，再次安装不再显示。要重新查看协议：
+
+```bash
+curl -fsSL https://hub.robonix.ai/install | bash -s -- --show-eula
+```
+
 ## 卸载
 
 ```bash

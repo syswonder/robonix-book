@@ -12,7 +12,20 @@ Robonix Hub 右侧的 `AI 机器人配置助手` 用一句话完成配置相关�
 
 在面板底部的输入框中输入要做的事，按回车发送；空白对话中也可以直接点示例。助手先调用工具读取所需的信息，面板中逐条列出它调用的工具，然后给出回答。
 
-![助手修改配置前显示确认卡片，附带修改前后的对比。](/img/hub/11-assistant-approve.webp)
+<div className="shot-row">
+  <figure>
+    <img src="/img/hub/11-assistant-empty.webp" alt="打开助手后的空白对话，列出几个示例。" />
+    <figcaption>打开助手</figcaption>
+  </figure>
+  <figure>
+    <img src="/img/hub/11-assistant-check.webp" alt="助手调用工具检查部署后给出回答。" />
+    <figcaption>检查当前配置</figcaption>
+  </figure>
+  <figure>
+    <img src="/img/hub/11-assistant-approve.webp" alt="助手修改配置前显示确认卡片，附带修改前后的对比。" />
+    <figcaption>修改前请求同意</figcaption>
+  </figure>
+</div>
 
 会改变机器人状态的操作，例如修改配置、添加软件包、回滚版本、启动或停止 Robonix、上传到云端，助手不会直接执行，而是先显示确认卡片：写明要做的操作，修改部署清单时附带修改前后的对比。点 `同意` 后才执行，点 `拒绝` 则放弃。修改配置时，助手把结果保存为新版本，可以在 `版本` 页回滚。设置本机环境变量时，值由用户在确认卡片中填写，模型看不到这个值。
 

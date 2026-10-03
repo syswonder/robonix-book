@@ -293,3 +293,18 @@ pre {
 .medium-zoom-overlay { z-index: 9998; }
 .medium-zoom-image--opened { z-index: 9999; }
 body:has(.medium-zoom-image--opened) { overflow: hidden; }
+
+/* Screenshots of a narrow panel, several to a row instead of one stretched
+   across the page (docs/hub/assistant.md); one under another on a phone. */
+.shot-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: var(--ifm-leading);
+}
+.shot-row figure { margin: 0; }
+.shot-row img { display: block; width: 100%; border: 1px solid var(--ifm-color-emphasis-300); border-radius: 0.5rem; }
+.shot-row figcaption { margin-top: 0.4rem; text-align: center; font-size: 0.85rem; color: var(--ifm-color-emphasis-700); }
+@media (max-width: 640px) {
+  .shot-row { grid-template-columns: minmax(0, 1fr); }
+}
