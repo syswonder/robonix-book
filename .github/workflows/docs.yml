@@ -127,6 +127,9 @@ jobs:
           if [ "$pinned" != "$current" ]; then
             echo "::warning::Robonix dev moved from $pinned to $current; re-audit runnable documentation before updating ROBONIX_SOURCE_REVISION."
           fi
+      # GitHub answers 503 to file pages viewed without signing in from
+      # Actions runners, so pinned blob links are checked through
+      # raw.githubusercontent.com, which serves the same paths.
       - name: Check external links
         uses: lycheeverse/lychee-action@v2
         with:
@@ -141,6 +144,7 @@ jobs:
             --max-retries 3
             --timeout 60
             --accept '200,202,203,204,206,403'
+            --remap 'https://github\.com/([^/]+)/([^/]+)/blob/(.+) https://raw.githubusercontent.com/$1/$2/$3'
             'docs/**/*.md'
 
   deploy:

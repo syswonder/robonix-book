@@ -19,6 +19,20 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'Robonix Console 与 Robonix Hub',
+      items: [
+        {type: 'doc', id: 'hub/index', label: '概览'},
+        {type: 'doc', id: 'hub/account', label: '账户'},
+        {type: 'doc', id: 'hub/install', label: '安装 Robonix Console'},
+        {type: 'doc', id: 'hub/configure', label: '配置机器人'},
+        {type: 'doc', id: 'hub/run', label: '运行'},
+        {type: 'doc', id: 'hub/assistant', label: 'AI 机器人配置助手'},
+        {type: 'doc', id: 'hub/cloud', label: '目录与云端'},
+        {type: 'doc', id: 'hub/feedback', label: '反馈问题'},
+      ],
+    },
+    {
+      type: 'category',
       label: '部署与运行',
       items: [
         'architecture/deployment-and-startup',

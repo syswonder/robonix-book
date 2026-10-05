@@ -98,8 +98,13 @@ const config: Config = {
           label: '手册',
         },
         {
-          href: 'https://packages.robonix.ai/',
+          href: 'https://hub.robonix.ai/discover',
           label: '软件包目录',
+          position: 'right',
+        },
+        {
+          href: 'https://hub.robonix.ai/',
+          label: 'Robonix Hub',
           position: 'right',
         },
         {
