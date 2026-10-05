@@ -1,6 +1,6 @@
 # 反馈问题
 
-遇到问题或有建议时，直接在页面上提交反馈。反馈会连同排查所需的信息一起发给维护者。Robonix Hub 和 Robonix Hub Cloud 都可以提交。
+遇到问题或有建议时，直接在页面上提交反馈。反馈会连同排查所需的信息一起发给维护者。Robonix Console 和 Robonix Hub 都可以提交。
 
 ## 提交反馈
 
@@ -8,9 +8,9 @@
 
    ![反馈按钮位于账户名称旁边，标记为 1。](/img/hub/07-feedback-button.webp)
 
-2. 在 `反馈对象` ① 中选择 `Robonix`、`Robonix Hub` 或 `Robonix Hub Cloud`。
+2. 在 `反馈对象` ① 中选择 `Robonix`、`Robonix Console` 或 `Robonix Hub`。
 3. 在描述框 ② 中写明看到的现象、期望的结果，以及出问题前做的操作。
-4. 检查随附信息。在 Robonix Hub 提交时，反馈附带系统与硬件、版本、最近的日志和 `Robonix Hub 设置`；点 `查看` ③ 阅读原文，取消勾选的项不会发送。`当前部署清单` ④ 默认不勾选，勾选后其中的密钥会替换为占位符。
+4. 检查随附信息。在 Robonix Console 提交时，反馈附带系统与硬件、版本、最近的日志和 `Robonix Console 设置`；点 `查看` ③ 阅读原文，取消勾选的项不会发送。`当前部署清单（密钥已替换）` ④ 默认不勾选，勾选后随附的部署清单中密钥已替换为占位符。
 5. 点 `发送` ⑤。
 
 ![反馈对话框。依次是反馈对象、问题描述、随附内容列表和发送按钮。](/img/hub/07-feedback-dialog.webp)
@@ -23,7 +23,7 @@
 
 ![反馈已发送的提示。](/img/hub/07-feedback-sent.webp)
 
-在 Robonix Hub Cloud 提交时，反馈附带浏览器信息。
+在 Robonix Hub 提交时，反馈附带浏览器信息。
 
 ## 反馈的处理
 
@@ -33,7 +33,7 @@
 
 ## 离线提交反馈
 
-Robonix Hub 无法连接 Robonix Hub Cloud 时，反馈对话框提供 `下载反馈包`。下载的文件包含同样的内容，可以另行发给维护者。
+Robonix Console 无法连接 Robonix Hub 时，反馈对话框提供 `下载反馈包`。下载的文件包含同样的内容，可以另行发给维护者。
 
 ## 反馈内容要求
 
