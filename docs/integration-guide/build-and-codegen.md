@@ -173,6 +173,7 @@ my_package/
 ```yaml
 capabilities:
   - name: robonix/skill/inspection/inspect
+    transport: mcp
     path: capabilities/inspect.v1.toml
 ```
 
@@ -216,7 +217,7 @@ rbnx start -p /path/to/my_package \
   --set camera.width=640
 ```
 
-配置最终通过该提供方唯一的 Driver 的 `CMD_INIT(config_json)` 发送，不会以一组任意环境变量注入提供方。本节的新包应在 `rbnx caps -v` 中只显示 `robonix/lifecycle/driver`，并同时列出 `robonix/skill/inspection/inspect`；清单显式声明与运行时注册不一致会使初始化失败。已有包则核对其唯一的命名空间 Driver。
+配置最终通过该提供方唯一的 Driver 的 `CMD_INIT(config_json)` 发送，不会以一组任意环境变量注入提供方。本节的新包应在 `rbnx caps -v` 中只显示 `robonix/lifecycle/driver`，并同时列出 `robonix/skill/inspection/inspect` 的 MCP 端点。Driver 选择与实际注册不一致会使初始化失败；普通业务能力的约定或传输与清单不一致时只记录警告，详见[清单检查规则](packaging-spec.md#12-capabilities)。已有包则核对其唯一的命名空间 Driver。
 
 ## 6. 构建整个机器人部署
 

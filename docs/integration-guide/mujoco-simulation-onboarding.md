@@ -829,7 +829,7 @@ primitives/<device>/
 └── 实现源码或对 common 实现的启动引用
 ```
 
-示例：
+下面是接入新本体时的清单示例：`move` 和 Driver 采用 gRPC，`odom` 和 `twist_in` 采用 ROS 2。这里的传输是适配器的示例选择；复用参考本体包或其它实现时，必须按实际注册代码填写 `transport`。
 
 ```yaml
 manifestVersion: 1
@@ -848,9 +848,13 @@ stop: bash ../../scripts/stop-primitive.sh my_chassis
 
 capabilities:
   - name: robonix/primitive/chassis/move
+    transport: grpc
   - name: robonix/primitive/chassis/odom
+    transport: ros2
   - name: robonix/primitive/chassis/twist_in
+    transport: ros2
   - name: robonix/primitive/chassis/driver
+    transport: grpc
 ```
 
 ### 初始化哨兵

@@ -439,7 +439,7 @@ provider = Primitive(
 
 `rbnx boot` 会把部署条目的 `name` 写入 `RBNX_INSTANCE_NAME`，因此后文的 `base_chassis` 会注册成同名提供方。开始实现后再添加 `config.spec`；只有提供方需要向 Pilot 说明调用顺序、约束或长任务语义时才添加可选的 `CAPABILITY.md`。`capabilities/` 用于放置尚未进入 Robonix 标准接口的软件包内能力约定；如果实现的都是标准接口，可以保持为空。
 
-上面的片段只解决运行实例命名。完成原语时，还必须为清单中的 `move`、`twist_in` 和 `odom` 分别实现 gRPC 或 ROS 2 端点；清单本身不会自动注册这些能力。实现方式见[开发原语](../developer-guide.md#9-开发原语)。
+上面的片段只解决运行实例命名。下面的清单选择 gRPC `move`、ROS 2 `twist_in` 和 `odom`，原语必须实现相应端点；清单本身不会自动注册这些能力。实现方式见[开发原语](../developer-guide.md#9-开发原语)。
 
 `package_manifest.yaml` 中的发布元数据、构建入口、启动入口、可选的停止清理入口和标准能力必须与实现一致：
 
@@ -460,8 +460,11 @@ stop: bash scripts/stop.sh
 
 capabilities:
   - name: robonix/primitive/chassis/move
+    transport: grpc
   - name: robonix/primitive/chassis/twist_in
+    transport: ros2
   - name: robonix/primitive/chassis/odom
+    transport: ros2
 ```
 
 这是一份新软件包清单。清单未列 Driver 时，框架会自动提供共享生命周期 Driver。

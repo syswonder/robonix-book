@@ -195,7 +195,7 @@ string message
 
 模型需要发现并离散调用的工具通常使用 MCP；确定性的进程间控制、生命周期和流式请求通常使用 gRPC；机器人内部已有的高频传感与控制图通常保留 ROS 2。能力约定只定义语义，不会替开发者自动选择传输。提供方声明的传输、Atlas 返回的端点和消费者建立的客户端必须一致。
 
-当前 Python 运行时不会在装饰器注册阶段完整校验“模式—传输”矩阵。生成类型、提供方和消费者是否选了同一传输，要靠端到端测试确认。
+`package_manifest.yaml` 在每条能力记录中用 `transport` 声明实际实现的传输。`rbnx` 找到能力约定 TOML 时会按上表校验；当前 Python 运行时不会在装饰器注册阶段完整校验该矩阵。清单格式和运行时一致性检查见[软件包与部署清单规范](integration-guide/packaging-spec.md#12-capabilities)，提供方与消费者的连接仍须通过端到端测试确认。
 
 ### 4.3 全局与软件包内能力约定
 
@@ -343,6 +343,7 @@ stop: bash scripts/stop.sh
 
 capabilities:
   - name: robonix/service/example/hello
+    transport: mcp
     path: capabilities/hello.v1.toml
 
 depends:
@@ -434,8 +435,11 @@ rbnx package-new my_navigate --type service
 ```yaml title="services/my_navigate/package_manifest.yaml"
 capabilities:
   - name: robonix/service/navigation/navigate
+    transport: mcp
   - name: robonix/service/navigation/navigate/status
+    transport: mcp
   - name: robonix/service/navigation/navigate/cancel
+    transport: mcp
 ```
 
 将 `scripts/build.sh` 中的代码生成命令改为 `rbnx codegen -p "$PKG" --mcp`，然后实现：
@@ -576,7 +580,9 @@ rbnx package-new base_chassis --type primitive
 ```yaml
 capabilities:
   - name: robonix/primitive/chassis/move
+    transport: grpc
   - name: robonix/primitive/chassis/odom
+    transport: ros2
 ```
 
 下面的示例导入 `nav_msgs.msg.Odometry` 并发布 ROS 2 数据，因此还要构建并加载代码生成的 ROS 2 叠加层。将脚手架的构建脚本改为：
@@ -709,6 +715,7 @@ string greeting
 ```yaml
 capabilities:
   - name: robonix/skill/say_hello/say
+    transport: mcp
     path: capabilities/say.v1.toml
 ```
 
@@ -1449,7 +1456,7 @@ for event in stub.RecognizeStream(asr_requests(), timeout=60.0):
 | `build` | 构建命令，可选；省略表示无构建步骤 |
 | `start` | 启动命令，必填 |
 | `stop` | 停止命令，可选；由 `rbnx boot` / Soma 受管关闭时，在 Driver `CMD_SHUTDOWN` 后、终止进程组前执行；单独 `rbnx start` 不自动执行 |
-| `capabilities` | 能力约定引用和预期导出清单；每项含约定 ID `name`，可选业务约定 TOML `path`，不替代码声明普通业务能力。未列 Driver 时，框架自动选择共享 `robonix/lifecycle/driver`；显式选择共享 Driver 仍受支持，多条 Driver 会使启动失败 |
+| `capabilities` | 能力约定引用和预期导出清单；每项含唯一的约定 ID `name`、传输 `transport` 和可选业务约定 TOML `path`。`transport` 为 `mcp`、`grpc`、`ros2` 之一或非空无重复列表；省略时警告并继续。清单不替代码声明业务能力。未列 Driver 时，框架自动选择共享 `robonix/lifecycle/driver`；显式选择共享 Driver 仍受支持，多条 Driver 会使启动失败 |
 | `depends` | 依赖元数据；解析、安装和构建排序仍在设计中，当前只展示记录，不自动获取、安装或注入路径 |
 
 :::warning[后向兼容：`capabilities` 中的命名空间 Driver]

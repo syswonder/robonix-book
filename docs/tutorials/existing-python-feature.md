@@ -116,7 +116,9 @@ primitive-vendor-arm-rbnx/
 ```yaml title="package_manifest.yaml 中的 capabilities"
 capabilities:
   - name: robonix/primitive/arm/joint_command
+    transport: ros2
   - name: robonix/primitive/arm/joint_states
+    transport: ros2
 ```
 
 两个业务约定分别负责关节命令输入和关节状态输出；生命周期 Driver 由框架自动提供。关节名、位置、速度和作用力使用 `sensor_msgs/JointState`；其中 `effort` 对旋转关节表示力矩，对移动关节表示力。夹爪关节也放在同一消息中。
@@ -374,10 +376,13 @@ type = "rpc"
 ```yaml title="package_manifest.yaml 中的 capabilities"
 capabilities:
   - name: robonix/skill/grasp_block/grasp
+    transport: mcp
     path: capabilities/grasp.v1.toml
   - name: robonix/skill/grasp_block/grasp/status
+    transport: mcp
     path: capabilities/grasp_status.v1.toml
   - name: robonix/skill/grasp_block/grasp/cancel
+    transport: mcp
     path: capabilities/grasp_cancel.v1.toml
 ```
 

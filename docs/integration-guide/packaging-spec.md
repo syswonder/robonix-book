@@ -32,8 +32,11 @@ stop: bash scripts/stop.sh
 
 capabilities:
   - name: robonix/primitive/chassis/move
+    transport: grpc
   - name: robonix/primitive/chassis/twist_in
+    transport: ros2
   - name: robonix/primitive/chassis/odom
+    transport: ros2
 
 depends: []
 ```
@@ -101,7 +104,7 @@ rm -f -- rbnx-build/run/acme-chassis.sock
 | `build` | 可选 | 在软件包根目录执行的 shell 命令；预编译软件包可省略 |
 | `start` | 必填 | 在软件包根目录执行的唯一启动入口 |
 | `stop` | 可选 | 软件包自有的额外清理入口；不能替代 Driver 关闭流程 |
-| `capabilities` | 按实现填写 | 软件包预期导出的能力元数据 |
+| `capabilities` | 按实现填写 | 软件包预期导出的能力约定与传输，见下节 |
 | `depends` | 可选 | 依赖元数据；当前不自动下载或注入路径 |
 
 验证软件包清单：
@@ -123,7 +126,9 @@ rbnx validate ./path/to/package
 ```yaml
 capabilities:
   - name: robonix/primitive/camera/rgb
+    transport: ros2
   - name: robonix/primitive/camera/depth
+    transport: ros2
 ```
 
 当软件包定义尚未进入主仓库的接口时，可用 `path` 记录软件包本地 TOML：
@@ -131,10 +136,25 @@ capabilities:
 ```yaml
 capabilities:
   - name: robonix/skill/inventory/count
+    transport: mcp
     path: capabilities/count.v1.toml
 ```
 
 本地能力约定引用的 IDL 放在同一软件包的 `capabilities/lib/`。`rbnx codegen` 扫描官方能力约定根和软件包的 `capabilities/`，并不依赖本字段决定生成范围。运行时能力同样由代码中的装饰器和声明 API 注册，不由清单自动创建。未实现的接口不能预先写进 `capabilities`；本字段应与 Atlas 中的实际声明一致。
+
+每条记录的 `name` 是能力约定 ID，在同一清单中不得重复。`transport` 使用小写 `mcp`、`grpc` 或 `ros2`；同一约定通过多种传输实现时，在同一条记录中列出非空、无重复的列表：
+
+```yaml
+capabilities:
+  - name: robonix/primitive/chassis/move
+    transport: [grpc, ros2]
+```
+
+该示例要求代码同时注册 gRPC 和 ROS 2 service 端点；清单不会自动创建第二种端点。单种传输可写成字符串，也可写成只含一个元素的列表。此格式仍使用 `manifestVersion: 1`。
+
+`rbnx validate` 以及加载清单的构建、启动流程会拒绝未知传输、空列表、重复传输和重复的 `name`。找到能力约定 TOML 时，还会按[模式与传输表](../developer-guide.md#42-模式与传输)检查每种传输是否支持该模式；找不到 TOML 时跳过这项检查。已有清单省略 `transport` 时会警告并继续；这条能力约定在运行时注册后，仍会被提示清单没有写明它的传输。
+
+运行时通过现有的 Atlas 提供方轮询，按 `(contract_id, transport)` 比较清单与实际注册。未在清单中声明的注册项（包括声明了能力约定却没写传输的）会警告；清单已声明但尚未注册的项在提供方进入 `ACTIVE` 后检查。两类差异都只记录警告，不改变生命周期状态；框架自动提供的共享 Driver 不要求写进业务能力列表。清单没有任何传输声明时，只提示一次无法进行传输一致性检查。
 
 ### 1.3 `depends`
 
@@ -426,9 +446,10 @@ CMD_SHUTDOWN   stop workers, child processes and hardware output
 ```yaml title="package_manifest.yaml"
 capabilities:
   - name: robonix/primitive/chassis/odom
+    transport: ros2
 ```
 
-按需要实现 `on_init`、`on_activate`、`on_deactivate` 和 `on_shutdown`；暂未实现的回调由框架 warning 后执行空操作。软件包也可以显式加入 `name: robonix/lifecycle/driver`，其行为与自动选择相同。新清单不得声明其他 Driver，也不能包含多条 Driver 约定。
+按需要实现 `on_init`、`on_activate`、`on_deactivate` 和 `on_shutdown`；暂未实现的回调由框架 warning 后执行空操作。软件包也可以显式加入 `name: robonix/lifecycle/driver` 和 `transport: grpc`，其行为与自动选择相同。新清单不得声明其他 Driver，也不能包含多条 Driver 约定。
 
 ### 4.2 已有命名空间 Driver 的兼容流程
 
@@ -473,8 +494,10 @@ type = "rpc"
 ```yaml title="package_manifest.yaml"
 capabilities:
   - name: robonix/primitive/chassis/driver
+    transport: grpc
     path: capabilities/driver.v1.toml
   - name: robonix/primitive/chassis/odom
+    transport: ros2
 ```
 
 旧包的 Python 入口不需要为了 Book 更新而重写。当前 Robonix API 优先绑定清单精确选择且完整存在的旧生成服务；如果该旧服务完全不存在，并且受管启动明确标记这是旧清单迁移，它才绑定完整的共享生成服务并向 Atlas 注册 `robonix/lifecycle/driver`：
