@@ -56,7 +56,9 @@ stop: bash scripts/stop.sh
 
 capabilities:
   - name: robonix/primitive/camera/rgb
+    transport: ros2
   - name: robonix/primitive/camera/depth
+    transport: ros2
 ```
 
 这份完整清单对应的最小仓库结构如下；三个脚本都必须以可执行模式提交，`stop.sh` 必须可重复执行：

@@ -59,7 +59,9 @@ stop: ROBONIX_MAPPING_FORCE=native bash scripts/stop.sh
 
 capabilities:
   - name: robonix/service/map/occupancy_grid
+    transport: ros2
   - name: robonix/service/map/pose
+    transport: ros2
 ```
 
 同一仓库的各目标清单必须保持相同的 `package.name`、版本、发布元数据和公开能力；只改变目标相关的 `build`、`start`、可选 `stop` 与平台前置条件。上例中的 `RBNX_BUILD_TARGET` 和 `ROBONIX_MAPPING_FORCE` 是软件包脚本的实现约定；`rbnx` 只执行清单中的 shell 命令，不解释这些变量。

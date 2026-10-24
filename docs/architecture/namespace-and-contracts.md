@@ -114,6 +114,7 @@ my_skill/
 ```yaml
 capabilities:
   - name: robonix/skill/inspection/inspect
+    transport: mcp
     path: capabilities/inspect.v1.toml
 ```
 

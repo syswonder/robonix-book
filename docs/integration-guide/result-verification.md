@@ -105,6 +105,7 @@ string detail
 ```yaml
 capabilities:
   - name: robonix/service/verifier/verify
+    transport: mcp
 ```
 
 下面的伪代码展示与 Scene/VLM 无关的最小 MCP 注册和返回方式：
