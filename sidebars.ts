@@ -13,6 +13,7 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: '入门',
       items: [
+        'getting-started/hub-console',
         'getting-started/quickstart',
         'getting-started/client',
       ],
