@@ -33,6 +33,11 @@ const sidebars: SidebarsConfig = {
           id: 'getting-started/jetson-x86-webots/README',
           label: 'x86 仿真 + Jetson 部署',
         },
+        {
+          type: 'doc',
+          id: 'getting-started/aibox-x86-webots/README',
+          label: 'x86 仿真 + AiBOX 部署',
+        },
       ],
     },
     {
