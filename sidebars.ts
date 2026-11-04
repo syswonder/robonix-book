@@ -31,7 +31,7 @@ const sidebars: SidebarsConfig = {
         {
           type: 'doc',
           id: 'getting-started/jetson-x86-webots/README',
-          label: 'x86 仿真 + ARM64 部署',
+          label: 'x86 仿真 + Jetson 部署',
         },
       ],
     },

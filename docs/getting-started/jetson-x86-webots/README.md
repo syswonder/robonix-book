@@ -1,8 +1,8 @@
 ---
-title: x86 Ubuntu 仿真 + ARM64 Robonix 完整部署流程
+title: x86 Ubuntu 仿真 + Jetson Robonix 完整部署流程
 slug: /getting-started/jetson-x86-webots
 ---
-# x86 Ubuntu 仿真 + ARM64 Robonix 完整部署流程
+# x86 Ubuntu 仿真 + Jetson Robonix 完整部署流程
 
 <div class="procedure-meta">
   <div><strong>目标平台</strong>x86_64（Ubuntu 22.04）+ aarch64（Ubuntu 24.04，JetPack 7.2.1，NVIDIA Jetson Orin Nano 8GB）</div>
