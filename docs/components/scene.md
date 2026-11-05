@@ -409,7 +409,9 @@ Scene 使用同一个地址和端口，左上角“室内 / 室外”只切换�
 
 室外地图、采集记录和全局规划由 `service-map-outdoor-rbnx` 保存与提供；地点、区域由 Scene 保存。室外加载按地图 ID 和内容版本等待路网，不等待室内栅格；固定经纬度原点的路网加载不表示完成 SLAM 重定位。补采保存新 ID，保留旧版，并继承同原点的标注。
 
-原生 ROS 环境可选择 Scene 的 `package_manifest.annotate-native.yaml`，执行 `scripts/build_annotate.sh` 构建轻量人工标注配置，无需视觉模型。网页仍使用 Scene 的同一套服务。室内栅格目标工具不适用于室外路线；本轮室外界面只有路线预览，自动行走与切步态另行对接导航执行服务。
+原生 ROS 环境可选择 Scene 的 `package_manifest.annotate-native.yaml`，执行 `scripts/build_annotate.sh` 构建轻量人工标注配置，无需视觉模型。网页仍使用 Scene 的同一套服务。室内栅格目标工具不适用于室外路线；室外界面支持路线预览；配置 outdoor_navigation 后，可把当前地图参考线和步态区段交给独立导航服务，显示任务、步态等待与失败原因。加载新图时同步定位原点和地图身份，定位不匹配时禁止执行。
 
 
 室内和室外都可使用 Camera 与日志，页面跳转保留当前标签；室外菜单不显示室内专用的 3D/2D 入口。Camera 默认复用 Atlas/ROS 图像输入。如果山猫已有四路相机网页服务，可在 Scene 配置 `camera_viewer_port: 8080`，经 Scene 同一端口查看前后左右相机及调整画质，无需再转发相机端口。这是显式配置的兼容输入，不会启动相机驱动或视觉识别模型。
+
+Scene 的室外导航接入由新导航包 `outdoor_nav.scene` 提供，规划读取当前建图服务的路网。运行不再读取旧校园 bundle、地点文件或旧导航网页；山猫完整部署配置在机器人仓库的 `outdoor/` 子目录。
