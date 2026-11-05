@@ -1,50 +1,76 @@
 .guide {
   --guide-muted: var(--ifm-color-emphasis-700);
+  line-height: 1.8;
 }
 
 .guide h2 {
-  margin-top: 3rem;
+  margin-top: 2.75rem;
+  margin-bottom: 1rem;
 }
 
 .guide h3 {
   margin-top: 2rem;
-}
-
-.guide h4 {
-  margin-top: 1.6rem;
-  font-size: 1.08rem;
+  margin-bottom: 0.85rem;
 }
 
 .guide p {
+  margin-bottom: 1rem;
+  text-align: start;
   text-indent: 0;
 }
 
+.guide ul,
+.guide ol {
+  padding-inline-start: 1.5rem;
+}
+
+.guide li + li {
+  margin-top: 0.4rem;
+}
+
+.guide table {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+  margin: 1.25rem 0;
+}
+
+.guide th,
+.guide td {
+  text-align: start;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.guide th:first-child {
+  width: 28%;
+}
+
 .guide figure {
-  margin: 1.5rem 0;
+  margin: 1.5rem 0 2rem;
 }
 
 .guide figure img {
   display: block;
-  width: auto;
+  width: 100%;
   height: auto;
   max-width: 100%;
-  max-height: 520px;
-  margin: 0 auto;
+  margin: 0;
   border: 1px solid var(--ifm-color-emphasis-200);
   border-radius: 8px;
 }
 
 .guide figcaption {
-  margin-top: 0.6rem;
+  margin-top: 0.65rem;
   color: var(--guide-muted);
   font-size: 0.9rem;
-  line-height: 1.6;
+  line-height: 1.65;
+  text-align: start;
 }
 
-.guide .compactFigure img {
-  max-width: min(100%, 420px);
+.guide .portraitFigure {
+  max-width: 440px;
 }
-
 
 @media (max-width: 576px) {
   .guide h2 {
@@ -52,6 +78,24 @@
   }
 
   .guide figure {
-    margin: 1.1rem 0;
+    margin: 1.25rem 0 1.5rem;
+  }
+
+  .guide table {
+    display: block;
+    overflow-x: auto;
+    table-layout: auto;
+  }
+
+  .guide th,
+  .guide td {
+    min-width: 9rem;
+    padding: 0.55rem;
+  }
+
+  .guide th:first-child,
+  .guide td:first-child {
+    width: auto;
+    min-width: 7rem;
   }
 }
