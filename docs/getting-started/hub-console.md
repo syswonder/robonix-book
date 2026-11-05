@@ -4,7 +4,6 @@ description: 安装与登录 Robonix Console，配置并运行 TIAGo Webots，�
 toc_max_heading_level: 3
 ---
 
-import useBaseUrl from '@docusaurus/useBaseUrl';
 import styles from './hub-console.module.css';
 
 <div className={styles.guide}>
@@ -83,7 +82,9 @@ curl -fsSL https://hub.robonix.ai/install | bash
 等待 Robonix Console 安装。已有 `rbnx` 时安装器使用现有安装；没有时会下载并构建 Robonix。首次构建可能较久。若安装器报告 Robonix 构建失败，先处理报错；Robonix Console 页面能打开不代表 Robonix 已安装成功。
 
 <figure>
-  <img src={useBaseUrl('/img/hub/manual/install.webp')} alt="安装进度" width="1251" height="1026" loading="lazy" />
+
+![安装进度](/img/hub/manual/install.webp)
+
   <figcaption>安装器显示检查、下载和服务配置进度；等待终端给出安装结果与访问地址。</figcaption>
 </figure>
 
@@ -102,7 +103,9 @@ ssh -N -L 4880:127.0.0.1:4880 ROBOT_USER@ROBOT_IP
 保持终端打开，在操作者电脑浏览器访问同一个本地地址。此隧道只用于访问 Robonix Console；Robonix Client 还需能访问机器人组件。
 
 <figure>
-  <img src={useBaseUrl('/img/hub/manual/login.webp')} alt="邮箱、密码和登录按钮" width="1400" height="680" loading="lazy" />
+
+![邮箱、密码和登录按钮](/img/hub/manual/login.webp)
+
   <figcaption>填写邮箱①和密码②，点“登录”③；已启用二次验证时继续输入验证码。</figcaption>
 </figure>
 
@@ -120,10 +123,12 @@ ssh -N -L 4880:127.0.0.1:4880 ROBOT_USER@ROBOT_IP
 | VLM KEY | `VLM_API_KEY` | 该服务的访问密钥 |
 | VLM 模型 | `VLM_MODEL` | 用于 Pilot 任务规划的模型名 |
 
-这三项用于任务规划组件 Pilot。填写或核对后保存。安装时已经填写过的值也应在此检查，确认地址、密钥和模型名属于同一服务。这些值保存在仿真电脑上，不随配置备份上传。运行期间修改后，重新启动 Robonix 才会读取新值。
+这三项用于任务规划组件 Pilot。本页“拍照并描述”任务需要模型支持图像输入。填写或核对后保存。安装时已经填写过的值也应在此检查，确认地址、密钥和模型名属于同一服务。这些值保存在仿真电脑上，不随配置备份上传。运行期间修改后，重新启动 Robonix 才会读取新值。
 
 <figure>
-  <img src={useBaseUrl('/img/hub/manual/variables.webp')} alt="设置页中的模型服务与本机环境变量" width="1240" height="995" loading="lazy" />
+
+![设置页中的模型服务与本机环境变量](/img/hub/manual/variables.webp)
+
   <figcaption>模型服务包括地址、密钥和模型名三项。①标出环境变量区域，②用于添加其他变量。</figcaption>
 </figure>
 
@@ -136,12 +141,16 @@ ssh -N -L 4880:127.0.0.1:4880 ROBOT_USER@ROBOT_IP
 在 Robonix Console 的 <code>概览</code> 点 <code>选择机器人配置</code>（Choose a robot configuration），选择 **PAL Robotics TIAGo**，核对包名为 <code>robonix.robot.pal_robotics.tiago_webots</code>，再点 <code>创建部署</code>（Create deployment）。也可从 <code>目录</code> 的机器人分类打开同一整机配置，查看说明并安装。
 
 <figure>
-  <img src={useBaseUrl('/img/hub/manual/catalog.webp')} alt="检索 TIAGo 整机配置" width="1498" height="680" loading="lazy" />
+
+![检索 TIAGo 整机配置](/img/hub/manual/catalog.webp)
+
   <figcaption>选择“机器人”①，搜索 tiago ②，打开 TIAGo 条目③。</figcaption>
 </figure>
 
 <figure>
-  <img src={useBaseUrl('/img/hub/manual/robot-package.webp')} alt="TIAGo 的整机配置页" width="1400" height="680" loading="lazy" />
+
+![TIAGo 的整机配置页](/img/hub/manual/robot-package.webp)
+
   <figcaption>整机页显示说明和仓库；①为安装入口。</figcaption>
 </figure>
 
@@ -152,14 +161,18 @@ ssh -N -L 4880:127.0.0.1:4880 ROBOT_USER@ROBOT_IP
 打开 <code>配置</code>，展开需要修改的条目。提供 <code>config.spec</code> 的软件包显示分组表单；点参数行查看说明并编辑，长说明可点 <code>更多</code> 展开，<code>改回默认</code> 清除该项设置。
 
 <figure>
-  <img src={useBaseUrl('/img/hub/manual/parameters.webp')} alt="分组参数表单" width="1240" height="691" loading="lazy" />
+
+![分组参数表单](/img/hub/manual/parameters.webp)
+
   <figcaption>展开参数分组①，选择参数行②；“更多”③显示完整说明。</figcaption>
 </figure>
 
 参数需要指定其他条目作为提供方时，从列表中选择当前部署里的实际条目名称。提供方在其他机器上时，按参数说明选择 <code>手动填写</code> 并输入名称。
 
 <figure>
-  <img src={useBaseUrl('/img/hub/manual/provider.webp')} alt="能力提供方选择框" width="1240" height="680" loading="lazy" />
+
+![能力提供方选择框](/img/hub/manual/provider.webp)
+
   <figcaption>展开提供方参数①，从下拉框②选择条目；示例中为 tiago_lidar。</figcaption>
 </figure>
 
@@ -174,7 +187,9 @@ ssh -N -L 4880:127.0.0.1:4880 ROBOT_USER@ROBOT_IP
 在原语、服务或技能分组点 <code>添加软件包</code>，从目录检索并选择条目；已在部署中的软件包不能重复加入。添加前先检查能力说明、依赖与所需参数。
 
 <figure>
-  <img src={useBaseUrl('/img/hub/manual/add-package.webp')} alt="技能检索与添加" width="1680" height="680" loading="lazy" />
+
+![技能检索与添加](/img/hub/manual/add-package.webp)
+
   <figcaption>①为搜索框，②为搜索结果；图中 find_object 用于展示添加方式，首次运行无需额外添加。</figcaption>
 </figure>
 
@@ -185,7 +200,9 @@ ssh -N -L 4880:127.0.0.1:4880 ROBOT_USER@ROBOT_IP
 点 <code>保存为新版本</code>，填写修改说明，检查差异后保存。新增或更换软件包后需下载并构建；启动时读取的参数在重启后生效。
 
 <figure>
-  <img src={useBaseUrl('/img/hub/manual/save-version.webp')} alt="版本说明和配置差异" width="2048" height="832" loading="lazy" />
+
+![版本说明和配置差异](/img/hub/manual/save-version.webp)
+
   <figcaption>核对版本号①，填写修改说明②，检查配置差异③后保存。</figcaption>
 </figure>
 
@@ -202,7 +219,9 @@ ssh -N -L 4880:127.0.0.1:4880 ROBOT_USER@ROBOT_IP
 构建失败时，保留日志中出错的软件包和原因，处理后重试；确认属于缓存损坏时，再使用 `清理缓存`。
 
 <figure>
-  <img src={useBaseUrl('/img/hub/manual/packages.webp')} alt="更新页中的软件包列表与更新按钮" width="1568" height="2128" loading="lazy" />
+
+![更新页中的软件包列表与更新按钮](/img/hub/manual/packages.webp)
+
   <figcaption>①为当前部署的软件包列表，②为“更新全部软件包”；任务结束后检查构建日志与结果。</figcaption>
 </figure>
 
@@ -230,7 +249,9 @@ ssh -N -L 4880:127.0.0.1:4880 ROBOT_USER@ROBOT_IP
 概览中的 `连接 robonix-client` 区域列出 **Robot Host** 和 **Atlas Port**。记录可从操作者设备访问的地址与端口，供下一步连接使用；不能只凭 `运行中` 判断所有功能均已就绪。
 
 <figure>
-  <img src={useBaseUrl('/img/hub/manual/running.webp')} alt="运行状态与客户端连接信息" width="2048" height="864" loading="lazy" />
+
+![运行状态与客户端连接信息](/img/hub/manual/running.webp)
+
   <figcaption>①为运行状态，②为停止按钮，③和④为客户端所需的 Robot Host 与 Atlas Port。</figcaption>
 </figure>
 
@@ -243,7 +264,9 @@ ssh -N -L 4880:127.0.0.1:4880 ROBOT_USER@ROBOT_IP
 点 <code>查看运行日志</code> 或打开 <code>日志</code>，选择本次运行，再查看 <code>rbnx 输出</code> 和组件标签。筛选框按关键字过滤，<code>跟随最新</code> 用于持续观察；日志较长时可显示全部或下载完整日志。
 
 <figure>
-  <img src={useBaseUrl('/img/hub/manual/logs.webp')} alt="运行记录和组件日志" width="1458" height="680" loading="lazy" />
+
+![运行记录和组件日志](/img/hub/manual/logs.webp)
+
   <figcaption>选择运行记录①，查看 rbnx 输出②；③筛选关键字，④切换“跟随最新”。</figcaption>
 </figure>
 
@@ -278,7 +301,9 @@ robonix-client --robot-host ROBOT_IP
 Android 8.0 或更高版本也可从 [Robonix Client Android 发布页](https://github.com/syswonder/robonix-client-android/releases/latest)安装 APK，在 **Settings** 填写 **Robot Host**，点 **Save** 并连接。电脑和手机均须能直接访问仿真电脑的相关组件；仅建立 Robonix Console 的 SSH 转发不足以连接 Robonix Client。
 
 <figure>
-  <img src={useBaseUrl('/img/hub/manual/client.webp')} alt="客户端连接界面" width="2048" height="680" loading="lazy" />
+
+![客户端连接界面](/img/hub/manual/client.webp)
+
   <figcaption>填写机器人主机①和 Atlas 端口②；连接成功后检查“已连接”③。</figcaption>
 </figure>
 
@@ -293,7 +318,9 @@ Android 8.0 或更高版本也可从 [Robonix Client Android 发布页](https://
 检查 TIAGo 的转向、相机画面与回复是否一致，并查看任务执行记录。机器人任务描述语言（Robot Task Description Language，RTDL）的执行树显示能力调用与执行状态；只收到规划回复不代表动作已完成。
 
 <figure>
-  <img src={useBaseUrl('/img/hub/manual/task.webp')} alt="拍照与场景描述任务结果" width="1960" height="1092" loading="lazy" />
+
+![拍照与场景描述任务结果](/img/hub/manual/task.webp)
+
   <figcaption>拍照任务示例：①为回复内容，②为已完成的当前目标。</figcaption>
 </figure>
 
@@ -304,7 +331,9 @@ Android 8.0 或更高版本也可从 [Robonix Client Android 发布页](https://
 打开 `历史`，查看最新记录和 `当前` 标记。选择旧版本，点 `与当前对比`，确认差异。
 
 <figure>
-  <img src={useBaseUrl('/img/hub/manual/history.webp')} alt="配置版本列表与对比入口" width="1400" height="680" loading="lazy" />
+
+![配置版本列表与对比入口](/img/hub/manual/history.webp)
+
   <figcaption>①标记当前版本；选择旧版本②，点“与当前对比”③查看差异。</figcaption>
 </figure>
 
@@ -337,7 +366,9 @@ Android 8.0 或更高版本也可从 [Robonix Client Android 发布页](https://
 配置备份包含**部署清单与配置历史**，最多保留最新 200 个版本；不包含本机软件包、`.env`、地图、模型与标定资源。恢复一份清单不等于还原了一台可运行的机器人。
 
 <figure>
-  <img src={useBaseUrl('/img/hub/manual/backup.webp')} alt="部署备份卡片" width="1568" height="680" loading="lazy" />
+
+![部署备份卡片](/img/hub/manual/backup.webp)
+
   <figcaption>先核对当前部署；①上传配置与历史，②选择要下载的备份。</figcaption>
 </figure>
 
@@ -370,7 +401,9 @@ Robonix Console 右侧的 `AI 机器人配置助手` 用于读配置、查软件
 配置修改会保存为带 `(AI)` 说明的新版本，可在历史中恢复。设置本机环境变量时，在专用输入框中填写值，不将密钥发到聊天正文。执行机器人任务仍需通过 Robonix Client。
 
 <figure className={styles.portraitFigure}>
-  <img src={useBaseUrl('/img/hub/manual/assistant.webp')} alt="AI 配置助手检查配置、提出参数修改并展示确认卡片" width="768" height="1800" loading="lazy" />
+
+![AI 配置助手检查配置、提出参数修改并展示确认卡片](/img/hub/manual/assistant.webp)
+
   <figcaption>助手先检查配置，再展示参数修改建议与确认卡片；核对操作与差异后点“同意”。</figcaption>
 </figure>
 
@@ -422,7 +455,9 @@ Robonix Console 反馈可附系统与硬件、版本、最近日志和管理程�
 一条反馈描述一个问题，注明整机配置、软件版本和发生时间。Robonix Console 无法连接 Robonix Hub 时，可 `下载反馈包` 交给维护者。需要恢复配置时，先导出历史留底，再对比、回滚并重启；本机资源与代码另行检查。
 
 <figure>
-  <img src={useBaseUrl('/img/hub/manual/feedback.webp')} alt="反馈表单和随附信息" width="1680" height="1232" loading="lazy" />
+
+![反馈表单和随附信息](/img/hub/manual/feedback.webp)
+
   <figcaption>①选择反馈对象，②填写描述，③预览附件，④按需勾选当前部署清单，⑤发送。</figcaption>
 </figure>
 
