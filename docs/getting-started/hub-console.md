@@ -28,22 +28,36 @@ Robonix Console 使用 Robonix Hub 账户登录。Robonix Hub 的目录和账户
 
 首次使用按以下顺序操作：
 
-1. 激活 Robonix Hub 账户，准备运行环境。
+1. 注册或登录 Robonix Hub 账户，准备运行环境。
 2. 安装 Robonix Console，登录后检查模型服务。
 3. 安装 TIAGo 整机配置，按需修改参数并保存。
 4. 下载和构建软件包，设置 Webots 启动钩子，再启动 Robonix。
 5. 查看日志，连接 Robonix Client 并发送任务。
 6. 对比和恢复配置版本，备份或分享部署，按需使用 AI 机器人配置助手。
 
-## 激活账户
+<span id="激活账户"></span>
 
-准备可登录的 Robonix Hub 账户。已有账户时，可在 [Robonix Hub 登录页面](https://hub.robonix.ai/auth/login)登录。通过邀请开通账户时，按以下步骤激活：
+## 注册与登录账户
 
-1. 打开邮件中的邀请链接，输入验证码。
-2. 阅读个人信息出境告知和许可协议，按页面提示确认。
-3. 设置密码；需要二次验证时，在账户设置中绑定身份验证器。
+**Robonix Hub 已开放注册，无需申请邀请。** 已有账户可直接在 [登录页面](https://hub.robonix.ai/auth/login)登录；新用户可选择邮箱注册或使用 GitHub。
 
-协议更新后，先在 Robonix Hub 完成确认，再登录 Robonix Console。
+### 邮箱注册
+
+1. 打开 [注册页面](https://hub.robonix.ai/auth/registration)，填写邮箱、密码及确认密码，点 `注册`。密码至少 10 位；显示名称默认取邮箱的 `@` 前缀，可在账户设置中修改。
+2. 在页面输入邮件中的验证码，完成邮箱验证。
+3. 阅读页面上的个人信息出境告知、《用户服务协议》和《隐私政策》，确认年龄并按提示逐项同意后，即可使用。
+
+### 使用 GitHub
+
+在注册页或登录页点 `使用 GitHub 继续`。首次使用会根据 GitHub 上已验证的主邮箱创建账户，按提示完成协议确认即可，无需另设密码。GitHub 没有已验证邮箱时，需先在 GitHub 验证邮箱。该邮箱已有 Hub 账户时，先用原有方式登录，再按页面提示关联 GitHub，不会自动合并账户。
+
+通过 GitHub 注册后，可以继续用 GitHub 登录 Robonix Hub 和 Robonix Console；需要邮箱密码登录时，先在 Hub 账户设置中设置密码。
+
+### 邀请与账户设置
+
+管理员邀请仍可使用，但不是注册的前提。收到邀请时，打开邀请链接、输入邮件验证码、完成协议确认，再设置密码。注册或激活后，可在账户设置中绑定身份验证器以启用二次验证。
+
+协议更新后，按 Robonix Hub 页面提示阅读并重新确认；邮箱密码登录 Console 时若提示尚未同意协议，先到 Hub 完成确认。账户提示邮箱未验证时，先完成验证，再进行上传备份等要求验证邮箱的操作。
 
 ## 安装
 
@@ -54,7 +68,7 @@ Robonix Console 使用 Robonix Hub 账户登录。Robonix Hub 的目录和账户
 - Ubuntu 22.04，x86_64 或 aarch64。
 - 已安装 Docker，执行安装器的普通用户可以不加 <code>sudo</code> 运行 Docker。
 - 可访问 Robonix Hub、GitHub 和容器镜像源的网络。
-- 已激活的 Robonix Hub 账户，以及模型服务地址、访问密钥和模型名。
+- 可登录的 Robonix Hub 账户，以及模型服务地址、访问密钥和模型名。
 - 操作者设备能够通过局域网或 VPN 访问运行 Robonix 的电脑。
 
 在运行仿真的电脑终端检查：
@@ -92,7 +106,10 @@ curl -fsSL https://hub.robonix.ai/install | bash
 
 ### 打开管理页面
 
-安装结束后，在同一台电脑浏览器打开 [http://127.0.0.1:4880](http://127.0.0.1:4880)。填写 Robonix Hub 邮箱和密码，点 `登录`；有两步验证时继续输入验证码。若提示尚未同意协议，先在 Robonix Hub 完成确认，再返回登录。
+安装结束后，在同一台电脑浏览器打开 [http://127.0.0.1:4880](http://127.0.0.1:4880)，选择以下任一方式登录：
+
+- **GitHub 授权登录**：点 `使用 GitHub 继续`，在新标签页打开的 Robonix Hub 授权页面完成登录。核对页面上的 8 位代码与 Console 一致，并检查机器信息后点 `授权`；Console 随后自动登录。代码 10 分钟内有效，新标签页未打开时可点 `重新打开页面`。首次使用需先完成账户和协议确认。
+- **邮箱密码登录**：填写 Robonix Hub 邮箱和密码，点 `登录`；已启用二次验证时继续输入验证码。若提示尚未同意协议，先在 Hub 完成确认。仅使用 GitHub 注册且未设置密码的账户，应使用上面的 GitHub 授权方式。
 
 从另一台电脑访问时，在操作者电脑终端执行以下转发命令；`ROBOT_USER` 是仿真电脑上的 Linux 用户名，`ROBOT_IP` 是该电脑可达的局域网或 VPN 地址：
 
@@ -106,7 +123,7 @@ ssh -N -L 4880:127.0.0.1:4880 ROBOT_USER@ROBOT_IP
 
 ![邮箱、密码和登录按钮](/img/hub/manual/login.webp)
 
-  <figcaption>填写邮箱①和密码②，点“登录”③；已启用二次验证时继续输入验证码。</figcaption>
+  <figcaption>邮箱密码登录示意。当前版本也支持“使用 GitHub 继续”，按上文完成浏览器授权。</figcaption>
 </figure>
 
 ### 页面布局
@@ -234,7 +251,7 @@ ssh -N -L 4880:127.0.0.1:4880 ROBOT_USER@ROBOT_IP
 | 启动前（Before boot） | `bash sim/start.sh --detach` |
 | 退出后（After exit） | `bash sim/stop.sh` |
 
-命令中的路径相对于当前部署目录解析。Robonix Console 在启动 Robonix 前运行第一项，在运行退出后运行第二项；无需另开终端启动或停止 Webots。
+命令中的路径相对于当前部署目录解析。Robonix Console 在启动 Robonix 前运行第一项，在运行退出后运行第二项；无需另开终端启动或停止 Webots。启动前命令失败时不会继续启动 Robonix；退出后命令最长运行 120 秒。两项命令只保存在本机，不写入部署清单或云端备份，换机恢复部署后需重新设置。
 
 ### 允许其他机器连接
 
@@ -465,7 +482,7 @@ Robonix Console 反馈可附系统与硬件、版本、最近日志和管理程�
 
 | 现象 | 优先检查 |
 |---|---|
-| 无法登录 Robonix Hub 或 Robonix Console | 账户激活、协议确认、密码和二次验证；有网络异常时查看 [Robonix Hub 服务状态](https://hub.robonix.ai/status) |
+| 无法登录 Robonix Hub 或 Robonix Console | 注册是否完成、协议确认、所选登录方式和二次验证；GitHub 账户未设置密码时使用 GitHub 授权登录；有网络异常时查看 [Robonix Hub 服务状态](https://hub.robonix.ai/status) |
 | Robonix Console 页面打不开 | 安装结果、本机 `127.0.0.1:4880`；远程使用时检查 SSH 转发 |
 | 首次启动停在仿真准备阶段 | 当前用户运行 `docker ps` 是否正常，网络是否可下载镜像，Before boot 命令是否保存 |
 | 停止后仿真仍在运行 | After exit 命令是否为 `bash sim/stop.sh`，退出钩子的日志是否报错 |
