@@ -863,6 +863,14 @@ skill:
 
 远程软件包使用 `url`，本地软件包使用 `path`。`manifest` 选择软件包提供的平台清单，例如 Jetson 原生清单。提供平台变体时仍要保留默认 `package_manifest.yaml`；完整字段见[软件包与部署清单规范](integration-guide/packaging-spec.md)。
 
+### 12.1 模型端点与模型目录
+
+`system.pilot.vlm` 是 Pilot 的显式配置。`upstream`、`api_key`、`model` 三项齐全时，Pilot 直接使用该端点，不读取模型目录；只写 `vlm.model` 时，这个值被当作模型目录中的条目 ID；整个 `vlm` 块省略时，Pilot 按 `ROBONIX_LLM_FEATURES`（默认 `vision,tools,stream`）从目录解析。
+
+模型目录是 YAML 或 JSON 的 `models` 列表，描述可用端点、模型名、`api_key_env`、features 和 context。部署清单可用 `model_catalog:` 指定目录文件；未指定时使用 `~/.robonix/models.yaml`（若该文件存在），环境变量 `ROBONIX_LLM_CATALOG` 覆盖两者。`rbnx boot` 会校验目录并解析 Pilot 目标，启动摘要打印实际使用的模型、端点和来源。
+
+Scene、Memory 和 Memsearch 遵循同一优先级：显式 `VLM_BASE_URL`（Memory 的 LLM 检索还接受 `MEMGRAPH_LLM_BASE_URL`）优先，未设置时使用模型目录；单独的 key 或 model 不会关闭目录。VLM Verifier 不读这些环境变量：它的 `vlm` 块要么完整给出 `base_url`、`api_key` 和 `model`，要么只写 `model` 选择目录条目，否则按 features 从目录解析。`api_key_env` 只是变量名，密钥留在机器环境里。目录格式和解析规则见 dev 分支的 `pylib/robonix-api/robonix_api/llm/README.md`。
+
 ## 13. 构建、启动与停止
 
 在部署目录执行：
@@ -917,6 +925,22 @@ rbnx shutdown
 ```
 
 该命令读取原部署清单，依次发送生命周期关闭、执行软件包 `stop` 钩子，并终止受管进程。原部署清单必须仍然存在且可解析。容器化软件包还应在自己的 `stop` 钩子中删除或停止由它创建的容器。
+
+### 13.1 模型用量记录
+
+`rbnx boot` 创建用量记录目录（默认 `<deploy>/rbnx-boot/llm-metrics/`），并通过 `ROBONIX_LLM_METRICS_DIR` 传给所有组件。Pilot、Scene、Memory、Memsearch 和 VLM Verifier 每次模型调用（一个 `Call`）追加一行 JSON 记录，字段包括消费者、操作、端点主机、模型、状态、请求数（`attempts`，含重试）、token 数和延迟；重试计入同一行的 `attempts`。不记录 prompt、回复或密钥。失败调用同样记录，状态为 `http_error`、`timeout`、`cancelled` 或 `transport_error`。
+
+未设置 `ROBONIX_LLM_METRICS_DIR` 时组件不写记录；Pilot 在启动日志说明开关，Python 消费者在首次写记录时打印一次。`rbnx boot` 不清空该目录；默认目录在 `rbnx clean -f` 时保留，只有加 `--llm-metrics` 才删除；如果设置了自定义 `ROBONIX_LLM_METRICS_DIR`，该目录需要自行清理。记录按调用追加、不自动轮转，长期运行需要按运维节奏归档或清理。
+
+在部署目录汇总：
+
+```bash
+rbnx llm-usage
+rbnx llm-usage --json
+rbnx llm-usage --boot BOOT_ID   # BOOT_ID 取自 rbnx-boot/state.json；clean -f 会删除该文件
+```
+
+输出按消费者、操作、端点和模型分组，列出调用次数、请求数（含重试）、token 合计、p50/p95/最大延迟和状态分布；`--json` 便于按价目表计算成本。
 
 ## 14. Python 接口
 
@@ -1421,7 +1445,7 @@ for event in stub.RecognizeStream(asr_requests(), timeout=60.0):
 | `rbnx boot [-v] [-f <manifest>]` | 启动整套部署；`-v` 关闭动态启动动画并实时输出 INFO/WARN/ERROR |
 | `rbnx shutdown [-f <manifest>]` | 停止对应部署 |
 | `rbnx update [-p <package> \| -f <manifest>]` | 更新远程软件包 |
-| `rbnx clean [-p <package> \| -f <manifest>] [--cache]` | 清理构建和运行产物 |
+| `rbnx clean [-p <package> \| -f <manifest>] [--cache] [--sessions] [--llm-metrics]` | 清理构建和运行产物；默认保留 `rbnx-boot/sessions/` 与 `rbnx-boot/llm-metrics/` |
 | `rbnx caps [-v]` | 查看提供方和能力 |
 | `rbnx contracts [-v]` | 查看 Atlas 已加载的能力约定 |
 | `rbnx describe --provider <id>` | 查看提供方的 `CAPABILITY.md` |
@@ -1433,6 +1457,7 @@ for event in stub.RecognizeStream(asr_requests(), timeout=60.0):
 | `rbnx docs` | 从 `capabilities/` 重新生成 contracts/idl 参考文档 |
 | `rbnx config` | 查看/设置 rbnx 配置 |
 | `rbnx logs [-d <dir>] [-t <tag>] [-l <level>] [-f] [--json]` | 读取、筛选或跟随 Scribe 结构化日志 |
+| `rbnx llm-usage [-d <dir>] [--boot <id>] [--json]` | 汇总模型用量记录，默认读取 `./rbnx-boot/llm-metrics/` 或 `ROBONIX_LLM_METRICS_DIR` |
 
 `rbnx clean -f robonix_manifest.yaml` 默认保留 `rbnx-boot/cache/`；只有加 `--cache` 才删除远程软件包缓存。单独执行 `rbnx start --config <file>` 时仍会先读取软件包清单；启动器确认提供方只注册唯一的共享生命周期 Driver 后，通过 `CMD_INIT` 发送合并配置。配置文件路径不会暴露给提供方进程。
 
@@ -1471,6 +1496,7 @@ for event in stub.RecognizeStream(asr_requests(), timeout=60.0):
 | `name` | 本次部署名称 |
 | `catalog` | 整机目录发布元数据；运行时忽略 |
 | `env` | 在解析其余标量前设置环境变量 |
+| `model_catalog` | 可选；模型目录文件路径。省略时使用 `~/.robonix/models.yaml`（若存在），`ROBONIX_LLM_CATALOG` 覆盖两者 |
 | `system` | 内置系统配置与额外系统软件包 |
 | `primitive`、`service`、`skill` | 软件包实例列表 |
 | 实例 `name` | 运行时提供方 ID，必须与代码一致 |
@@ -1495,3 +1521,16 @@ for event in stub.RecognizeStream(asr_requests(), timeout=60.0):
 | `mode.type` | RPC 或话题方向 |
 
 同一 ID 在有效合并目录中只保留一个描述；后加载根可能覆盖先加载描述。软件包应复用标准能力约定，只有明确需要时才新增自定义 ID，并通过 `rbnx contracts -v` 检查最终来源。
+
+### 16.4 模型目录与用量记录环境变量
+
+| 变量 | 作用 |
+|---|---|
+| `VLM_BASE_URL`、`VLM_API_KEY`、`VLM_MODEL` | 显式模型端点；设置 `VLM_BASE_URL` 时该消费者不再读取模型目录 |
+| `MEMGRAPH_LLM_BASE_URL`、`MEMGRAPH_LLM_API_KEY`、`MEMGRAPH_LLM_MODEL` | Memory 搜索的显式端点，优先于对应的 `VLM_*` |
+| `ROBONIX_LLM_CATALOG` | 模型目录文件路径，覆盖清单的 `model_catalog:` 和 `~/.robonix/models.yaml` |
+| `ROBONIX_LLM_FEATURES` | Pilot 从目录解析时要求的能力，默认 `vision,tools,stream` |
+| `ROBONIX_LLM_INPUT_TOKENS`、`ROBONIX_LLM_MAX_OUTPUT_TOKENS` | 目录解析时用于检查 context 的 token 估算，默认 `0` |
+| `ROBONIX_LLM_METRICS_DIR` | 模型用量记录目录；`rbnx boot` 默认设为 `rbnx-boot/llm-metrics/`，已有值优先 |
+
+`ROBONIX_LLM_KEY_ENVS` 由 `rbnx boot` 根据目录中的 `api_key_env` 生成并传给容器和启动器，通常不需要手动设置。Pilot 自己的 `ROBONIX_VLM_*` 与 `--vlm-*` 见第 12 节；`OPENAI_*` 是模型目录未配置时的兼容回退。
