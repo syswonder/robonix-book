@@ -115,6 +115,8 @@ test -n "${VLM_API_KEY:-}" && echo 'VLM_API_KEY is set'
 printf 'VLM_BASE_URL=%s\nVLM_MODEL=%s\n' "$VLM_BASE_URL" "$VLM_MODEL"
 ```
 
+如果部署已经使用模型目录（清单中的 `model_catalog:`、`ROBONIX_LLM_CATALOG`，或用户级的 `~/.robonix/models.yaml`），这三个变量可以省略；显式变量仍然优先。目录条目声明的 `api_key_env` 仍需要在环境中提供。写法见[开发者指南](../developer-guide.md#121-模型端点与模型目录)。
+
 ## 4. 构建 Webots 部署
 
 从 Robonix 仓库根目录进入示例：

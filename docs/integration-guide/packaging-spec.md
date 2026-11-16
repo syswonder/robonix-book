@@ -331,6 +331,7 @@ skill:
 | `name` | 这次整机部署的运行名称 |
 | `catalog` | 机器人部署仓库的发布元数据；进入软件包目录时六个字段都必须填写 |
 | `env` | YAML 读入后先导出到 `rbnx` 进程环境，再用于展开清单中的 `$VAR` / `${VAR}`；启动的子进程继承这些变量 |
+| `model_catalog` | 可选；模型目录文件路径。省略时使用 `~/.robonix/models.yaml`（若存在），`ROBONIX_LLM_CATALOG` 覆盖两者 |
 | `system` | Robonix 系统组件及其配置 |
 | `primitive` | 直接连接硬件或仿真设备的软件包实例 |
 | `service` | Mapping、Navigation、Speech、Memory 等服务实例 |

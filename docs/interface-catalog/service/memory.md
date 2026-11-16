@@ -56,4 +56,4 @@ title: 记忆
 
 `MEMSEARCH_LOG_LEVEL` 控制日志等级，默认值为 `INFO`；它是进程环境变量，不属于实例 `config:`。
 
-默认使用 ONNX embedding，`search` 固定取 `top_k=2`。`compact` 优先读取 `VLM_BASE_URL` / `VLM_API_KEY` / `VLM_MODEL`，再回退到对应的 `OPENAI_*` 变量；两组模型名都未设置时使用 `gpt-5.5`。缺少两组 API 密钥时，`compact` 返回不可用说明，不调用外部端点。
+默认使用 ONNX embedding，`search` 固定取 `top_k=2`，不调用大模型，也不需要模型端点。`compact` 优先取显式 `VLM_BASE_URL`；未设置时使用部署模型目录（`ROBONIX_LLM_CATALOG`）中满足要求的条目；模型目录未配置时才回退 `VLM_*` / `OPENAI_*`。模型目录已配置但没有可用条目时直接报错，不会回退到兼容变量。目录条目的 `api_key_env` 缺失时该条目被跳过，keyless 本地端点不需要密钥。两组模型名都未设置时 `compact` 使用 `gpt-5.5`；没有可用密钥时返回不可用说明，不调用外部端点。
