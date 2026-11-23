@@ -135,7 +135,7 @@ primitive:
 (provider_id, contract_id, transport)
 ```
 
-Atlas 查询返回能力元数据。调用 `connect_capability(...)` 后得到的通道（Channel）才包含本次连接应使用的端点。
+Atlas 查询返回能力元数据。通过 [`connect_channel(...)`](#143-连接能力) 建立通道（Channel）后，调用方可用相同的接口发起 MCP、gRPC 或 ROS 2 服务调用，也可通过 Channel 收发 ROS 2 话题消息。
 
 ### 3.4 能力目录（Atlas）
 
@@ -515,20 +515,18 @@ service:
     config: {}
 ```
 
-清单里的 `name` 会在启动时覆盖 `Service(id="my_navigate", ...)` 里的 `id`，按约定写成一致便于对照。该新清单省略 Driver 条目，框架会选择共享 `robonix/lifecycle/driver`；`provider.run()` 根据生成代码声明同一条 Driver 能力，启动流程连接它并发送 `CMD_INIT`，服务随后进入激活阶段。服务若需要底盘，应在 `on_activate` 中发现并连接目标运行实例：
+清单里的 `name` 会在启动时覆盖 `Service(id="my_navigate", ...)` 里的 `id`，按约定写成一致便于对照。该新清单省略 Driver 条目，框架会选择共享 `robonix/lifecycle/driver`；`provider.run()` 根据生成代码声明同一条 Driver 能力，启动流程连接它并发送 `CMD_INIT`，服务随后进入激活阶段。服务若需要底盘，应在 `on_activate` 中发现目标运行实例，并在每次调用时建立 Channel：
 
 ```python
 from robonix_api import ATLAS, Deferred, Ok
-from robonix_api.atlas_types import Channel, Transport
+from robonix_api.atlas_types import Capability, Transport
 
-move_channel: Channel | None = None
+move_capability: Capability | None = None
 
 @navigate_service.on_activate
 def activate():
-    global move_channel
-    if move_channel is not None:
-        move_channel.close()
-        move_channel = None
+    global move_capability
+    move_capability = None
     matches = ATLAS.find_capability(
         contract_id="robonix/primitive/chassis/move",
         transport=Transport.GRPC,
@@ -536,19 +534,23 @@ def activate():
     )
     if not matches:
         return Deferred("base_chassis is not ready")
-    move_channel = navigate_service.connect_capability(
-        matches[0],
+    move_capability = matches[0]
+    return Ok()
+
+def execute_move(request):
+    if move_capability is None:
+        raise RuntimeError("base_chassis is not ready")
+    with navigate_service.connect_channel(
+        move_capability,
         "robonix/primitive/chassis/move",
         Transport.GRPC,
-    )
-    return Ok()
+    ) as channel:
+        return channel.call(request)
 
 @navigate_service.on_deactivate
 def deactivate():
-    global move_channel
-    if move_channel is not None:
-        move_channel.close()
-        move_channel = None
+    global move_capability
+    move_capability = None
     return Ok()
 
 @navigate_service.on_shutdown
@@ -556,7 +558,7 @@ def shutdown():
     return deactivate()
 ```
 
-长期连接由获得它的生命周期阶段持有，并在停用阶段显式关闭。`Channel.close()` 是幂等操作，因此关闭阶段可以安全兜底。只为一次调用建立连接时使用 `with navigate_service.connect_capability(...) as channel:`；`with` 退出后不得继续使用其端点。
+RPC Channel 只执行一次调用，因此在激活阶段保存发现的能力，每次调用时再用 `connect_channel(...)` 创建 Channel。`execute_move` 接收生成的 `chassis_pb2.ExecuteMoveCommand_Request`，返回对应响应。ROS 2 话题 Channel 可以持续发布或订阅，由建立它的生命周期阶段持有，并在停用阶段显式关闭。`Channel.close()` 成功后重复调用安全；关闭失败时应保留句柄并处理错误。
 
 ### 8.1 验证
 
@@ -965,8 +967,14 @@ ATLAS.find_capability(
 
 ### 14.3 连接能力
 
+:::warning[`connect_capability` 已弃用]
+`ATLAS.connect_capability(...)` 和 `Primitive`、`Service`、`Skill` 的 `connect_capability(...)` 已弃用。旧接口仍返回端点和连接信息。请迁移到 `connect_channel(...)`，并通过返回的 Channel 调用、发布或订阅。
+:::
+
+Channel 封装 MCP 会话、gRPC 客户端和 ROS 2 通信对象的创建、收发和清理。Atlas 返回实际端点并记录连接，调用方与提供方直接交换业务数据。同一提供方上的并发请求由业务代码协调。
+
 ```python
-channel = service.connect_capability(
+channel = service.connect_channel(
     provider,
     contract_id,
     transport,
@@ -975,11 +983,43 @@ channel = service.connect_capability(
 
 | 参数 | 含义 |
 |---|---|
-| `provider` | `ATLAS.find_capability(...)` 返回的 `Capability`，或 `ATLAS.query_*` 返回的 `CapabilityProvider` |
-| `contract_id` | 要连接的能力约定 ID |
-| `transport` | 本次连接使用的 `Transport` 枚举、字符串或整数值 |
+| `provider` | 要连接的提供方，接受 `ATLAS.find_capability(...)` 返回的 `Capability`，或 `ATLAS.query_*` 返回的 `CapabilityProvider` |
+| `contract_id` | 能力约定 ID；约定中的 `mode` 定义交互模式，IDL 定义消息类型 |
+| `transport` | 本次连接使用的传输方式：`Transport.MCP`、`Transport.GRPC` 或 `Transport.ROS2`，也接受对应的字符串或整数值 |
 
-返回的 `Channel` 包含 `endpoint`、`channel_id` 和传输参数，并在 Atlas 中记录消费者到提供方的连接。用 `with channel:` 或显式调用 `channel.close()` 可以断开连接；提供方退出时也会关闭自己建立的全部通道。`Capability.description` 保存这项运行时实现的实例说明，能力约定的通用说明则位于 `ContractDescriptor.description`；消费者可合并两者。`McpParams` 当前只包含输入结构 JSON。
+`Primitive`、`Service` 和 `Skill` 共享这一接口，自动使用自身 ID 作为消费者 ID。独立消费者调用 `ATLAS.connect_channel(...)`，以关键字参数传入 `consumer_id`、`provider_id`、`contract_id` 和 `transport`。
+
+**传输方式在连接时选择，交互模式由能力约定定义。** 提供方必须声明支持所选传输，Channel 再根据 `transport` 与 `mode` 的组合确定收发方式：
+
+| 传输方式 `transport` | 交互模式 `mode` | Channel 用法 | 输入 → 输出 |
+|---|---|---|---|
+| MCP | `rpc` | `call(request)` | 单个请求 → 单个响应 |
+| gRPC | `rpc` | `call(request)` | 单个请求 → 单个响应 |
+| gRPC | `rpc_server_stream`、`topic_out` | `call(request)` | 单个请求 → 响应迭代器 |
+| gRPC | `rpc_client_stream`、`topic_in` | `call(request_iterator)` | 请求迭代器 → 单个响应 |
+| gRPC | `rpc_bidirectional_stream` | `call(request_iterator)` | 请求迭代器 → 响应迭代器 |
+| ROS 2 | `rpc` | `call(request)` | 单个服务请求 → 单个服务响应 |
+| ROS 2 | `topic_in` | `publish(message)` | 向提供方发布消息，可重复调用 |
+| ROS 2 | `topic_out` | `subscribe(callback)` | 接收提供方的消息，每个 Channel 订阅一次 |
+
+`topic_in`、`topic_out` 的方向以提供方为准。ROS 2 消费者向 `topic_in` 发布，从 `topic_out` 接收。
+
+请求、响应和消息使用对应传输的生成类型：MCP 数据类、gRPC protobuf 消息或 ROS 消息。请求和发布消息也接受字典。`call(request, *, timeout=None)` 可指定超时；订阅回调接收 ROS 消息，类型、端点和 QoS 由 Channel 自动解析。
+
+通过同一个 Channel 可以查询或取消该次异步调用。用完 Channel 后调用 `close()` 释放通信资源并移除 Atlas 中的连接记录。
+
+| API | 用途 |
+|---|---|
+| `channel.status(*, timeout=30.0)` | 调用 `/status` 查询状态 |
+| `channel.cancel(*, timeout=30.0)` | 调用 `/cancel` 请求取消 |
+| `channel.close(*, timeout=5.0)` | 结束通信并释放连接。关闭失败时抛出异常并保留 Channel |
+| `ATLAS.get_channel(channel_id)` | 找回当前客户端保留的 Channel，未找到时返回 `None` |
+
+RPC Channel 只能执行一次 `call`，后续调用需要新建 Channel。异步 `rpc` 能力需在同一传输上声明 `/status` 和 `/cancel`。启动请求被接受后，Channel 会把非空的 `run_id` 传给这两个能力，缺少 `run_id` 时发送空请求。对仍在运行的异步调用，`close()` 会请求取消并等待状态进入终态。使用 `with channel:` 会在退出时调用 `close()`，关闭错误会向外传播。
+
+使用前生成对应类型：MCP 使用 `rbnx codegen -p <package> --mcp`，gRPC 使用 `rbnx codegen -p <package>`；ROS 2 使用 `rbnx codegen -p <package> --ros2`，并构建、加载生成的叠加层。Python 接口是同步的，在 asyncio 中应放到工作线程执行。
+
+迁移时，用 `channel.call(...)` 替换手动创建 MCP 会话、gRPC channel 和 Stub 或 ROS 2 服务客户端的代码；消费 ROS 2 话题时用 `publish` / `subscribe` 替换手动使用 `channel.endpoint` 创建通信对象。新 Channel 仍提供 `endpoint`、`channel_id` 和 `params` 供检查。`Capability.description` 保存运行时实现的实例说明，`ContractDescriptor.description` 保存能力约定的通用说明。
 
 ### 14.4 ROS 2 便捷接口
 
@@ -1014,35 +1054,49 @@ provider.emit(contract_id, message)
 
 `topic` 是实际 ROS 2 名称；`msg_type` 接受消息类或运行时可解析的类型字符串；`qos` 接受预设字符串或整数深度。`declare=True` 时，方法还会向 Atlas 声明能力。发布者的 `description` 是给调用方和模型看的实例说明。`emit` 按 `contract_id` 查找此前创建的发布者，未创建时抛出 `RuntimeError`。
 
-消费另一提供方发布的话题时，常规路径不是手写话题名，而是让 Atlas 返回实际端点和 QoS，再从 `Channel` 创建订阅。下面的代码放在已经创建的 `service` 实例中；`on_image` 是接收 `sensor_msgs/msg/Image` 的业务回调：
+消费另一提供方发布的话题时，先发现能力，再通过 Channel 订阅；消息类型、实际端点和 QoS 由 Channel 解析。下面的代码放在已经创建的 `service` 实例中；`on_image` 是接收 `sensor_msgs/msg/Image` 的业务回调：
 
 ```python
 from robonix_api import ATLAS, Ok
 from robonix_api.atlas_types import Transport
 
-@service.on_init
-def connect_camera(_config):
+image_channel = None
+
+@service.on_activate
+def connect_camera():
+    global image_channel
+    if image_channel is not None:
+        image_channel.close()
+        image_channel = None
     camera_rgb = ATLAS.find_unique_capability(
         contract_id="robonix/primitive/camera/rgb",
         provider_id="front_camera",
         transport=Transport.ROS2,
     )
-    channel = service.connect_capability(
+    image_channel = service.connect_channel(
         camera_rgb,
         camera_rgb.contract_id,
         Transport.ROS2,
     )
-    service.create_subscription_from_channel(
-        channel,
-        msg_type="sensor_msgs/msg/Image",
-        callback=on_image,
-    )
+    image_channel.subscribe(on_image)
     return Ok()
+
+@service.on_deactivate
+def disconnect_camera():
+    global image_channel
+    if image_channel is not None:
+        image_channel.close()
+        image_channel = None
+    return Ok()
+
+@service.on_shutdown
+def shutdown():
+    return disconnect_camera()
 
 service.run()
 ```
 
-`find_unique_capability` 负责发现并消除多实例歧义，`connect_capability` 在 Atlas 中建立消费者到提供方的连接，`create_subscription_from_channel` 使用返回的真实端点。当前实现尚未把 Atlas 返回的字符串 QoS 名称转换为 ROS 2 QoS 配置，而是使用后端默认值；需要精确 QoS 时，先完成能力发现，再用 `channel.endpoint` 和显式 `qos` 调用 `create_subscription(..., declare=False)`。只有在话题名由 Robonix 之外的系统固定、且调用方有意绕过 Atlas 发现时，才完全跳过能力发现；这种写法不会为消费端声明新能力。
+`find_unique_capability` 负责发现并消除多实例歧义，`connect_channel` 准备通信，`subscribe` 创建订阅。长期使用时应保存 Channel，并在停用阶段调用 `close()`；关闭会销毁本 Channel 的 ROS 对象并等待正在执行的回调结束，因此不要在订阅回调中关闭它。只有在话题名由 Robonix 之外的系统固定、且调用方有意绕过 Atlas 发现时，才直接使用 `create_subscription(..., declare=False)`。
 
 `create_publisher` 和 `create_subscription` 会立即创建 ROS 对象，应在 provider 注册后调用，通常放在 `on_init`。`declare_ros2_topic` 和 `declare_ros2_service` 只向 Atlas 声明端点；它们不会替开发者创建 `rclpy` 发布者、订阅者或服务。
 
@@ -1202,12 +1256,10 @@ def get_mode(
     )
 ```
 
-调用方先通过 Atlas 选择提供方并登记连接，再用生成的 `Stub` 调用：
+调用方先通过 Atlas 选择提供方，再通过 Channel 调用：
 
 ```python
-import grpc
 import map_pb2
-import robonix_contracts_pb2_grpc as contracts_grpc
 
 from robonix_api import ATLAS
 from robonix_api.atlas_types import Transport
@@ -1216,21 +1268,16 @@ target = ATLAS.find_unique_capability(
     contract_id="robonix/service/map/get_mode",
     transport=Transport.GRPC,
 )
-edge = consumer.connect_capability(
+with consumer.connect_channel(
     target,
     "robonix/service/map/get_mode",
     Transport.GRPC,
-)
-try:
-    with grpc.insecure_channel(edge.endpoint) as rpc_channel:
-        stub = contracts_grpc.RobonixServiceMapGetModeStub(rpc_channel)
-        response = stub.GetMode(map_pb2.GetMode_Request(), timeout=5.0)
-        print(response.mode)
-finally:
-    edge.close()
+) as channel:
+    response = channel.call(map_pb2.GetMode_Request(), timeout=5.0)
+    print(response.mode)
 ```
 
-`edge` 是 Atlas 中的逻辑连接，`rpc_channel` 是真正承载消息的 gRPC channel；两者都要关闭。
+Channel 负责创建和关闭底层 gRPC channel、绑定方法及消息类型；调用方无需创建 Stub。
 
 #### 服务端流式响应
 
@@ -1271,12 +1318,14 @@ def synthesize_stream(
 
 ```python
 import tts_pb2
-import robonix_contracts_pb2_grpc as contracts_grpc
 
-stub = contracts_grpc.RobonixServiceSpeechTtsStreamStub(rpc_channel)
-request = tts_pb2.SynthesizeStream_Request(text="你好")
-for chunk in stub.SynthesizeStream(request, timeout=30.0):
-    speaker.write(chunk.chunk.data)
+target = ATLAS.find_unique_capability(
+    contract_id="robonix/service/speech/tts_stream", transport=Transport.GRPC,
+)
+with consumer.connect_channel(target, target.contract_id, Transport.GRPC) as channel:
+    request = tts_pb2.SynthesizeStream_Request(text="你好")
+    for chunk in channel.call(request, timeout=30.0):
+        speaker.write(chunk.chunk.data)
 ```
 
 #### 客户端流式请求
@@ -1313,19 +1362,21 @@ def detect_wake_word(
     )
 ```
 
-调用方把任意可迭代对象传给 Stub；迭代结束表示客户端完成发送：
+调用方把请求迭代器传给 `call`；迭代结束表示客户端完成发送：
 
 ```python
 import audio_pb2
-import robonix_contracts_pb2_grpc as contracts_grpc
 
 def audio_chunks():
     for sequence, pcm in enumerate(microphone.frames()):
         yield audio_pb2.AudioChunk(data=pcm, sequence=sequence)
 
-stub = contracts_grpc.RobonixServiceSpeechWakeWordStub(rpc_channel)
-response = stub.DetectWakeWord(audio_chunks(), timeout=30.0)
-print(response.keyword)
+target = ATLAS.find_unique_capability(
+    contract_id="robonix/service/speech/wake_word", transport=Transport.GRPC,
+)
+with consumer.connect_channel(target, target.contract_id, Transport.GRPC) as channel:
+    response = channel.call(audio_chunks(), timeout=30.0)
+    print(response.keyword)
 ```
 
 #### 双向流式 RPC
@@ -1374,7 +1425,6 @@ def recognize_stream(
 ```python
 import asr_pb2
 import audio_pb2
-import robonix_contracts_pb2_grpc as contracts_grpc
 
 def asr_requests():
     for sequence, pcm in enumerate(microphone.frames()):
@@ -1382,12 +1432,17 @@ def asr_requests():
             chunk=audio_pb2.AudioChunk(data=pcm, sequence=sequence)
         )
 
-stub = contracts_grpc.RobonixServiceSpeechAsrStreamStub(rpc_channel)
-for event in stub.RecognizeStream(asr_requests(), timeout=60.0):
-    print(event.text, event.is_final)
+target = ATLAS.find_unique_capability(
+    contract_id="robonix/service/speech/asr_stream", transport=Transport.GRPC,
+)
+with consumer.connect_channel(target, target.contract_id, Transport.GRPC) as channel:
+    for event in channel.call(asr_requests(), timeout=60.0):
+        print(event.text, event.is_final)
 ```
 
-建立三类流式调用的 Atlas 连接和 `rpc_channel` 与一元 RPC 示例相同。示例中的 `synthesizer`、`detector`、`decoder`、`microphone` 和 `speaker` 是软件包自己的业务对象；Robonix 固定的是处理函数形态、生成消息类型、Stub 以及能力发现和连接流程。服务端需要返回错误时，优先使用 `context.abort(grpc.StatusCode.INVALID_ARGUMENT, "...")`；该调用会抛出终止 RPC 的异常，因此后面不应再 `return` 或 `yield`。
+关闭尚未完成的 gRPC 流式 Channel 时，Channel 会停止读取新的请求项，并在有响应流时继续读取剩余响应。若超时后仍无法确认流已结束，关闭会报错并保留 Channel。请求生产者应支持停止，以免迭代器阻塞关闭。`call()` 的 `timeout` 在一元调用中限制本地等待，在流式调用中设置 gRPC deadline，有单个响应的客户端流式调用也用它限制本地等待。
+
+示例沿用一元调用中的 `ATLAS` 和 `Transport` 导入。`synthesizer`、`detector`、`decoder`、`microphone` 和 `speaker` 是软件包自己的业务对象。服务端需要返回错误时，优先使用 `context.abort(grpc.StatusCode.INVALID_ARGUMENT, "...")`；该调用会抛出终止 RPC 的异常，因此后面不应再 `return` 或 `yield`。
 
 ### 14.6 关闭行为
 
@@ -1404,7 +1459,7 @@ for event in stub.RecognizeStream(asr_requests(), timeout=60.0):
 旧软件包若在清单中精确声明 `<provider-namespace>/driver`，则继续按[兼容流程](integration-guide/packaging-spec.md#42-已有命名空间-driver-的兼容流程)绑定完整的旧生成服务，或在满足单向迁移条件时使用共享运行时 Driver。该方式计划迁移；新软件包不要照此创建 Driver TOML。
 :::
 
-`provider.run()` 先执行同一套 bootstrap，再阻塞等待退出信号。Driver 的 `CMD_SHUTDOWN` 会先完成业务关闭回调和响应，再停止提供方；进程信号路径也会调用 `on_shutdown`。框架会关闭通过 `connect_capability` 建立的通道、受管子进程和 gRPC server。软件包自行创建的线程、设备句柄和后台任务，仍必须在生命周期回调中释放。
+`provider.run()` 先执行同一套 bootstrap，再阻塞等待退出信号。Driver 的 `CMD_SHUTDOWN` 会先完成业务关闭回调和响应，再停止提供方；进程信号路径也会调用 `on_shutdown`。框架会尝试关闭通过 `Primitive`、`Service` 或 `Skill` 建立的通道，并清理受管子进程和 gRPC server。业务应在停用回调中关闭自己持有的 Channel，并释放自行创建的线程、设备句柄和后台任务。
 
 ## 15. 常用命令行接口
 

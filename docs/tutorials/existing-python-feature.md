@@ -421,6 +421,7 @@ description: 抓取一个已经识别并定位的积木，并支持状态查询�
 ```python title="grasp_block/main.py"
 from __future__ import annotations
 
+from contextlib import ExitStack
 from dataclasses import dataclass, field
 import os
 import threading
@@ -502,7 +503,7 @@ class RobonixArm:
         msg.position = positions
         with state_condition:
             version_before_command = state_version
-        skill.emit("robonix/primitive/arm/joint_command", msg)
+        command_channel.publish(msg)
 
         deadline = time.monotonic() + timeout_sec
         with state_condition:
@@ -563,9 +564,7 @@ def init(cfg: dict):
 @skill.on_activate
 def activate():
     global active, command_channel, state_channel
-    if command_channel is not None and state_channel is not None:
-        active = True
-        lifecycle_stop.clear()
+    if active:
         return Ok()
 
     commands = ATLAS.find_capability(
@@ -581,27 +580,16 @@ def activate():
     if len(commands) != 1 or len(states) != 1:
         return Deferred(f"arm provider {arm_provider_id!r} is not ready")
 
-    command_channel = skill.connect_capability(
-        commands[0], "robonix/primitive/arm/joint_command", Transport.ROS2
-    )
-    state_channel = skill.connect_capability(
-        states[0], "robonix/primitive/arm/joint_states", Transport.ROS2
-    )
-    skill.create_publisher(
-        "robonix/primitive/arm/joint_command",
-        topic=command_channel.endpoint,
-        msg_type=JointState,
-        qos="reliable",
-        declare=False,
-    )
-    skill.create_subscription(
-        "robonix/primitive/arm/joint_states",
-        topic=state_channel.endpoint,
-        msg_type=JointState,
-        callback=update_state,
-        qos="best_effort",
-        declare=False,
-    )
+    with ExitStack() as setup:
+        command = setup.enter_context(skill.connect_channel(
+            commands[0], commands[0].contract_id, Transport.ROS2
+        ))
+        state = setup.enter_context(skill.connect_channel(
+            states[0], states[0].contract_id, Transport.ROS2
+        ))
+        state.subscribe(update_state)
+        setup.pop_all()
+    command_channel, state_channel = command, state
     active = True
     lifecycle_stop.clear()
     return Ok()
@@ -609,7 +597,7 @@ def activate():
 
 @skill.on_deactivate
 def deactivate():
-    global active
+    global active, command_channel, state_channel
     active = False
     lifecycle_stop.set()
     with runs_lock:
@@ -623,6 +611,12 @@ def deactivate():
             run.thread.join(timeout=2.0)
     if any(run.thread is not None and run.thread.is_alive() for run in running):
         return Err("grasp worker did not stop within 2 seconds")
+    if command_channel is not None:
+        command_channel.close()
+        command_channel = None
+    if state_channel is not None:
+        state_channel.close()
+        state_channel = None
     return Ok()
 
 
