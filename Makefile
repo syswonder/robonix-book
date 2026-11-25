@@ -63,11 +63,14 @@ source-check:
 	  test "$$actual" = "$$expected" || { echo "Robonix source is at $$actual, expected $$expected"; exit 2; }; \
 	  test -z "$$(git -C "$(ROBONIX_SOURCE)" status --porcelain)" || { echo 'ROBONIX_SOURCE must be a clean checkout'; exit 2; }
 
+# grpcio, grpcio-tools and protobuf come pinned through robonix-api[codegen];
+# a separate grpcio-tools install takes the latest and emits gencode the
+# runtime cannot load.
 api-install: source-check
 	$(PYTHON) -m venv .venv-api
 	.venv-api/bin/python -m pip install --upgrade pip
-	.venv-api/bin/python -m pip install sphinx furo numpy grpcio grpcio-tools protobuf pyyaml
-	.venv-api/bin/python -m pip install "$(ROBONIX_SOURCE)/pylib/robonix-api"
+	.venv-api/bin/python -m pip install sphinx furo numpy pyyaml httpx pillow
+	.venv-api/bin/python -m pip install "$(ROBONIX_SOURCE)/pylib/robonix-api[codegen]"
 
 api-rust: source-check
 	CARGO_TARGET_DIR="$(API_CARGO_TARGET_DIR)" cargo doc --manifest-path "$(ROBONIX_SOURCE)/Cargo.toml" --locked --no-deps --workspace

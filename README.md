@@ -1,6 +1,6 @@
 # Robonix Book
 
-Robonix Book is the Chinese documentation site for Robonix. The current handbook is built with Docusaurus and aligned with pinned `dev` revision [`c363f077de1fdc82e11ce27ff87e1b038d0ad88d`](https://github.com/syswonder/robonix/tree/c363f077de1fdc82e11ce27ff87e1b038d0ad88d). The archived mdBook source and tooling remain under `archive/mdbook/` for history and URL migration checks; contributors should edit the Markdown files under `docs/`.
+Robonix Book is the Chinese documentation site for Robonix. The current handbook is built with Docusaurus and aligned with the `dev` revision pinned in `ROBONIX_SOURCE_REVISION`, currently [`df2654eaead8a09a0314559c9acb89d94a2ca421`](https://github.com/syswonder/robonix/tree/df2654eaead8a09a0314559c9acb89d94a2ca421). The archived mdBook source and tooling remain under `archive/mdbook/` for history and URL migration checks; contributors should edit the Markdown files under `docs/`.
 
 ## Local preview
 
@@ -27,7 +27,7 @@ make check
 
 This command checks fenced Bash, JavaScript, JSON, Python, TOML, and YAML examples; validates local image paths and alternative text; runs the TypeScript check; builds the production site in `build/`; verifies internal links, legacy mdBook URLs and fragments; and checks the generated search index. Use `make help` to list every supported target.
 
-The normal preview covers the handbook. To reproduce the deployed artifact with the Rust and Python API trees, use a clean Robonix checkout at the revision in `ROBONIX_SOURCE_REVISION`:
+The normal preview covers the handbook. Reproducing the deployed artifact with the Rust and Python API trees also requires a stable Rust toolchain and Python 3.10 or newer, plus a clean Robonix checkout, with submodules, at the revision in `ROBONIX_SOURCE_REVISION`. `make api-install` creates `.venv-api` with the pinned code generator from `robonix-api[codegen]`, and the API build uses that Python for `rbnx codegen`:
 
 ```bash
 make api-install ROBONIX_SOURCE=/absolute/path/to/robonix
