@@ -6,12 +6,12 @@ hide_table_of_contents: true
 
 > 由 `rbnx docs` 自动生成，请勿手改。
 
-本页收录从 IDL 包含根（`rbnx docs --include`，默认 `capabilities/lib/`）收集的全部 ROS IDL（`.msg` / `.srv`）原文，按 ROS 包分组（共 331 个文件）。[能力约定参考](contracts.md) 的载荷列链到这里对应的锚点。
+本页收录从 IDL 包含根（`rbnx docs --include`，默认 `capabilities/lib/`）收集的全部 ROS IDL（`.msg` / `.srv`）原文，按 ROS 包分组（共 351 个文件）。[能力约定参考](contracts.md) 的载荷列链到这里对应的锚点。
 
 <details className="idl-package-index">
 <summary>展开 ROS package 索引</summary>
 
-[action_msgs](#action_msgs) · [actionlib_msgs](#actionlib_msgs) · [asr](#asr) · [audio](#audio) · [builtin_interfaces](#builtin_interfaces) · [camera](#camera) · [chassis](#chassis) · [composition_interfaces](#composition_interfaces) · [diagnostic_msgs](#diagnostic_msgs) · [executor](#executor) · [geometry_msgs](#geometry_msgs) · [hand](#hand) · [health](#health) · [liaison](#liaison) · [lidar](#lidar) · [lifecycle](#lifecycle) · [lifecycle_msgs](#lifecycle_msgs) · [map](#map) · [memgraph](#memgraph) · [memory](#memory) · [module_health](#module_health) · [nav_msgs](#nav_msgs) · [navigation](#navigation) · [perception](#perception) · [pilot](#pilot) · [quadruped](#quadruped) · [rcl_interfaces](#rcl_interfaces) · [rosgraph_msgs](#rosgraph_msgs) · [semantic_map](#semantic_map) · [sensor_msgs](#sensor_msgs) · [shape_msgs](#shape_msgs) · [soma](#soma) · [speech](#speech) · [statistics_msgs](#statistics_msgs) · [std_msgs](#std_msgs) · [std_srvs](#std_srvs) · [stereo_msgs](#stereo_msgs) · [test_msgs](#test_msgs) · [trajectory_msgs](#trajectory_msgs) · [tts](#tts) · [unique_identifier_msgs](#unique_identifier_msgs) · [verifier](#verifier) · [visualization_msgs](#visualization_msgs) · [vitals](#vitals) · [voiceprint](#voiceprint)
+[action_msgs](#action_msgs) · [actionlib_msgs](#actionlib_msgs) · [asr](#asr) · [audio](#audio) · [builtin_interfaces](#builtin_interfaces) · [camera](#camera) · [chassis](#chassis) · [chronos](#chronos) · [composition_interfaces](#composition_interfaces) · [diagnostic_msgs](#diagnostic_msgs) · [executor](#executor) · [geometry_msgs](#geometry_msgs) · [gripper](#gripper) · [hand](#hand) · [health](#health) · [liaison](#liaison) · [lidar](#lidar) · [lifecycle](#lifecycle) · [lifecycle_msgs](#lifecycle_msgs) · [map](#map) · [memgraph](#memgraph) · [memory](#memory) · [module_health](#module_health) · [nav_msgs](#nav_msgs) · [navigation](#navigation) · [perception](#perception) · [pilot](#pilot) · [quadruped](#quadruped) · [rcl_interfaces](#rcl_interfaces) · [rosgraph_msgs](#rosgraph_msgs) · [semantic_map](#semantic_map) · [sensor_msgs](#sensor_msgs) · [shape_msgs](#shape_msgs) · [soma](#soma) · [speech](#speech) · [statistics_msgs](#statistics_msgs) · [std_msgs](#std_msgs) · [std_srvs](#std_srvs) · [stereo_msgs](#stereo_msgs) · [test_msgs](#test_msgs) · [trajectory_msgs](#trajectory_msgs) · [tts](#tts) · [unique_identifier_msgs](#unique_identifier_msgs) · [verifier](#verifier) · [visualization_msgs](#visualization_msgs) · [vitals](#vitals) · [voiceprint](#voiceprint)
 
 </details>
 
@@ -500,6 +500,124 @@ bool success
 string message
 ```
 
+## chronos
+
+### AffineDomainQuality `msg` {/* #chronos-msg-affinedomainquality-msg */}
+
+`chronos/msg/AffineDomainQuality.msg`
+
+```rosidl
+# Synchronization states mirror Chronos DomainState.
+uint8 STATE_INITIALIZING=0
+uint8 STATE_TRACKING=1
+uint8 STATE_HOLDOVER=2
+uint8 STATE_RESET=3
+uint8 STATE_UNSYNCED=4
+uint8 STATE_FAULT=5
+
+string domain_id
+uint64 generation
+uint64 reference_generation
+uint64 model_version
+uint8 state
+uint64 accepted_observations
+uint64 rejected_observations
+# When a has_* field is false, consumers ignore and encoders clear its payload.
+bool has_last_observation_age
+uint64 last_observation_age_ns
+bool has_uncertainty
+uint64 uncertainty_ns
+string reason
+```
+
+### ClockQualitySnapshot `msg` {/* #chronos-msg-clockqualitysnapshot-msg */}
+
+`chronos/msg/ClockQualitySnapshot.msg`
+
+```rosidl
+# report_available=false is valid before the first successful reference sample;
+# consumers must ignore the reference, observed_steady_ns, and domain arrays.
+# Encoders set those ignored payloads to their default or empty values.
+bool report_available
+uint64 observed_steady_ns
+chronos/msg/ReferenceQuality reference
+chronos/msg/RefreshHealth refresh_health
+chronos/msg/DirectDomainQuality[] direct_domains
+chronos/msg/AffineDomainQuality[] affine_domains
+```
+
+### DirectDomainQuality `msg` {/* #chronos-msg-directdomainquality-msg */}
+
+`chronos/msg/DirectDomainQuality.msg`
+
+```rosidl
+# Timestamp scale values mirror Chronos TimestampScaleKind.
+uint8 TIME_SCALE_LINUX_SYSTEM=0
+uint8 TIME_SCALE_ROS_TIME=1
+uint8 TIME_SCALE_DEVICE_UPTIME=2
+
+string domain_id
+uint8 time_scale
+uint64 reference_generation
+bool reference_available
+bool reference_verified
+uint64 uncertainty_ns
+string reason
+```
+
+### GetWallTime `srv` {/* #chronos-srv-getwalltime-srv */}
+
+`chronos/srv/GetWallTime.srv`
+
+```rosidl
+---
+# Current wall time in RFC 3339 with the Chronos process's local UTC offset.
+string datetime
+```
+
+### ReferenceQuality `msg` {/* #chronos-msg-referencequality-msg */}
+
+`chronos/msg/ReferenceQuality.msg`
+
+```rosidl
+# Reference-clock evidence from one coherent Chronos sample.
+int64 timestamp_ns
+uint64 generation
+bool generation_changed
+uint64 uncertainty_ns
+bool available
+bool verified
+string reason
+```
+
+### RefreshFailure `msg` {/* #chronos-msg-refreshfailure-msg */}
+
+`chronos/msg/RefreshFailure.msg`
+
+```rosidl
+# One continuing Chronos quality-refresh failure.
+# When a has_* field is false, consumers ignore and encoders clear its payload.
+string message
+uint64 consecutive_failures
+bool has_first_observed_steady
+uint64 first_observed_steady_ns
+bool has_last_observed_steady
+uint64 last_observed_steady_ns
+```
+
+### RefreshHealth `msg` {/* #chronos-msg-refreshhealth-msg */}
+
+`chronos/msg/RefreshHealth.msg`
+
+```rosidl
+# Refresh health is separate from clock evidence so initial failure is reportable.
+# When a has_* field is false, consumers ignore and encoders clear its payload.
+bool has_last_successful_refresh_steady
+uint64 last_successful_refresh_steady_ns
+bool has_failure
+chronos/msg/RefreshFailure failure
+```
+
 ## composition_interfaces
 
 ### ListNodes `srv` {/* #rcl-interfaces-composition-interfaces-srv-listnodes-srv */}
@@ -703,8 +821,6 @@ string input_schema_json
 ```rosidl
 string action
 string plan_id
-string op_id
-string when
 uint64 wait_ms
 ---
 bool success
@@ -721,6 +837,47 @@ string error
 pilot/Plan plan
 ---
 executor/RtdlEvent event
+```
+
+### ExecuteStream `srv` {/* #executor-srv-executestream-srv */}
+
+`executor/srv/ExecuteStream.srv`
+
+```rosidl
+executor/ExecuteStreamInput input
+---
+executor/RtdlEvent event
+```
+
+### ExecuteStreamInput `msg` {/* #executor-msg-executestreaminput-msg */}
+
+`executor/msg/ExecuteStreamInput.msg`
+
+```rosidl
+# One plan per stream. START occurs exactly once and must be first.
+uint32 message_kind
+uint32 START=0
+uint32 NODE=1
+uint32 CLOSE=2
+uint32 END=3
+
+# START fields.
+string plan_id
+string session_id
+uint32 round
+
+# NODE indices start at zero and increase by one. Only node zero has no parent.
+# Parents must already exist and be open sequence/parallel nodes.
+uint32 node_index
+bool has_parent
+uint32 parent_index
+# children must be empty: Executor reconstructs them in arrival order.
+# do carries a complete CapabilityCall and never receives CLOSE.
+pilot/RtdlNode node
+
+# CLOSE uses node_index, exactly once per operator, innermost first.
+# END requires a root and all operators closed. Invalid input terminates with
+# invalid_argument; capability failures remain ordinary RtdlEvent messages.
 ```
 
 ### ListActivePlans `srv` {/* #executor-srv-listactiveplans-srv */}
@@ -1186,6 +1343,167 @@ Vector3  torque
 
 std_msgs/Header header
 Wrench wrench
+```
+
+## gripper
+
+### GetGripperInfo `srv` {/* #gripper-srv-getgripperinfo-srv */}
+
+`gripper/srv/GetGripperInfo.srv`
+
+```rosidl
+# Metadata is static until restart. Discover supported operations through Atlas.
+# Shared relative-setting rules for move, grip and open:
+# Values must be finite in [0,1]. Zero selects that operation's configured
+# default, never a setting left by an earlier command.
+# Nonzero values require the corresponding configurable flag to be true.
+# Reject invalid or unsupported values with ok=false before dispatch; never
+# clamp, ignore them or substitute defaults. Flags are false for absent operations.
+# Nonzero values map to the provider's configured usable range, possibly
+# nonlinearly; equal values do not imply equal outputs across devices.
+# Grip width flags describe requests with or without an expected object width.
+# At least one is true when grip is declared; both are false when it is absent.
+# Width bounds apply to the current fingertips and configuration, not nominal
+# mechanical limits. A valid range is finite with 0 <= min <= max; zero width
+# need not be reachable. Restart after changing fingertips or configuration.
+# A valid max_opening_width_m is also the target of open, when supported.
+# Unknown width bounds do not prevent providing open.
+# Force bounds are the achievable normal grip force per gripping face, N: a
+# hardware capability, not the configured relative_effort or a measurement.
+# Leave force bounds invalid when this force convention or conversion is unknown.
+---
+bool ok                  # Query succeeded; metadata valid, not motion readiness.
+string message           # Reason when ok = false; metadata then has no meaning.
+bool grip_effort_configurable # Grip accepts non-default relative_effort.
+bool move_speed_configurable
+bool grip_speed_configurable
+bool open_speed_configurable
+bool opening_width_range_valid # False: range unknown; ignore both bounds.
+float64 min_opening_width_m     # Minimum permitted clear width between gripping faces, m.
+float64 max_opening_width_m     # Maximum permitted clear width between gripping faces, m.
+bool gripping_force_range_valid # False: range unknown; ignore both bounds.
+float64 min_gripping_force_n    # Minimum achievable grip force per gripping face, N.
+float64 max_gripping_force_n    # Maximum achievable grip force per gripping face, N.
+# Grip accepts requests with expected_object_width_valid=true.
+bool grip_with_expected_object_width_supported
+# Grip accepts requests with expected_object_width_valid=false.
+bool grip_without_expected_object_width_supported
+```
+
+### GraspState `msg` {/* #gripper-msg-graspstate-msg */}
+
+`gripper/msg/GraspState.msg`
+
+```rosidl
+# Current device-reported contact state, not the result of a specific command.
+# Command success, position arrival or a stall alone does not establish contact.
+uint8 UNKNOWN=0          # No trustworthy contact observation.
+uint8 NOT_HOLDING=1      # Device confirms no established grip.
+uint8 HOLDING=2          # Contact established; no achieved-force guarantee.
+uint8 SLIPPING=3         # Established contact is slipping according to the device.
+```
+
+### Grip `srv` {/* #gripper-srv-grip-srv */}
+
+`gripper/srv/Grip.srv`
+
+```rosidl
+# Attempt to establish a grip, optionally for an expected object width.
+# The expected width is a size criterion, not a jaw-position target.
+# The provider applies its configured tolerances to the achieved opening.
+# A width match alone does not prove contact or task success; observe state.
+# Without an expected width, close adaptively; do not invent one.
+# Reject unsupported request forms and nonfinite, negative or known-unsupported
+# expected widths with ok=false before dispatch; never clamp.
+# Shared relative-setting rules: gripper/srv/GetGripperInfo.srv.
+float64 relative_effort # 0 = configured default; (0,1] = device-relative setting.
+                        # Not measured force, newtons, or a safety force limit.
+float64 relative_speed  # 0 = configured default; (0,1] = relative speed setting.
+# True: expected_object_width_m is supplied as a grip-size criterion.
+# False: no expected width; ignore expected_object_width_m.
+bool expected_object_width_valid
+float64 expected_object_width_m # Expected object width between gripping faces, m.
+---
+bool ok                 # Accepted and dispatched, not proof of contact.
+string message          # Human-readable reason on rejection or dispatch failure.
+```
+
+### GripperState `msg` {/* #gripper-msg-gripperstate-msg */}
+
+`gripper/msg/GripperState.msg`
+
+```rosidl
+# One acquisition round, not an atomic hardware snapshot.
+# Publish at acquisition rate; only newly acquired readings are valid.
+# Cached, failed or unsupported readings use opening_width_valid=false,
+# grasp_state=UNKNOWN or motion_state=UNKNOWN for the affected observation.
+bool opening_width_valid  # False: ignore opening_width_m.
+float64 opening_width_m   # Measured clear width between current gripping faces, m.
+                          # Finite and nonnegative when valid.
+uint8 grasp_state         # GraspState constants; UNKNOWN invalidates the reading.
+# Acquisition-round start in Unix epoch time; (sec=0, nanosec=0) means unknown.
+# Convert device or simulation clocks to this base; never use publication time.
+builtin_interfaces/Time stamp
+uint8 motion_state        # MotionState constants; UNKNOWN invalidates the reading.
+```
+
+### MotionState `msg` {/* #gripper-msg-motionstate-msg */}
+
+`gripper/msg/MotionState.msg`
+
+```rosidl
+# Current device-reported jaw motion, independent of contact and command results.
+# Unchanged width or a successful dispatch alone does not prove stopped motion.
+# STOPPED does not imply arrival, successful gripping or a safety-rated stop.
+uint8 UNKNOWN=0          # No trustworthy current motion observation.
+uint8 MOVING=1           # The device reports ongoing opening/closing motion.
+uint8 STOPPED=2          # The device reports no ongoing opening/closing motion.
+```
+
+### Move `srv` {/* #gripper-srv-move-srv */}
+
+`gripper/srv/Move.srv`
+
+```rosidl
+# Position at an absolute opening width, not an adaptive grip. Only providers with
+# verified position control declare this capability. Observe state for arrival.
+# Reject nonfinite, negative or known-unreachable widths; do not silently clamp.
+# The primitive converts width to device coordinates; mapping need not be linear.
+# Shared relative-setting rules: gripper/srv/GetGripperInfo.srv.
+float64 opening_width_m # Target clear width between current gripping faces, m.
+float64 relative_speed  # 0 = configured default; (0,1] = relative speed setting.
+---
+bool ok                 # Accepted and dispatched, not necessarily reached.
+string message          # Human-readable reason on rejection or dispatch failure.
+```
+
+### Open `srv` {/* #gripper-srv-open-srv */}
+
+`gripper/srv/Open.srv`
+
+```rosidl
+# Drive to info.max_opening_width_m when info.opening_width_range_valid=true;
+# otherwise use the provider's configured, unreported open endpoint.
+# Arrival can be inferred from state only with a known target and valid width
+# feedback. This is not a stop, torque-off, sensor-zeroing or calibration command.
+# Shared relative-setting rules: gripper/srv/GetGripperInfo.srv.
+float64 relative_speed # 0 = configured default; (0,1] = relative speed setting.
+---
+bool ok                # Accepted and dispatched, not proof that the jaws opened.
+string message         # Human-readable reason on rejection or dispatch failure.
+```
+
+### Stop `srv` {/* #gripper-srv-stop-srv */}
+
+`gripper/srv/Stop.srv`
+
+```rosidl
+# Halt jaw motion without opening or disabling the gripper.
+# No holding-force or safety-rated emergency-stop guarantee.
+# Must remain dispatchable while move, grip or open is active.
+---
+bool ok        # Accepted and dispatched, not proof that motion has stopped.
+string message # Human-readable reason on rejection or dispatch failure.
 ```
 
 ## hand
@@ -2676,13 +2994,14 @@ uint32 root_index
 
 ```rosidl
 # RTDL execution tree node encoded as an arena entry in Plan.nodes.
-# node_kind: 0=sequence, 1=parallel, 2=do.
+# node_kind: 0=sequence, 1=parallel, 2=do, 3=if, 4=repeat, 5=while
 uint32 node_kind
 
-# Child node indices for sequence and parallel nodes. Empty for do nodes.
+# Child indices: sequence/parallel list; if then followed by optional else;
+# repeat/while have exactly one body. Empty for do nodes.
 uint32[] children
 
-# Capability call payload for do nodes. Sequence and parallel leave this empty.
+# Capability call payload for do nodes. Operators leave this empty.
 CapabilityCall call
 
 # Stable identifier for this RTDL node, generated by Pilot from the RTDL plan.
@@ -2690,6 +3009,19 @@ string op_id
 
 # Human-readable intent for this RTDL node.
 string description
+
+# JSON-encoded condition expression for if and while.
+# Empty for other node kinds.
+string condition_json
+
+# Result variable name for 'do'. Empty means no binding.
+string bind
+
+# Number of body executions for repeat.
+uint32 repeat_count
+
+# Maximum number of body executions for while.
+uint32 max_iterations
 ```
 
 ### RtdlNodeState `msg` {/* #pilot-msg-rtdlnodestate-msg */}
@@ -2708,6 +3040,8 @@ uint32 FAILED=3
 uint32 CANCELED=4
 uint32 TIMEOUT=5
 uint32 PAUSED=6
+# Capability execution finished, but result verification is still pending.
+uint32 VERIFYING=7
 # RTDL non-leaf node result, like sequence or parallel.
 string operator_detail
 # RTDL leaf node result.
@@ -2790,11 +3124,36 @@ uint64 timestamp_ms
 `pilot/msg/TaskStateEvent.msg`
 
 ```rosidl
-# The pilot's current overall task, forwarded to the chat for live display.
-# status: "in_progress" | "done" (empty until the LLM first sets a task).
+# The pilot's tasks, forwarded to the chat for live display.
+# goal, success_criterion and status describe the task of the latest user
+# message, as before task lists; status is "in_progress" | "done" | "failed" |
+# "superseded" (empty until there is a task). Fields are positional: add new
+# ones at the end only.
 string goal
 string success_criterion
 string status
+# The id of that task.
+string task_id
+# Every task of the session, oldest first.
+TaskSummary[] tasks
+```
+
+### TaskSummary `msg` {/* #pilot-msg-tasksummary-msg */}
+
+`pilot/msg/TaskSummary.msg`
+
+```rosidl
+# One task of a Pilot session, as TaskStateEvent lists them.
+# status: "in_progress" | "done" | "failed" | "superseded".
+string task_id
+string goal
+string success_criterion
+string status
+string status_reason
+# Ids of the user messages filed under this task, in order.
+string[] message_ids
+# Plan ids of the RTDL trees dispatched for this task, in order.
+string[] plan_ids
 ```
 
 ## quadruped
@@ -3288,6 +3647,30 @@ int64 generation
 bool persisted
 ```
 
+### Find `srv` {/* #semantic-map-srv-find-srv */}
+
+`semantic_map/srv/Find.srv`
+
+```rosidl
+# robonix/system/scene/find — the objects matching every given constraint,
+# nearest the robot first. An empty constraint matches everything.
+
+# A class or caption word, e.g. "chair".
+string label
+# A region name.
+string region
+# Optional: the object must stand in this scene-graph relation to the object
+# `anchor`, e.g. relation "near", anchor "scene.object.0007" (the sofa).
+# One of near, on_top_of, under, inside, contains, reachable_by.
+string relation
+# Object id the relation is measured against.
+string anchor
+---
+Object[] objects
+# Why nothing matched, when nothing did.
+string detail
+```
+
 ### FlushObjects `srv` {/* #semantic-map-srv-flushobjects-srv */}
 
 `semantic_map/srv/FlushObjects.srv`
@@ -3353,8 +3736,8 @@ float64 x
 float64 y
 float64 z
 float64 yaw
-string room_id
-string room_name
+string region_id
+string region_name
 string[] containing_area_ids
 string[] containing_area_names
 Object[] nearby_objects
@@ -3385,7 +3768,7 @@ float64 updated_at
 ```rosidl
 # robonix/system/scene/goal_near — find a navigation-safe approach pose
 # near a registered physical scene object. Room annotations are rejected;
-# use robonix/system/scene/goal_room for rooms. Map-frame (x, y, yaw); pass to
+# use robonix/system/scene/goal_region for regions. Map-frame (x, y, yaw); pass to
 # robonix/service/navigation/navigate after.
 #
 # `reachable=false` when the occupancy grid has no free cell within
@@ -3402,11 +3785,32 @@ float64 yaw
 string reason
 ```
 
+### GoalRegion `srv` {/* #semantic-map-srv-goalregion-srv */}
+
+`semantic_map/srv/GoalRegion.srv`
+
+```rosidl
+# robonix/system/scene/goal_region - find a navigation-safe pose inside
+# a user-defined region annotation. The returned map-frame pose is always
+# inside the region polygon; pass it to navigation/navigate.
+
+string region_id
+---
+bool reachable
+float64 x
+float64 y
+float64 yaw
+string reason
+```
+
 ### GoalRoom `srv` {/* #semantic-map-srv-goalroom-srv */}
 
 `semantic_map/srv/GoalRoom.srv`
 
 ```rosidl
+# DEPRECATED: use robonix/system/scene/goal_region (GoalRegion.srv). Kept so
+# callers written against the old name keep working; same behaviour.
+#
 # robonix/system/scene/goal_room - find a navigation-safe pose inside
 # a user-defined room annotation. The returned map-frame pose is always
 # inside the room polygon; pass it to navigation/navigate.
@@ -3520,8 +3924,8 @@ float64 last_seen_unix
 `semantic_map/msg/Region.msg`
 
 ```rosidl
-# User-authored room region anchored to the active SLAM map.
-# `id` is the stable Scene identifier accepted directly by goal_room.
+# User-authored region anchored to the active SLAM map.
+# `id` is the stable Scene identifier accepted directly by goal_region.
 
 string id
 string kind

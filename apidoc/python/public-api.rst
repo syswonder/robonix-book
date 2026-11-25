@@ -12,7 +12,7 @@ Sphinx 从当前 Robonix 源码生成；概念与完整示例见《Robonix 开�
 延迟激活行为。
 
 .. autoclass:: robonix_api.Primitive
-   :members: on_init, on_activate, on_deactivate, on_shutdown, declare_capability, declare_ros2_topic, declare_ros2_service, declare_grpc, declare_mcp, connect_capability, spawn, wait_for_topic, create_publisher, create_subscription, create_subscription_from_channel, emit, provides_mcp, mcp, use_mcp_app, attach_grpc_servicer, provides_grpc, grpc, bootstrap, run
+   :members: on_init, on_activate, on_deactivate, on_shutdown, declare_capability, declare_ros2_topic, declare_ros2_service, declare_grpc, declare_mcp, connect_capability, connect_channel, spawn, wait_for_topic, create_publisher, create_subscription, create_subscription_from_channel, emit, provides_mcp, mcp, use_mcp_app, attach_grpc_servicer, provides_grpc, grpc, bootstrap, run
    :inherited-members:
    :member-order: bysource
    :no-index:
@@ -27,7 +27,7 @@ Sphinx 从当前 Robonix 源码生成；概念与完整示例见《Robonix 开�
 查询能力约定和建立通道的方法。
 
 .. autoclass:: robonix_api.atlas._Atlas
-   :members: query, query_primitives, query_services, query_skills, find_capability, find_unique_capability, query_contract, list_contracts, connect_capability, disconnect_capability, inspect
+   :members: query, query_primitives, query_services, query_skills, find_capability, find_unique_capability, query_contract, list_contracts, connect_channel, get_channel, connect_capability, disconnect_capability, inspect
    :member-order: bysource
 
 数据类型
