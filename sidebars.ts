@@ -84,6 +84,7 @@ const sidebars: SidebarsConfig = {
         'architecture/runtime-communication',
         'architecture/namespace-and-contracts',
         'architecture/atlas',
+        {type: 'doc', id: 'architecture/llm-model-access', label: '模型目录与用量记录'},
         'background/eaios',
       ],
     },

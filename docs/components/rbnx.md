@@ -36,7 +36,7 @@ rbnx setup /path/to/another/robonix
 | `rbnx validate` | 只校验软件包清单，不构建 |
 | `rbnx codegen [--mcp] [--ros2]` | 为软件包生成 proto、gRPC 桩和 MCP 类型。`--ros2` 额外生成 `ros2_idl/` |
 | `rbnx build [-f MANIFEST \| -p PKG \| -g NAME]` | 不带参数时构建当前目录的整个部署；`-p` 构建单个软件包，含 ROS 工作空间 |
-| `rbnx clean [--cache]` | 删除构建产物。`--cache` 需配合 `-f MANIFEST` 才会清 `rbnx-boot/cache/` |
+| `rbnx clean [--cache] [--llm-metrics]` | 清理构建和运行产物。对部署清理（`-f` 或当前目录的部署清单）生效时，`--cache` 清理 `rbnx-boot/cache/`，`--llm-metrics` 清理 `rbnx-boot/llm-metrics/` |
 | `rbnx update` | 把 `url:` 声明的远端软件包更新到上游最新提交 |
 
 ### 运行
@@ -58,6 +58,7 @@ rbnx setup /path/to/another/robonix
 | `rbnx describe [--provider P]` | 显示已注册提供方的 `CAPABILITY.md` |
 | `rbnx inspect` | 把完整运行时状态导出为 JSON |
 | `rbnx logs [-d DIR] [-t TAG] [-l LEVEL]` | 读取 Scribe 日志文件并按标签或级别渲染 |
+| `rbnx llm-usage [-d DIR] [--boot ID] [--json]` | 汇总模型用量记录；默认读 `ROBONIX_LLM_METRICS_DIR`，`rbnx boot` 下为 `<deploy>/rbnx-boot/llm-metrics/`：调用次数、token、延迟和状态 |
 
 ### 与智能体交互
 
@@ -137,6 +138,8 @@ system:
 | 变量 | 默认值 | 作用 |
 |---|---|---|
 | `ROBONIX_DRIVER_INIT_TIMEOUT_S` | `90` | `Driver(CMD_INIT)` 与 `Driver(CMD_ACTIVATE)` 共用的单次 RPC 超时 |
+| `ROBONIX_LLM_CATALOG` | 未设置 | 模型目录路径，覆盖清单的 `model_catalog:` 和 `~/.robonix/models.yaml` |
+| `ROBONIX_LLM_METRICS_DIR` | `rbnx boot` 默认设为 `<deploy>/rbnx-boot/llm-metrics/`，已有值优先 | 模型用量记录目录 |
 
 `ROBONIX_DRIVER_INIT_TIMEOUT_S` 是排障工具，不是常规配置。一个组件在 90 秒里初始化或激活不完，通常是被某个外部资源阻塞（例如上一次部署没有完全退出、端口仍被占用），调大它只会把问题推后。先用日志确认时间花在哪一步。
 

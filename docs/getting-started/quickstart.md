@@ -92,7 +92,7 @@ rbnx path root
 
 ## 3. 配置视觉语言模型
 
-Pilot 需要兼容 OpenAI 接口的视觉语言模型（VLM）访问地址。以下变量必须出现在执行 `rbnx boot` 的同一个命令行环境中：
+Pilot 需要兼容 OpenAI 接口的视觉语言模型（VLM）访问地址。示例清单用下面三个变量填充 `system.pilot.vlm`，它们必须出现在执行 `rbnx boot` 的同一个命令行环境中；如果改用模型目录，可以省略，见本节末尾。
 
 ```bash
 export VLM_API_KEY='sk-...'
@@ -114,6 +114,8 @@ set +a
 test -n "${VLM_API_KEY:-}" && echo 'VLM_API_KEY is set'
 printf 'VLM_BASE_URL=%s\nVLM_MODEL=%s\n' "$VLM_BASE_URL" "$VLM_MODEL"
 ```
+
+如果部署已经使用模型目录（清单中的 `model_catalog:`、`ROBONIX_LLM_CATALOG`，或用户级的 `~/.robonix/models.yaml`），这三个变量可以省略；显式变量仍然优先。目录条目声明的 `api_key_env` 仍需要在环境中提供。写法见[模型目录与用量记录](../architecture/llm-model-access.md)。
 
 ## 4. 构建 Webots 部署
 

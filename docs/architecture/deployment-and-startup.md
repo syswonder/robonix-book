@@ -161,6 +161,8 @@ system:
 
 `manifest` 选择 Scene 的目标软件包清单；`config` 在 `CMD_INIT` 中送到 Scene。旧的扁平 `system.scene` 字段和 `RBNX_CONFIG_FILE` 只用于既有部署迁移，并会输出弃用提示。
 
+模型端点走环境变量或组件配置，并多了一层可选的模型目录。没有目录时，Scene、memgraph 和 memsearch 读取 `VLM_*`（memgraph 的 LLM 检索优先 `MEMGRAPH_LLM_*`）；Pilot 使用 `system.pilot.vlm` 或 `ROBONIX_VLM_*`；VLM Verifier 使用自己的 `vlm` 块。配置了 `model_catalog:`、`~/.robonix/models.yaml`（若存在）或 `ROBONIX_LLM_CATALOG` 后，`rbnx boot` 先校验目录、解析 Pilot 目标，再把目录路径和所需的 `api_key_env` 变量名传给各组件；显式设置端点的组件仍然优先使用自己的配置。
+
 Scene 默认以 `0.0.0.0` 提供 Web 管理界面；只需本机操作时设置 `SCENE_WEB_HOST=127.0.0.1`。每次启动默认建立新的实时对象会话：对象只有在地图界面执行 Save 时随地图快照持久化，并在 Load 对应地图时恢复；只有显式设置 `SCENE_RESTORE_ON_START` 才会在启动时热恢复旧对象。不要把一次进程重启误认为已经清空保存过的地图快照。
 
 ## 日志与状态
@@ -189,6 +191,14 @@ rbnx logs -t mapping -t nav2 -l info -f
 ```
 
 每次 `rbnx boot` 会清空本次日志目录中已有的 `*.log`；需要保留故障现场时，应在下一次启动前复制该目录。
+
+模型用量记录写在另一个目录：
+
+```text
+<deploy>/rbnx-boot/llm-metrics/
+```
+
+`rbnx boot` 创建该目录并通过 `ROBONIX_LLM_METRICS_DIR` 传给各组件，每次模型调用追加一行 JSONL 记录。它不随日志清理，`rbnx clean -f` 默认保留，只有 `--llm-metrics` 才删除；如果自定义的 `ROBONIX_LLM_METRICS_DIR` 放在 `<deploy>/rbnx-boot/` 之外，`clean` 不会管理它，需要自行清理；放在 `rbnx-boot/` 下的其他目录会被删除。在部署目录运行 `rbnx llm-usage` 可按消费者、操作、端点和模型汇总。
 
 普通模式使用可回写的启动动画。需要在启动终端实时查看逐行状态时使用：
 

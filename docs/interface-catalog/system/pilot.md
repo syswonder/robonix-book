@@ -19,4 +19,4 @@ title: 规划器
 
 **一个任务通常对应多个方案。** 规划器不是一次规划到底，而是产出一个方案、等 Executor 执行完、看结果再规划下一个，直到任务达成或失败。所以同一条任务的事件流里会反复出现规划与执行的交替，客户端界面上表现为多次「Planning the next step」，每个方案有自己的 `plan_id` 和轮次编号。排障时要按方案看，而不是把整条任务当成一次调用。
 
-内置规划器将上表 2 条约定以 gRPC 注册。运行时必须配置 OpenAI 兼容视觉语言模型（Vision-Language Model，VLM）的 `upstream`、`api_key` 和 `model`；`api_format` 当前只支持 `openai`。启动时可选加载 Soma YAML；规划器刻意不把 URDF 注入提示，模型不需要推理链节几何。URDF 仍由 Soma 的 `get_urdf` 提供给 TF/RViz/运动规划等消费方。每轮规划前刷新 Soma `get_health`，并尝试经 Executor 调用 Scene `get_robot_context`。当前不会自动查询 Vitals。这些上下文和长期记忆均可降级；Executor 则是执行生成方案所需的运行依赖。
+内置规划器将上表 2 条约定以 gRPC 注册。没有配置模型目录时，运行时必须给出 OpenAI 兼容视觉语言模型（Vision-Language Model，VLM）的 `upstream`、`api_key` 和 `model`；配置目录后可以省略整个 `vlm` 块，由 Pilot 按特性解析，也可以只写 `model` 选择目录条目。`api_format` 当前只支持 `openai`，配置细节见[模型目录与用量记录](../../architecture/llm-model-access.md)。启动时可选加载 Soma YAML；规划器刻意不把 URDF 注入提示，模型不需要推理链节几何。URDF 仍由 Soma 的 `get_urdf` 提供给 TF/RViz/运动规划等消费方。每轮规划前刷新 Soma `get_health`，并尝试经 Executor 调用 Scene `get_robot_context`。当前不会自动查询 Vitals。这些上下文和长期记忆均可降级；Executor 则是执行生成方案所需的运行依赖。
