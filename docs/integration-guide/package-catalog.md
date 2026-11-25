@@ -86,8 +86,11 @@ capabilities:
 | `package.license` | 是 | SPDX 许可证标识 |
 | `package.tags` | 是 | 字符串列表，用于页面显示和过滤 |
 | `package.maintainers` | 是 | 字符串列表，每项必须是 `Name <email@domain>` |
-| `capabilities[].name` | 否 | 软件包声明的 Robonix 能力约定 ID |
+| `capabilities[].name` | 是 | 软件包提供的 Robonix 能力约定 ID；至少有一个属于软件包自身的类型（`robonix/primitive/`、`robonix/service/` 或 `robonix/skill/`），`robonix/lifecycle/driver` 不计入 |
+| `capabilities[].transport` | 是 | 该能力的传输方式：`mcp`、`grpc` 或 `ros2`；同时提供多种时写成列表，例如 `[grpc, mcp]` |
 | `capabilities[].path` | 否 | 软件包内能力约定 TOML 的相对路径 |
+
+新提交或修改的目录条目不满足上表要求时，目录 CI 拒绝合并；已收录的条目只显示警告。
 
 旧软件包清单中的 `package.vendor` 仍可读取，以保证已有软件包能继续构建和启动；运行时会忽略它，软件包目录也不使用该字段。新软件包使用 `package.name`、`package.tags` 和 `package.maintainers` 表达名称、分类和维护归属。
 

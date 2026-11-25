@@ -89,7 +89,7 @@ api-python: source-check
 	  mkdir -p "$$scratch/scene"; \
 	  cp "$(ROBONIX_SOURCE)/system/scene/package_manifest.yaml" "$$scratch/scene/package_manifest.yaml"; \
 	  api_python_dir=$$(cd "$$(dirname "$(API_PYTHON)")" && pwd); \
-	  PATH="$$api_python_dir:$$PATH" "$$rbnx" codegen -p "$$scratch/scene" --mcp --out-dir "$$scratch/codegen"; \
+	  RBNX_CODEGEN_PYTHON="$$(command -v "$(API_PYTHON)")" PATH="$$api_python_dir:$$PATH" "$$rbnx" codegen -p "$$scratch/scene" --mcp --out-dir "$$scratch/codegen"; \
 	  rm -rf build/api/python; \
 	  mkdir -p build/api/python; \
 	  ROBONIX_SPHINX_MOCKS="$(SPHINX_MOCKS)" \
