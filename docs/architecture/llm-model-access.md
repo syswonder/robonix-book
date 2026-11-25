@@ -6,14 +6,28 @@
 
 Robonix 不代理模型请求。消费者取得端点后自行连接，模型目录只决定这次调用使用哪个端点。
 
-选择端点时，显式配置优先于目录。读环境变量的消费者（Scene、memgraph、memsearch）如果设置了 `VLM_BASE_URL`（memgraph 的 LLM 检索还会读取 `MEMGRAPH_LLM_BASE_URL`），就直接使用自己的配置，不再读取模型目录。Pilot 和 VLM Verifier 的规则见下表。对读环境变量的消费者，只设置 `VLM_API_KEY` 或 `VLM_MODEL` 不算显式端点，目录仍然生效；在 `rbnx boot` 下，启动器会按 `api_key_env` 转发对应密钥，消费者不需要自己读取目录里的密钥。
+选择端点时，显式配置优先于目录。读环境变量的消费者（Scene、memgraph、memsearch）如果设置了 `VLM_BASE_URL`，就直接使用自己的配置，不再读取模型目录。memgraph 的 LLM 检索还会读取 `MEMGRAPH_LLM_BASE_URL`。对这些消费者，只设置 `VLM_API_KEY` 或 `VLM_MODEL` 不算显式端点，目录仍然生效。Pilot 和 VLM Verifier 的规则见下表。
 
 | 组件 | 显式端点 | 目录选择 | 不完整配置 |
 |---|---|---|---|
-| Pilot | `vlm.upstream`、`vlm.api_key`、`vlm.model` 齐全 | 只写 `vlm.model` 时按 ID 选择；不写 `vlm` 块时按 `ROBONIX_LLM_FEATURES` 解析 | 写了 `upstream` 但缺 `model` 或 `api_key` 时报错 |
-| VLM Verifier | `vlm.base_url`、`vlm.api_key`、`vlm.model` 齐全 | 只写 `vlm.model` 时按 ID 选择；不写 `vlm` 块时按 `vision` 解析 | 只写部分字段时报 `vlm.<field> is required` |
+| Pilot | `vlm.upstream`、`vlm.api_key`、`vlm.model` 齐全 | 未写 `upstream` 但写了 `model` 时按条目 ID 选择；两者都未写时按 `ROBONIX_LLM_FEATURES` 解析；另写的 `vlm.api_key` 替换条目的密钥 | 写了 `upstream` 但缺 `model` 或 `api_key` 时报错 |
+| VLM Verifier | `vlm.base_url`、`vlm.api_key`、`vlm.model` 齐全 | 只写 `vlm.model` 时按 ID 选择；三项都未写（包括不写 `vlm` 块）时按 `vision` 解析 | 只写部分字段时报 `vlm.<field> is required`；`vlm.mode: jev` 只接受三项齐全的显式端点，不读取目录 |
 
-Python 侧会按路径缓存目录，最多 8 个，同一路径在一个进程内只加载一次；Rust 的 `resolve_from_env` 每次调用都会重新读取。修改目录后需要重启消费者。用量记录写入本地文件，不经过网络，也不包含提示词、回复或密钥。
+下表列出仓库内置消费者写入记录的 `consumer` 和 `operation`，以及从目录解析时的要求。目录中没有满足某一行要求的条目时，`resolve_from_env` 抛出 `RuntimeError`，对应调用失败。例如目录缺少 `json_object` 条目时，memgraph 的检索会失败。
+
+| 消费者 | `consumer` | `operation` | 所需特性 | `max_output_tokens` |
+|---|---|---|---|---|
+| Pilot | `pilot` | `plan`、`summary` | `ROBONIX_LLM_FEATURES`，默认 `vision,tools,stream` | `ROBONIX_LLM_MAX_OUTPUT_TOKENS`，默认 `0` |
+| Scene 感知 | `scene` | `perception` | `vision` | `SCENE_VLM_MAX_TOKENS`，默认 `1024` |
+| Scene 关系与物体描述 | `scene` | `relations`、`image_relations`、`caption` | `vision` | `0` |
+| memgraph 检索 | `memory` | `search` | `json_object` | `512` |
+| memgraph 观察与问答 | `memory` | `observe`、`answer` | `vision` | `256` |
+| memsearch | `memsearch` | `compact` | 无 | `1024` |
+| VLM Verifier | `vlm_verifier` | `judge` | `vision` | `0` |
+
+启用目录后，启动器会收窄组件的环境变量。Pilot 由 `rbnx boot` 清空环境后启动，Python 消费者经 `python -m robonix_api.llm` 启动，两者只保留白名单中的变量。白名单包括 `robonix_api/llm/runtime_env.txt` 列出的运行时变量、目录中全部 `api_key_env`，以及与非空端点成对的 `VLM_API_KEY` 和 `MEMGRAPH_LLM_API_KEY`。`OPENAI_*` 和其他未列出的变量不会传入组件。
+
+Python 侧会按路径缓存目录，最多 8 个，同一路径在一个进程内只加载一次；Rust 的 `resolve_from_env` 每次调用都会重新读取。修改目录后需要重启消费者。
 
 ## 模型目录文件
 
@@ -25,7 +39,7 @@ models:
     provider: vllm
     base_url: http://127.0.0.1:8000/v1
     model: vision
-    features: {vision: true, tools: true, stream: true}
+    features: {vision: true, tools: true, stream: true, json_object: true}
 ```
 
 | 字段 | 必填 | 默认值 | 说明 |
@@ -37,7 +51,7 @@ models:
 | `api_key_env` | 否 | 无 | 环境变量名；省略表示端点无需密钥（通常是本地服务）。设置后必须匹配 `[A-Za-z_][A-Za-z0-9_]*` |
 | `protocol` | 否 | `openai-chat` | 仓库内置消费者只实现 `openai-chat`；目录解析不按它过滤 |
 | `features` | 否 | `{}` | 布尔特性表，按 `Requirements.features` 匹配；未列出的特性按 `false` 处理 |
-| `context` | 否 | 无 | 上下文窗口（context），单位 token；解析时要求 `input_tokens + max_output_tokens` 不超过它，加载时只校验它是正整数 |
+| `context` | 否 | 无 | 上下文窗口（context），单位 token；解析时要求 `input_tokens + max_output_tokens` 不超过它，加载时只校验它是正整数。Pilot 未设置 `vlm.context_window_tokens` 时，以它作为上下文窗口 |
 | `latency_p95_ms` | 否 | 无 | 非负的延迟参考值（毫秒），只用于排序；缺省时排在最后 |
 | `price_input_per_mtok` | 否 | `0` | 非负的输入价格参考值，单位是每百万 token；只用于排序 |
 | `price_output_per_mtok` | 否 | `0` | 非负的输出价格参考值，单位是每百万 token；只用于排序 |
@@ -60,8 +74,6 @@ Python 侧加载时，`.json` 文件由标准库解析，其他后缀交给 PyYA
 | 有匹配条目，但候选条目的 `api_key_env` 变量都未设置 | 抛出 `RuntimeError`，错误信息会列出需要设置的变量 |
 | 条目无需密钥，或它的 `api_key_env` 变量已设置 | 返回第一个可用条目 |
 
-`ROBONIX_LLM_CATALOG` 为空白时按未设置处理。
-
 ## Python 接口
 
 下面的签名来自 `robonix_api.llm` 源码。该模块尚未纳入固定修订的 Python 公共 API 页，字段和示例以本页及源码 `pylib/robonix-api/robonix_api/llm/README.md` 为准。
@@ -83,7 +95,7 @@ Python 侧加载时，`.json` 文件由标准库解析，其他后缀交给 PyYA
 
 ## 模型用量记录
 
-记录写到 `$ROBONIX_LLM_METRICS_DIR/<consumer>-<pid>.jsonl`。变量未设置时不创建文件，第一次调用记录接口会在组件日志里打印 `off`。
+记录写到 `$ROBONIX_LLM_METRICS_DIR/<consumer>-<pid>.jsonl`。变量未设置时不创建文件，第一次调用记录接口会在组件日志里打印 `off`。记录只写本地文件，不经过网络，也不包含提示词、回复或密钥。
 
 一条成功的记录格式化后类似下面这样；JSONL 文件里一行一个这样的对象（字段顺序不固定；未上报的计数为 `null`）：
 
@@ -105,12 +117,12 @@ Python 侧加载时，`.json` 文件由标准库解析，其他后缀交给 PyYA
   "reasoning_tokens": null,
   "latency_ms": 4200,
   "ts_ms": 1770000000000,
-  "boot_id": "b7f3a1",
+  "boot_id": "3f2c9a1e-7b4d-4c8e-9a51-2d6f0b8e4c17",
   "pid": 100
 }
 ```
 
-调用失败时记录结构相同，`status` 和 `http_status` 换成对应的值；`http_status` 在 timeout、cancelled 或 transport_error 时可能为 `null`。
+调用失败时记录结构相同，`status` 和 `http_status` 换成对应的值；`http_status` 在 `timeout`、`cancelled` 或 `transport_error` 时可能为 `null`。
 
 `metrics.Call` 用于包裹一次 HTTP 请求：
 
@@ -128,7 +140,7 @@ Python 侧加载时，`.json` 文件由标准库解析，其他后缀交给 PyYA
 |---|---|
 | `ok` | HTTP 2xx 且响应体是 JSON；或者调用 `finish` 时未传 response |
 | `http_error` | HTTP 非 2xx |
-| `transport_error` | HTTP 2xx 但响应体无法读取、流式响应被截断，或者出现超时和取消之外的异常 |
+| `transport_error` | HTTP 2xx 但响应体无法读取，或者出现超时和取消之外的异常；Rust 侧（Pilot）的流式响应被截断时也记为该状态 |
 | `timeout` | 异常名称包含 `Timeout` |
 | `cancelled` | 抛出 `asyncio.CancelledError` |
 
@@ -151,7 +163,7 @@ Python 侧加载时，`.json` 文件由标准库解析，其他后缀交给 PyYA
 
 ## 用 rbnx llm-usage 汇总
 
-在部署目录运行 `rbnx llm-usage`。不加 `-d` 时，先读 `ROBONIX_LLM_METRICS_DIR`；变量未设置或为空则读当前目录的 `rbnx-boot/llm-metrics/`，也就是 `<deploy>/rbnx-boot/llm-metrics/`。`--boot` 只统计指定的启动：`BOOT_ID` 取自 `rbnx-boot/state.json`；正常 `rbnx shutdown` 或 `rbnx clean -f` 都会删除该文件，需要在停机前取出，或者直接使用记录里的 `boot_id`。命令参数见[开发者指南第 15 节：常用命令行接口](../developer-guide.md#15-常用命令行接口)或 [rbnx 命令行](../components/rbnx.md)。
+在部署目录运行 `rbnx llm-usage`。不加 `-d` 时，先读 `ROBONIX_LLM_METRICS_DIR`；变量未设置或为空则读当前目录的 `rbnx-boot/llm-metrics/`，也就是 `<deploy>/rbnx-boot/llm-metrics/`。`--boot` 只统计指定的启动。`BOOT_ID` 可从 `rbnx-boot/state.json` 读取。`rbnx boot` 退出、`rbnx shutdown` 和 `rbnx clean -f` 都会删除该文件，因此只能在部署运行期间读取；停机后直接使用记录里的 `boot_id`。命令参数见[开发者指南第 15 节：常用命令行接口](../developer-guide.md#15-常用命令行接口)或 [rbnx 命令行](../components/rbnx.md)。
 
 `--json` 每行输出一个分组：
 

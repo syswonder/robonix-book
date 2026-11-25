@@ -36,7 +36,7 @@ rbnx setup /path/to/another/robonix
 | `rbnx validate` | 只校验软件包清单，不构建 |
 | `rbnx codegen [--mcp] [--ros2]` | 为软件包生成 proto、gRPC 桩和 MCP 类型。`--ros2` 额外生成 `ros2_idl/` |
 | `rbnx build [-f MANIFEST \| -p PKG \| -g NAME]` | 不带参数时构建当前目录的整个部署；`-p` 构建单个软件包，含 ROS 工作空间 |
-| `rbnx clean [--cache] [--llm-metrics]` | 清理构建和运行产物。对部署清理（`-f` 或当前目录的部署清单）生效时，`--cache` 清理 `rbnx-boot/cache/`，`--llm-metrics` 清理 `rbnx-boot/llm-metrics/` |
+| `rbnx clean [--cache] [--sessions] [--llm-metrics]` | 清理构建和运行产物。对部署清理（`-f` 或当前目录的部署清单）生效时，`--cache` 清理 `rbnx-boot/cache/`，`--sessions` 清理 `rbnx-boot/sessions/`，`--llm-metrics` 清理 `rbnx-boot/llm-metrics/` |
 | `rbnx update` | 把 `url:` 声明的远端软件包更新到上游最新提交 |
 
 ### 运行
@@ -58,7 +58,7 @@ rbnx setup /path/to/another/robonix
 | `rbnx describe [--provider P]` | 显示已注册提供方的 `CAPABILITY.md` |
 | `rbnx inspect` | 把完整运行时状态导出为 JSON |
 | `rbnx logs [-d DIR] [-t TAG] [-l LEVEL]` | 读取 Scribe 日志文件并按标签或级别渲染 |
-| `rbnx llm-usage [-d DIR] [--boot ID] [--json]` | 汇总模型用量记录；默认读 `ROBONIX_LLM_METRICS_DIR`，`rbnx boot` 下为 `<deploy>/rbnx-boot/llm-metrics/`：调用次数、token、延迟和状态 |
+| `rbnx llm-usage [-d DIR] [--boot ID] [--json]` | 汇总模型用量记录；默认读 `ROBONIX_LLM_METRICS_DIR`，未设置时读当前目录下的 `./rbnx-boot/llm-metrics/`；输出调用次数、token、延迟和状态 |
 
 ### 与智能体交互
 

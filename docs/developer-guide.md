@@ -863,7 +863,7 @@ skill:
 
 远程软件包使用 `url`，本地软件包使用 `path`。`manifest` 选择软件包提供的平台清单，例如 Jetson 原生清单。提供平台变体时仍要保留默认 `package_manifest.yaml`；完整字段见[软件包与部署清单规范](integration-guide/packaging-spec.md)。
 
-Pilot 可以直接在 `system.pilot.vlm` 中配置端点。`upstream`、`api_key` 和 `model` 三项都填写时，Pilot 使用该端点连接，不再读取模型目录。只写 `vlm.model` 时，该值被当作模型目录中的条目 ID；省略整个 `vlm` 块时，Pilot 按 `ROBONIX_LLM_FEATURES`（默认 `vision,tools,stream`）从目录中解析端点。Pilot 也可以用 `ROBONIX_VLM_UPSTREAM` 或 `--vlm-upstream`（并配齐 model、api_key）显式指定端点。
+Pilot 可以直接在 `system.pilot.vlm` 中配置端点。`upstream`、`api_key` 和 `model` 三项都填写时，Pilot 使用该端点连接，不再读取模型目录。未写 `upstream` 但写了 `model` 时，该值被当作模型目录中的条目 ID。`upstream` 和 `model` 都未写时，Pilot 按 `ROBONIX_LLM_FEATURES`（默认 `vision,tools,stream`）从目录中解析端点。这两种情况下另写的 `api_key` 会替换目录条目的密钥。目录条目设置了 `context`、而 `vlm.context_window_tokens` 未设置时，Pilot 以前者作为上下文窗口。Pilot 也可以用 `ROBONIX_VLM_UPSTREAM` 或 `--vlm-upstream`（并配齐 model、api_key）显式指定端点。
 
 模型目录是 YAML 或 JSON 文件，其中的 `models` 列表描述可用端点、模型名、密钥变量、特性和上下文窗口。部署清单可以用 `model_catalog:` 指定目录文件；未指定时读取 `~/.robonix/models.yaml`（仅当文件存在），`ROBONIX_LLM_CATALOG` 的优先级高于这两者。`rbnx boot` 会提前校验目录、解析 Pilot 使用的端点，并在启动摘要中输出实际使用的模型、端点和来源。Scene、memgraph、memsearch 和 VLM Verifier 的选择顺序、字段和接口见[模型目录与用量记录](architecture/llm-model-access.md)。
 
@@ -914,9 +914,9 @@ rbnx boot -v -f robonix_manifest.yaml
 
 `-v` 会关闭 spinner 与光标回写，但不会启用 DEBUG；完整记录仍写入 `rbnx-boot/logs/`。
 
-`rbnx boot` 还会创建用量记录目录（默认 `<deploy>/rbnx-boot/llm-metrics/`），并通过 `ROBONIX_LLM_METRICS_DIR` 把路径传给所有组件。Pilot、Scene、memgraph（记录里的 `consumer` 是 `memory`）、memsearch 和 VLM Verifier 每次调用模型都会向该目录中的 JSONL 文件（每行一个 JSON 对象）追加一行记录，内容包括消费者、操作、端点主机、模型、状态、请求数（`attempts`，含重试）、token 数和延迟。重试不新增记录，而是累加同一行的 `attempts`；记录不包含提示词、回复和密钥，调用失败同样记录。
+`rbnx boot` 还会创建用量记录目录（默认 `<deploy>/rbnx-boot/llm-metrics/`），并通过 `ROBONIX_LLM_METRICS_DIR` 把路径传给所有组件。Pilot、Scene、memgraph（记录里的 `consumer` 是 `memory`）、memsearch 和 VLM Verifier 每次调用模型都会向该目录中的 JSONL 文件（每行一个 JSON 对象）追加一行记录，内容包括消费者、操作、端点主机、模型、状态、请求数（`attempts`，含重试）、token 数和延迟。客户端内部的重试不新增记录，只累加同一行的 `attempts`。Pilot 的 `plan` 请求打开流失败后，规划器会整体重试一次，这次重试另写一条记录。记录不包含提示词、回复和密钥，调用失败同样记录。
 
-未设置 `ROBONIX_LLM_METRICS_DIR` 时，组件不写记录；Pilot 在启动日志中说明记录已关闭，Python 组件在第一次调用记录接口时打印 `off`。`rbnx boot` 不会清空该目录，`rbnx clean -f` 默认保留，只有加 `--llm-metrics` 才会删除；如果自定义目录放在 `<deploy>/rbnx-boot/` 之外，`clean` 不会管理它，需要自行清理；放在 `rbnx-boot/` 下的其他目录会被删除。记录文件只追加、不轮转，长期运行时应按运维周期归档或删除。在部署目录运行 `rbnx llm-usage` 可以按消费者、操作、端点和模型汇总；字段、命令参数和 JSON 示例见[模型目录与用量记录](architecture/llm-model-access.md)。
+未设置 `ROBONIX_LLM_METRICS_DIR` 时，组件不写记录；Pilot 在启动日志中说明记录已关闭，Python 组件在第一次调用记录接口时打印 `off`。`rbnx boot` 不会清空该目录。`rbnx clean -f` 默认保留它，加 `--llm-metrics` 才会删除。自定义目录位于 `<deploy>/rbnx-boot/` 之外时，`clean` 不处理它，需要自行清理。自定义目录位于 `rbnx-boot/` 内但名称不是 `llm-metrics` 时，`clean -f` 会把它当作普通运行产物删除。记录文件只追加、不轮转，长期运行时应按运维周期归档或删除。在部署目录运行 `rbnx llm-usage` 可以按消费者、操作、端点和模型汇总；字段、命令参数和 JSON 示例见[模型目录与用量记录](architecture/llm-model-access.md)。
 
 停止当前部署：
 
@@ -1429,7 +1429,7 @@ for event in stub.RecognizeStream(asr_requests(), timeout=60.0):
 | `rbnx boot [-v] [-f <manifest>]` | 启动整套部署；`-v` 关闭动态启动动画并实时输出 INFO/WARN/ERROR |
 | `rbnx shutdown [-f <manifest>]` | 停止对应部署 |
 | `rbnx update [-p <package> \| -f <manifest>]` | 更新远程软件包 |
-| `rbnx clean [-p <package> \| -f <manifest>] [--cache] [--llm-metrics]` | 清理构建和运行产物；默认保留 `rbnx-boot/cache/` 与 `rbnx-boot/llm-metrics/` |
+| `rbnx clean [-p <package> \| -f <manifest>] [--cache] [--sessions] [--llm-metrics]` | 清理构建和运行产物；默认保留 `rbnx-boot/cache/`、`rbnx-boot/sessions/` 与 `rbnx-boot/llm-metrics/` |
 | `rbnx caps [-v]` | 查看提供方和能力 |
 | `rbnx contracts [-v]` | 查看 Atlas 已加载的能力约定 |
 | `rbnx describe --provider <id>` | 查看提供方的 `CAPABILITY.md` |
@@ -1510,11 +1510,11 @@ for event in stub.RecognizeStream(asr_requests(), timeout=60.0):
 
 | 变量 | 作用 |
 |---|---|
-| `VLM_BASE_URL`、`VLM_API_KEY`、`VLM_MODEL` | Scene、memgraph、memsearch 的显式端点；设置后这些消费者不再读取模型目录。Pilot 用 `ROBONIX_VLM_*`，VLM Verifier 用自己的 `vlm` 块 |
+| `VLM_BASE_URL`、`VLM_API_KEY`、`VLM_MODEL` | Scene、memgraph、memsearch 的显式端点；设置 `VLM_BASE_URL` 后这些消费者不再读取模型目录，只设置密钥或模型名不算显式端点。Pilot 用 `ROBONIX_VLM_*`，VLM Verifier 用自己的 `vlm` 块 |
 | `MEMGRAPH_LLM_BASE_URL`、`MEMGRAPH_LLM_API_KEY`、`MEMGRAPH_LLM_MODEL` | memgraph 的 LLM 检索使用的显式端点，优先于对应的 `VLM_*` |
 | `ROBONIX_LLM_CATALOG` | 模型目录文件路径，覆盖清单的 `model_catalog:` 和 `~/.robonix/models.yaml` |
 | `ROBONIX_LLM_FEATURES` | Pilot 从目录解析时要求的特性（目录条目的 `features`），默认 `vision,tools,stream` |
-| `ROBONIX_LLM_INPUT_TOKENS`、`ROBONIX_LLM_MAX_OUTPUT_TOKENS` | 目录解析时用于检查上下文窗口的 token 估算，默认 `0` |
+| `ROBONIX_LLM_INPUT_TOKENS`、`ROBONIX_LLM_MAX_OUTPUT_TOKENS` | Pilot 从目录解析时用于检查上下文窗口的 token 估算，默认 `0`；其他消费者不读取 |
 | `ROBONIX_LLM_METRICS_DIR` | 模型用量记录目录；`rbnx boot` 默认设为 `rbnx-boot/llm-metrics/`，已有值优先 |
 
 `ROBONIX_LLM_KEY_ENVS` 由 `rbnx boot` 根据目录中的 `api_key_env` 生成并传给容器和启动器，通常不需要手动设置。Pilot 自己的 `ROBONIX_VLM_*` 与 `--vlm-*` 见第 12 节；`OPENAI_*` 是上述消费者在模型目录未配置时的兼容回退。

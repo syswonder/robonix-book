@@ -198,7 +198,7 @@ rbnx logs -t mapping -t nav2 -l info -f
 <deploy>/rbnx-boot/llm-metrics/
 ```
 
-`rbnx boot` 创建该目录并通过 `ROBONIX_LLM_METRICS_DIR` 传给各组件，每次模型调用追加一行 JSONL 记录。它不随日志清理，`rbnx clean -f` 默认保留，只有 `--llm-metrics` 才删除；如果自定义的 `ROBONIX_LLM_METRICS_DIR` 放在 `<deploy>/rbnx-boot/` 之外，`clean` 不会管理它，需要自行清理；放在 `rbnx-boot/` 下的其他目录会被删除。在部署目录运行 `rbnx llm-usage` 可按消费者、操作、端点和模型汇总。
+`rbnx boot` 创建该目录并通过 `ROBONIX_LLM_METRICS_DIR` 传给各组件，每次模型调用追加一行 JSONL 记录。它不随日志清理，`rbnx clean -f` 默认保留，加 `--llm-metrics` 才删除。自定义目录的清理规则见[开发者指南第 13 节](../developer-guide.md#13-构建启动与停止)。在部署目录运行 `rbnx llm-usage` 可按消费者、操作、端点和模型汇总。
 
 普通模式使用可回写的启动动画。需要在启动终端实时查看逐行状态时使用：
 
