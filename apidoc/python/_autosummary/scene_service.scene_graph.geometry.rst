@@ -8,6 +8,5 @@ scene\_service.scene\_graph.geometry
 
    .. autosummary::
 
-      compute_geometric_edges
-      geometric_relation
       geometry_signature
+      strict_geometric_relations

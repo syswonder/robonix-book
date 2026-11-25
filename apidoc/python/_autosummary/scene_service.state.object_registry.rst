@@ -18,4 +18,3 @@ scene\_service.state.object\_registry
       ObjectRegistry
       Pose3D
       SceneObject
-      SceneSurface

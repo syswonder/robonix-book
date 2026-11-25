@@ -11,7 +11,6 @@ scene\_service.scene\_graph
    :recursive:
 
    builder
-   captioner
    geometric_loop
    geometry
    image_relations

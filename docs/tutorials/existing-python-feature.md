@@ -561,12 +561,23 @@ def init(cfg: dict):
     return Ok()
 
 
+def close_channels():
+    global command_channel, state_channel
+    if command_channel is not None:
+        command_channel.close()
+        command_channel = None
+    if state_channel is not None:
+        state_channel.close()
+        state_channel = None
+
+
 @skill.on_activate
 def activate():
     global active, command_channel, state_channel
     if active:
         return Ok()
 
+    close_channels()
     commands = ATLAS.find_capability(
         contract_id="robonix/primitive/arm/joint_command",
         transport=Transport.ROS2,
@@ -597,7 +608,7 @@ def activate():
 
 @skill.on_deactivate
 def deactivate():
-    global active, command_channel, state_channel
+    global active
     active = False
     lifecycle_stop.set()
     with runs_lock:
@@ -611,12 +622,7 @@ def deactivate():
             run.thread.join(timeout=2.0)
     if any(run.thread is not None and run.thread.is_alive() for run in running):
         return Err("grasp worker did not stop within 2 seconds")
-    if command_channel is not None:
-        command_channel.close()
-        command_channel = None
-    if state_channel is not None:
-        state_channel.close()
-        state_channel = None
+    close_channels()
     return Ok()
 
 
